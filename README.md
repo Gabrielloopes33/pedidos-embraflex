@@ -2,6 +2,12 @@
 
 Sistema web desenvolvido para gerenciamento de pedidos, produtos e clientes da Embraflex. Construído com tecnologias modernas para proporcionar uma experiência rápida e intuitiva.
 
+## Preview
+
+![Dashboard Embraflex](.github/screenshots/dashboard.png)
+
+*Dashboard principal do sistema com visão geral de pedidos, produtos, clientes e faturamento.*
+
 ## Tecnologias Utilizadas
 
 ### Core
@@ -21,6 +27,10 @@ Sistema web desenvolvido para gerenciamento de pedidos, produtos e clientes da E
 - **TanStack React Query 5.83.0** - Gerenciamento de estado assíncrono
 - **React Hook Form 7.61.1** - Formulários performáticos
 - **Zod 3.25.76** - Validação de schemas TypeScript-first
+
+### Integração e API
+- **Axios** - Cliente HTTP para requisições
+- **WooCommerce REST API v3** - Integração com catálogo de produtos
 
 ### Notificações e Feedback
 - **Sonner** - Sistema de toast notifications
@@ -53,7 +63,8 @@ src/
 │   └── Settings.tsx               # Configurações do sistema
 ├── hooks/                          # Custom hooks
 ├── lib/
-│   └── utils.ts                   # Funções utilitárias
+│   ├── utils.ts                   # Funções utilitárias
+│   └── woocommerce.ts             # Serviço de integração WooCommerce
 ├── app.tsx                        # Configuração de rotas
 └── main.tsx                       # Entry point da aplicação
 ```
@@ -72,8 +83,17 @@ src/
 - Filtros e busca
 - Status de pedidos (Em Produção, Aguardando Aprovação, Pronto)
 
-### Gerenciamento de Produtos e Clientes
-- Cadastro e edição de produtos
+### Gerenciamento de Produtos
+- Integração com catálogo WooCommerce
+- Listagem de produtos com imagens
+- Busca por nome de produto
+- Filtros e ordenação
+- Paginação de resultados
+- Exibição de preços e estoque
+- Categorias de produtos
+- Atualização em tempo real
+
+### Gerenciamento de Clientes
 - Cadastro e edição de clientes
 - Visualização de informações detalhadas
 
@@ -105,6 +125,10 @@ cd step2
 yarn install
 # ou
 npm install
+
+# Configure as variáveis de ambiente
+cp .env.example .env
+# Edite o arquivo .env com suas credenciais do WooCommerce
 ```
 
 ### Desenvolvimento
@@ -150,6 +174,37 @@ yarn lint
 npm run lint
 ```
 
+## Configuração do WooCommerce
+
+O sistema integra-se com a API REST do WooCommerce para gerenciar produtos. Para configurar:
+
+### 1. Gerar credenciais no WooCommerce
+
+1. Acesse o painel do WordPress/WooCommerce
+2. Navegue para **WooCommerce > Configurações > Avançado > REST API**
+3. Clique em **Adicionar chave**
+4. Configure:
+   - **Descrição**: Sistema de Pedidos Embraflex
+   - **Usuário**: Administrador
+   - **Permissões**: Leitura/Gravação
+5. Copie as credenciais geradas (Consumer Key e Consumer Secret)
+
+### 2. Configurar variáveis de ambiente
+
+Edite o arquivo `.env` na raiz do projeto:
+
+```env
+VITE_WOOCOMMERCE_URL=https://seu-site.com.br
+VITE_WOOCOMMERCE_CONSUMER_KEY=ck_sua_chave_aqui
+VITE_WOOCOMMERCE_CONSUMER_SECRET=cs_seu_secret_aqui
+```
+
+### 3. Reiniciar o servidor
+
+Após configurar, reinicie o servidor de desenvolvimento para aplicar as mudanças.
+
+Para mais detalhes sobre a integração, consulte o arquivo `WOOCOMMERCE_CONFIG.md`.
+
 ## Configuração de Paths
 
 O projeto utiliza path aliases configurados no TypeScript e Vite:
@@ -160,6 +215,7 @@ Exemplo de uso:
 ```typescript
 import { Button } from "@/componentes/ui/button"
 import { cn } from "@/lib/utils"
+import { getProducts } from "@/lib/woocommerce"
 ```
 
 ## Design System
@@ -180,14 +236,33 @@ O projeto implementa um design system consistente com:
 - **Warning**: Laranja (#F59E0B)
 - **Destructive**: Vermelho (#EF4444)
 
+## Funcionalidades da Integração WooCommerce
+
+### Produtos
+- Listagem completa com paginação
+- Busca por nome
+- Filtros por categoria e status
+- Exibição de imagens
+- Informações de estoque
+- Preços formatados
+- Categorias
+
+### Endpoints Disponíveis
+- `getProducts(params)` - Lista produtos com filtros
+- `getProductById(id)` - Busca produto específico
+- `getCategories()` - Lista categorias
+
 ## Próximos Passos
 
-- Integração com API backend
+- Integração de pedidos com WooCommerce
+- Integração de clientes com WooCommerce
 - Implementação de autenticação real
 - Sistema de permissões de usuário
+- Criação de pedidos direto no WooCommerce
 - Exportação de relatórios em PDF
 - Notificações em tempo real
 - Dashboard com gráficos interativos
+- Sincronização de estoque
 
 ## Licença
 
