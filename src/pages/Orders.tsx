@@ -15,7 +15,7 @@ import {
 
 const mockOrders = [
   { id: "PED-2024-001", customer: "Empresa ABC Ltda", status: "production", value: "R$ 3,450.00", date: "01/11/2025", items: 150 },
-  { id: "PED-2024-002", customer: "Indústria XYZ S.A.", status: "pending", value: "R$ 8,920.00", date: "02/11/2025", items: 500 },
+  { id: "PED-2024-007", customer: "Indústria XYZ S.A.", status: "pending", value: "R$ 8,920.00", date: "02/11/2025", items: 500 },
   { id: "PED-2024-003", customer: "Comércio 123", status: "ready", value: "R$ 1,250.00", date: "03/11/2025", items: 75 },
   { id: "PED-2024-004", customer: "Distribuidora Novo Mundo", status: "production", value: "R$ 5,670.00", date: "04/11/2025", items: 300 },
   { id: "PED-2024-005", customer: "Atacado Premium", status: "delivered", value: "R$ 12,340.00", date: "28/10/2025", items: 850 },
