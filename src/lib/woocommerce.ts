@@ -21,6 +21,8 @@ export interface WooCommerceProduct {
   name: string;
   slug: string;
   permalink: string;
+  type?: string;
+  sku?: string;
   price: string;
   regular_price: string;
   sale_price: string;
