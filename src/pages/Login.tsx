@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Label } from "@/componentes/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/componentes/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/componentes/ui/card";
 import { toast } from "sonner";
 import { Package } from "lucide-react";
 
@@ -33,12 +33,25 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-primary">
-            <Package className="w-8 h-8 text-primary-foreground" />
+          <div className="mx-auto flex flex-col items-center gap-3">
+            <img 
+              src="/Logo-Embraflex-002.png" 
+              alt="Embraflex Logo" 
+              className="h-20 w-auto object-contain"
+              onError={(e) => {
+                // Fallback se a logo não existir
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const fallback = target.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'flex';
+              }}
+            />
+            <div className="w-16 h-16 bg-gradient-primary rounded-2xl items-center justify-center shadow-primary" style={{ display: 'none' }}>
+              <Package className="w-8 h-8 text-primary-foreground" />
+            </div>
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold">Embraflex</CardTitle>
-            <CardDescription className="text-base mt-2">
+            <CardDescription className="text-base">
               Sistema de Pedidos Digital
             </CardDescription>
           </div>

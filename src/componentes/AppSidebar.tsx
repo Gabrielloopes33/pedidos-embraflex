@@ -45,13 +45,28 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
-            <Package className="w-5 h-5 text-primary-foreground" />
-          </div>
-          {open && (
-            <div>
-              <h2 className="font-bold text-lg text-sidebar-foreground">Embraflex</h2>
-              <p className="text-xs text-sidebar-foreground/60">Sistema de Pedidos</p>
+          {open ? (
+            <div className="flex flex-col items-center w-full gap-2">
+              <img 
+                src="/Logo-Embraflex-001.png" 
+                alt="Embraflex Logo" 
+                className="h-16 w-auto object-contain"
+                onError={(e) => {
+                  // Fallback se a logo não existir
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              <div className="w-10 h-10 bg-gradient-primary rounded-lg items-center justify-center flex-shrink-0" style={{ display: 'none' }}>
+                <Package className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <p className="text-xs text-sidebar-foreground/60 text-center">Sistema de Pedidos</p>
+            </div>
+          ) : (
+            <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
+              <Package className="w-5 h-5 text-primary-foreground" />
             </div>
           )}
         </div>
