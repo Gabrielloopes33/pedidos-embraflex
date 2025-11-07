@@ -1,6 +1,6 @@
 # Embraflex - Sistema de Pedidos Digital
 
-Sistema web desenvolvido para gerenciamento de pedidos, produtos e clientes da Embraflex. Construído com tecnologias modernas para proporcionar uma experiência rápida e intuitiva.
+Sistema web completo desenvolvido para gerenciamento de pedidos, produtos e clientes da Embraflex. Construído com tecnologias modernas para proporcionar uma experiência rápida, intuitiva e totalmente integrada com WooCommerce.
 
 ## Preview
 
@@ -29,11 +29,11 @@ Sistema web desenvolvido para gerenciamento de pedidos, produtos e clientes da E
 - **Zod 3.25.76** - Validação de schemas TypeScript-first
 
 ### Integração e API
-- **Axios** - Cliente HTTP para requisições
-- **WooCommerce REST API v3** - Integração com catálogo de produtos
+- **Axios 1.13.2** - Cliente HTTP para requisições
+- **WooCommerce REST API v3** - Integração completa com produtos e clientes
 
 ### Notificações e Feedback
-- **Sonner** - Sistema de toast notifications
+- **Sonner** - Sistema de toast notifications elegante
 - **Radix UI Toast** - Componente de toast acessível
 
 ## Estrutura do Projeto
@@ -46,25 +46,31 @@ src/
 │   ├── ui/                         # Componentes de interface reutilizáveis
 │   │   ├── button.tsx
 │   │   ├── card.tsx
+│   │   ├── dialog.tsx
 │   │   ├── input.tsx
 │   │   ├── select.tsx
 │   │   ├── sidebar.tsx
+│   │   ├── textarea.tsx
 │   │   └── ...
-│   ├── AppSidebar.tsx             # Navegação lateral
-│   └── NavLink.tsx                # Componente de link de navegação
+│   ├── AppSidebar.tsx             # Navegação lateral com logo
+│   ├── NavLink.tsx                # Componente de link de navegação
+│   └── CustomerFormDialog.tsx     # Formulário de cadastro de clientes
 ├── pages/
 │   ├── Dashboard.tsx              # Visão geral e métricas
-│   ├── Login.tsx                  # Autenticação
+│   ├── Login.tsx                  # Autenticação com logo
 │   ├── Orders.tsx                 # Listagem de pedidos
-│   ├── NewOrder.tsx               # Criação de pedidos
-│   ├── Products.tsx               # Gerenciamento de produtos
-│   ├── Customers.tsx              # Gerenciamento de clientes
+│   ├── NewOrder.tsx               # Criação detalhada de pedidos
+│   ├── Products.tsx               # Gerenciamento de produtos (WooCommerce)
+│   ├── Customers.tsx              # Gerenciamento de clientes (WooCommerce)
 │   ├── Reports.tsx                # Relatórios e análises
 │   └── Settings.tsx               # Configurações do sistema
 ├── hooks/                          # Custom hooks
+│   ├── use-mobile.tsx
+│   └── use-toast.ts
 ├── lib/
 │   ├── utils.ts                   # Funções utilitárias
-│   └── woocommerce.ts             # Serviço de integração WooCommerce
+│   ├── woocommerce.ts             # Serviço de integração WooCommerce (Produtos)
+│   └── customers.ts               # Serviço de integração WooCommerce (Clientes)
 ├── app.tsx                        # Configuração de rotas
 └── main.tsx                       # Entry point da aplicação
 ```
@@ -73,38 +79,86 @@ src/
 
 ### Dashboard
 - Visão geral com métricas principais (pedidos, produtos, clientes, faturamento)
-- Lista de pedidos recentes com status
+- Lista de pedidos recentes com status visual
 - Indicadores de tendência comparados ao mês anterior
 - Acesso rápido para criar novos pedidos
+- Cards informativos com gradientes
 
-### Gerenciamento de Pedidos
-- Listagem completa de pedidos
-- Criação de novos pedidos
-- Filtros e busca
-- Status de pedidos (Em Produção, Aguardando Aprovação, Pronto)
+### Gerenciamento de Pedidos (NewOrder)
+- **Busca de Clientes**: Busca integrada com WooCommerce para selecionar clientes existentes
+- **Criação de Clientes**: Formulário integrado para criar novos clientes durante o pedido
+- **Múltiplos Produtos**: Adicione vários produtos em um único pedido
+- **Busca de Produtos WooCommerce**: Autocomplete com busca em tempo real
+- **Campos Específicos por Produto**:
+  - Quantidade e Código
+  - Material e Discriminação
+  - Dimensões (Largura, Altura, Lateral, Cores)
+  - Acabamentos (Brilho, Fosco, I.E., Auto-Matizada)
+  - Furos (Sim/Não)
+  - Refile
+  - **Acabamentos Especiais Completos**:
+    - Cordões (Branco, Preto, Bege, Outros)
+    - Gorgurinho 35cm, Gorgurão 35cm, S. Francisco 35cm
+    - Ilhós
+    - Hot Stamp (Sacola e Etiqueta)
+    - Outros acabamentos personalizados
+  - Observações por produto
+- **Cálculo Automático**: Subtotal por produto e total geral
+- **Valores Unitários**: Preenchimento manual ou automático do WooCommerce
+- **Validação de Formulário**: Campos obrigatórios e validações
 
 ### Gerenciamento de Produtos
-- Integração com catálogo WooCommerce
-- Listagem de produtos com imagens
-- Busca por nome de produto
-- Filtros e ordenação
-- Paginação de resultados
-- Exibição de preços e estoque
-- Categorias de produtos
-- Atualização em tempo real
+- **Integração Total WooCommerce**:
+  - Listagem completa de produtos com imagens
+  - Busca em tempo real por nome
+  - **Sistema de Filtros Avançado**:
+    - Busca por categoria
+    - Filtro por status de estoque (Em estoque, Fora de estoque, Sob encomenda)
+    - Ordenação por Data, Nome ou Preço
+    - Ordem Crescente/Decrescente
+    - Botão para limpar todos os filtros
+  - Paginação de resultados (12 produtos por página)
+  - **Modal de Detalhes Completo**:
+    - Galeria de imagens (principal + miniaturas)
+    - Preços (Regular e Promocional)
+    - Status de estoque com badges coloridos
+    - Quantidade em estoque e SKU
+    - Descrição completa e resumo
+    - Informações adicionais (ID, Tipo, Promoção)
+    - Link direto para o produto na loja
+  - Badges de categorias
+  - Atualização em tempo real
+  - Loading states e tratamento de erros
 
 ### Gerenciamento de Clientes
-- Cadastro e edição de clientes
-- Visualização de informações detalhadas
+- **Integração Total WooCommerce**:
+  - Listagem de clientes do WooCommerce
+  - Busca por nome, empresa ou email
+  - Paginação (20 clientes por página)
+  - **Criação de Clientes**:
+    - Dialog com formulário completo
+    - Campos: Nome Fantasia, Razão Social, Email, Telefone, CPF/CNPJ
+    - Validação de campos obrigatórios
+    - Armazenamento de meta_data customizado
+    - Toast de sucesso/erro
+  - **Modal de Detalhes do Cliente**:
+    - Avatar com iniciais
+    - Dados da empresa (Nome Fantasia, Razão Social, CPF/CNPJ, Telefone)
+    - Endereço de cobrança completo
+    - Endereço de entrega (quando disponível)
+    - Informações adicionais (Nome, Username, ID)
+  - Cards com informações resumidas
+  - Integração bidirecional (leitura e escrita no WooCommerce)
 
 ### Relatórios
 - Análises e métricas do negócio
 - Visualização de dados consolidados
 
 ### Sistema de Autenticação
-- Tela de login
+- Tela de login com logo da empresa
 - Proteção de rotas
 - Redirecionamento automático
+- Design responsivo e moderno
 
 ## Configuração e Instalação
 
@@ -238,31 +292,137 @@ O projeto implementa um design system consistente com:
 
 ## Funcionalidades da Integração WooCommerce
 
-### Produtos
+### Produtos (`lib/woocommerce.ts`)
 - Listagem completa com paginação
 - Busca por nome
-- Filtros por categoria e status
-- Exibição de imagens
-- Informações de estoque
-- Preços formatados
-- Categorias
+- Filtros por categoria e status de estoque
+- Ordenação por data, nome ou preço
+- Exibição de imagens, preços e estoque
+- Categorias e atributos
+- Descrições completas
+- SKU e tipo de produto
+
+### Clientes (`lib/customers.ts`)
+- **CRUD Completo**:
+  - `getCustomers(params)` - Lista clientes com filtros e busca
+  - `getCustomerById(id)` - Busca cliente específico
+  - `createCustomer(data)` - Cria novo cliente
+  - `updateCustomer(id, data)` - Atualiza dados do cliente
+  - `deleteCustomer(id)` - Remove cliente
+- **Meta Data Customizado**:
+  - `nome_fantasia` - Nome fantasia da empresa
+  - `razao_social` - Razão social
+  - `cpf_cnpj` - CPF ou CNPJ
+- Endereços de cobrança e entrega
+- Integração total com WooCommerce
 
 ### Endpoints Disponíveis
-- `getProducts(params)` - Lista produtos com filtros
-- `getProductById(id)` - Busca produto específico
-- `getCategories()` - Lista categorias
+
+#### Produtos
+```typescript
+getProducts({
+  page?: number,
+  per_page?: number,
+  search?: string,
+  category?: string,
+  stock_status?: 'instock' | 'outofstock' | 'onbackorder',
+  orderby?: 'date' | 'title' | 'price',
+  order?: 'asc' | 'desc'
+})
+```
+
+#### Clientes
+```typescript
+getCustomers({
+  page?: number,
+  per_page?: number,
+  search?: string,
+  orderby?: 'id' | 'registered_date' | 'name' | 'email',
+  order?: 'asc' | 'desc'
+})
+
+createCustomer({
+  email: string,
+  first_name: string,
+  last_name: string,
+  billing: { ... },
+  meta_data: [
+    { key: 'nome_fantasia', value: string },
+    { key: 'razao_social', value: string },
+    { key: 'cpf_cnpj', value: string }
+  ]
+})
+```
+
+### Categorias
+- `getCategories()` - Lista todas as categorias de produtos
 
 ## Próximos Passos
 
-- Integração de pedidos com WooCommerce
-- Integração de clientes com WooCommerce
-- Implementação de autenticação real
-- Sistema de permissões de usuário
-- Criação de pedidos direto no WooCommerce
-- Exportação de relatórios em PDF
-- Notificações em tempo real
-- Dashboard com gráficos interativos
-- Sincronização de estoque
+- [ ] Integração de pedidos com WooCommerce (criar pedidos via API)
+- [ ] Implementação de autenticação real com WooCommerce/WordPress
+- [ ] Sistema de permissões de usuário
+- [ ] Sincronização automática de estoque
+- [ ] Exportação de relatórios em PDF
+- [ ] Notificações em tempo real
+- [ ] Dashboard com gráficos interativos (Chart.js/Recharts)
+- [ ] Upload de arquivos e imagens nos pedidos
+- [ ] Sistema de aprovação de pedidos
+- [ ] Histórico de alterações
+- [ ] Integração com sistema de pagamento
+- [ ] Notificações por email
+- [ ] Modo offline com sincronização
+
+## Componentes Desenvolvidos
+
+### UI Components (Shadcn/UI)
+- ✅ Button - Botão com variantes e tamanhos
+- ✅ Card - Container de conteúdo
+- ✅ Input - Campo de entrada de texto
+- ✅ Textarea - Campo de texto multilinha
+- ✅ Label - Rótulo de formulário
+- ✅ Select - Dropdown seletor
+- ✅ Dialog - Modal/Dialog
+- ✅ Badge - Badges e tags
+- ✅ Avatar - Avatar de usuário
+- ✅ Sidebar - Navegação lateral recolhível
+- ✅ Toast - Notificações temporárias
+- ✅ Switch - Toggle switch
+
+### Custom Components
+- ✅ AppSidebar - Navegação principal com logo
+- ✅ NavLink - Link de navegação com estado ativo
+- ✅ CustomerFormDialog - Formulário de cadastro de clientes
+- ✅ DashboardLayout - Layout principal do sistema
+
+## Recursos Implementados
+
+- ✅ Roteamento completo com React Router
+- ✅ Integração WooCommerce (Produtos e Clientes)
+- ✅ Sistema de busca e filtros avançados
+- ✅ Paginação de dados
+- ✅ Modal de detalhes (Produtos e Clientes)
+- ✅ Formulários com validação
+- ✅ Toast notifications
+- ✅ Loading states
+- ✅ Error handling
+- ✅ Responsive design
+- ✅ Dark mode ready
+- ✅ TypeScript strict mode
+- ✅ ESLint configured
+- ✅ Path aliases
+- ✅ Logo da empresa integrada
+
+## Personalização da Logo
+
+O sistema suporta logo personalizada da empresa. Para adicionar:
+
+1. Coloque a logo em `public/logo-embraflex.png`
+2. Formatos suportados: PNG (recomendado), SVG, JPG
+3. A logo aparecerá automaticamente em:
+   - Sidebar (quando expandido)
+   - Tela de login
+4. Se a logo não existir, será exibido um ícone de fallback
 
 ## Licença
 
