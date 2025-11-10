@@ -11,13 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getProducts, type WooCommerceProduct } from "@/lib/woocommerce";
 import { getCustomers, type WooCommerceCustomer } from "@/lib/customers";
 import { CustomerFormDialog } from "@/componentes/CustomerFormDialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/componentes/ui/select";
+import { OrderApprovalModal } from "@/componentes/OrderApprovalModal";
 
 interface ProductItem {
   id: string;
@@ -37,8 +31,7 @@ interface ProductItem {
   vernizIE: boolean;
   autoMatizada: boolean;
   // Furos
-  furosSimPresente: boolean;
-  furosNaoPresente: boolean;
+  furosPresente: 'sim' | 'nao' | '';
   refile: string;
   // Acabamentos Especiais
   cordaoBranco: boolean;
@@ -62,6 +55,7 @@ const NewOrder = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<ProductItem[]>([{
     id: crypto.randomUUID(),
@@ -79,8 +73,7 @@ const NewOrder = () => {
     laminadoFosco: false,
     vernizIE: false,
     autoMatizada: false,
-    furosSimPresente: false,
-    furosNaoPresente: false,
+    furosPresente: '',
     refile: "",
     cordaoBranco: false,
     cordaoPreto: false,
@@ -104,7 +97,7 @@ const NewOrder = () => {
   const [representante, setRepresentante] = useState("");
 
   // Buscar produtos do WooCommerce
-  const { data: products } = useQuery({
+  const { data: products, isLoading: isLoadingProducts, error: productsError } = useQuery({
     queryKey: ['products-search', searchTerm],
     queryFn: () => getProducts({
       search: searchTerm || undefined,
@@ -112,6 +105,9 @@ const NewOrder = () => {
     }),
     enabled: searchTerm.length > 2,
   });
+
+  // Debug: log produtos encontrados
+  console.log('Search term:', searchTerm, 'Products found:', products?.length || 0);
 
   // Buscar clientes do WooCommerce
   const { data: customers } = useQuery({
@@ -140,8 +136,7 @@ const NewOrder = () => {
       laminadoFosco: false,
       vernizIE: false,
       autoMatizada: false,
-      furosSimPresente: false,
-      furosNaoPresente: false,
+      furosPresente: '',
       refile: "",
       cordaoBranco: false,
       cordaoPreto: false,
@@ -172,10 +167,71 @@ const NewOrder = () => {
   };
 
   const selectWooProduct = (itemId: string, product: WooCommerceProduct) => {
+    console.log('Selecionando produto:', product.name, 'para item:', itemId);
+    
     updateProduct(itemId, 'productId', product.id);
     updateProduct(itemId, 'productName', product.name);
     updateProduct(itemId, 'unitPrice', parseFloat(product.price || '0'));
+    
+    // Preencher código com SKU se disponível
+    if (product.sku) {
+      updateProduct(itemId, 'codigo', product.sku);
+    }
+    
+    // Preencher discriminação com descrição curta
+    if (product.short_description) {
+      const cleanDescription = product.short_description.replace(/<[^>]*>/g, ''); // Remove HTML tags
+      updateProduct(itemId, 'discriminacaoProduto', cleanDescription);
+    }
+    
+    // Preencher dimensões se disponíveis
+    if (product.dimensions) {
+      if (product.dimensions.width) {
+        updateProduct(itemId, 'largura', product.dimensions.width);
+      }
+      if (product.dimensions.height) {
+        updateProduct(itemId, 'altura', product.dimensions.height);
+      }
+      if (product.dimensions.length) {
+        updateProduct(itemId, 'lateral', product.dimensions.length);
+      }
+    }
+    
+    // Buscar informações nos meta_data
+    if (product.meta_data) {
+      const materialMeta = product.meta_data.find(meta => 
+        meta.key.toLowerCase().includes('material') || 
+        meta.key === '_material'
+      );
+      if (materialMeta) {
+        updateProduct(itemId, 'material', materialMeta.value);
+      }
+      
+      const coresMeta = product.meta_data.find(meta => 
+        meta.key.toLowerCase().includes('cores') || 
+        meta.key === '_cores' ||
+        meta.key.toLowerCase().includes('color')
+      );
+      if (coresMeta) {
+        updateProduct(itemId, 'cores', coresMeta.value);
+      }
+    }
+    
+    // Buscar informações nos atributos
+    if (product.attributes) {
+      product.attributes.forEach(attr => {
+        const attrName = attr.name.toLowerCase();
+        if (attrName.includes('material')) {
+          updateProduct(itemId, 'material', attr.options.join(', '));
+        }
+        if (attrName.includes('cor') || attrName.includes('color')) {
+          updateProduct(itemId, 'cores', attr.options.join(', '));
+        }
+      });
+    }
+    
     setSearchTerm("");
+    toast.success(`Produto "${product.name}" adicionado ao pedido`);
   };
 
   const selectCustomer = (customer: WooCommerceCustomer) => {
@@ -231,12 +287,124 @@ const NewOrder = () => {
       return;
     }
 
+    // Salvar como rascunho
     setTimeout(() => {
-      toast.success("Pedido criado com sucesso!");
-      navigate("/orders");
+      toast.success("Rascunho salvo com sucesso!");
       setLoading(false);
-    }, 1500);
+    }, 1000);
   };
+
+  const handleSendOrder = () => {
+    console.log('Iniciando validação do pedido...');
+    console.log('Nome Fantasia:', nomeFantasia);
+    console.log('Razão Social:', razaoSocial);
+    console.log('Produtos selecionados:', selectedProducts);
+    
+    // *** VALIDAÇÕES TEMPORARIAMENTE DESABILITADAS PARA TESTE DO PDF ***
+    /*
+    // Validação antes de abrir o modal
+    if (!nomeFantasia.trim()) {
+      console.log('Erro: Nome fantasia vazio');
+      toast.error("Preencha o nome fantasia do cliente");
+      return;
+    }
+    
+    if (!razaoSocial.trim()) {
+      console.log('Erro: Razão social vazia');
+      toast.error("Preencha a razão social do cliente");
+      return;
+    }
+
+    // Filtrar produtos válidos (que têm nome)
+    const validProducts = selectedProducts.filter(p => p.productName && p.productName.trim());
+    console.log('Produtos válidos encontrados:', validProducts.length);
+    
+    if (validProducts.length === 0) {
+      console.log('Erro: Nenhum produto válido');
+      toast.error("Adicione pelo menos um produto ao pedido");
+      return;
+    }
+
+    const hasInvalidQuantity = validProducts.some(p => p.quantity <= 0);
+    console.log('Produtos com quantidade inválida:', hasInvalidQuantity);
+    if (hasInvalidQuantity) {
+      toast.error("Todos os produtos devem ter quantidade maior que zero");
+      return;
+    }
+
+    const hasInvalidPrice = validProducts.some(p => !p.unitPrice || p.unitPrice <= 0 || isNaN(p.unitPrice));
+    console.log('Produtos com preço inválido:', hasInvalidPrice);
+    if (hasInvalidPrice) {
+      console.log('Produtos com preço inválido:', validProducts.filter(p => !p.unitPrice || p.unitPrice <= 0 || isNaN(p.unitPrice)));
+      toast.error("Todos os produtos devem ter preço maior que zero");
+      return;
+    }
+    */
+
+    console.log('Validação passou! Abrindo modal...');
+    // Abrir modal de aprovação
+    setIsApprovalModalOpen(true);
+  };
+
+  const handleConfirmSend = () => {
+    // Aqui seria a lógica para enviar efetivamente o pedido
+    toast.success("Pedido enviado para aprovação!");
+    navigate("/orders");
+  };
+
+  // *** FUNÇÃO TEMPORARIAMENTE DESABILITADA PARA TESTE ***
+  /*
+  const isFormValid = () => {
+    if (!nomeFantasia.trim() || !razaoSocial.trim()) return false;
+    const validProducts = selectedProducts.filter(p => p.productName && p.productName.trim());
+    if (validProducts.length === 0) return false;
+    const hasInvalidQuantity = validProducts.some(p => p.quantity <= 0);
+    if (hasInvalidQuantity) return false;
+    const hasInvalidPrice = validProducts.some(p => !p.unitPrice || p.unitPrice <= 0 || isNaN(p.unitPrice));
+    if (hasInvalidPrice) return false;
+    return true;
+  };
+  */
+
+  const getOrderData = () => ({
+    nomeFantasia: nomeFantasia || 'Cliente não informado',
+    razaoSocial: razaoSocial || 'Razão social não informada',
+    cpfCnpj: cpfCnpj || '',
+    representante: representante || '',
+    produtos: selectedProducts.length > 0 ? selectedProducts : [{
+      id: 'temp',
+      productId: 0,
+      productName: 'Produto de teste',
+      quantity: 1,
+      codigo: '',
+      material: '',
+      discriminacaoProduto: '',
+      largura: '',
+      altura: '',
+      lateral: '',
+      cores: '',
+      laminadoBrilho: false,
+      laminadoFosco: false,
+      vernizIE: false,
+      autoMatizada: false,
+      furosPresente: '' as const,
+      refile: '',
+      cordaoBranco: false,
+      cordaoPreto: false,
+      cordaoBege: false,
+      cordao: '',
+      gorgurinho35cm: false,
+      gorgurao35cm: false,
+      sFrancisco35cm: false,
+      ilhos: false,
+      hotStampSacola: false,
+      hotStampEtiqueta: false,
+      outros: '',
+      observacoes: '',
+      unitPrice: 100
+    }],
+    total: calculateTotal()
+  });
 
   return (
     <div className="space-y-6">
@@ -412,29 +580,53 @@ const NewOrder = () => {
                     <div className="flex-1 relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                       <Input
-                        placeholder="Buscar produto..."
-                        value={item.productName || searchTerm}
+                        placeholder="Digite pelo menos 3 caracteres para buscar..."
+                        value={item.productId > 0 ? item.productName : searchTerm}
                         onChange={(e) => {
-                          if (!item.productId) {
+                          if (item.productId === 0) {
                             setSearchTerm(e.target.value);
                           }
                         }}
                         className="pl-10"
+                        disabled={item.productId > 0}
                       />
-                      {searchTerm && products && products.length > 0 && !item.productId && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto z-10">
-                          {products.map((product) => (
-                            <div
-                              key={product.id}
-                              className="p-3 hover:bg-accent cursor-pointer border-b last:border-b-0"
-                              onClick={() => selectWooProduct(item.id, product)}
-                            >
-                              <div className="font-medium">{product.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                R$ {parseFloat(product.price || '0').toFixed(2)}
-                              </div>
+                      {searchTerm.length > 2 && item.productId === 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
+                          {isLoadingProducts ? (
+                            <div className="p-3 text-center text-muted-foreground">
+                              Buscando produtos...
                             </div>
-                          ))}
+                          ) : productsError ? (
+                            <div className="p-3 text-center text-destructive">
+                              Erro ao buscar produtos
+                            </div>
+                          ) : products && products.length > 0 ? (
+                            products.map((product) => (
+                              <div
+                                key={product.id}
+                                className="p-3 hover:bg-accent cursor-pointer border-b last:border-b-0 transition-colors"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  selectWooProduct(item.id, product);
+                                }}
+                              >
+                                <div className="font-medium">{product.name}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  R$ {parseFloat(product.price || '0').toFixed(2).replace('.', ',')}
+                                </div>
+                                {product.sku && (
+                                  <div className="text-xs text-muted-foreground">
+                                    SKU: {product.sku}
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          ) : searchTerm.length > 2 ? (
+                            <div className="p-3 text-center text-muted-foreground">
+                              Nenhum produto encontrado
+                            </div>
+                          ) : null}
                         </div>
                       )}
                     </div>
@@ -447,6 +639,14 @@ const NewOrder = () => {
                           updateProduct(item.id, 'productId', 0);
                           updateProduct(item.id, 'productName', '');
                           updateProduct(item.id, 'unitPrice', 0);
+                          updateProduct(item.id, 'codigo', '');
+                          updateProduct(item.id, 'material', '');
+                          updateProduct(item.id, 'discriminacaoProduto', '');
+                          updateProduct(item.id, 'largura', '');
+                          updateProduct(item.id, 'altura', '');
+                          updateProduct(item.id, 'lateral', '');
+                          updateProduct(item.id, 'cores', '');
+                          setSearchTerm('');
                         }}
                       >
                         Limpar
@@ -545,27 +745,29 @@ const NewOrder = () => {
                     <Label>Furos (P/Presente)</Label>
                     <div className="border rounded-md p-3">
                       <div className="flex gap-4">
-                        <label className="flex items-center gap-2 text-sm">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
                           <input
                             type="radio"
-                            checked={item.furosSimPresente}
-                            onChange={(e) => {
-                              updateProduct(item.id, 'furosSimPresente', e.target.checked);
-                              if (e.target.checked) updateProduct(item.id, 'furosNaoPresente', false);
+                            name={`furos-${item.id}`}
+                            value="sim"
+                            checked={item.furosPresente === 'sim'}
+                            onChange={() => {
+                              updateProduct(item.id, 'furosPresente', 'sim');
                             }}
-                            className="rounded-full"
+                            className="w-4 h-4"
                           />
                           Sim
                         </label>
-                        <label className="flex items-center gap-2 text-sm">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
                           <input
                             type="radio"
-                            checked={item.furosNaoPresente}
-                            onChange={(e) => {
-                              updateProduct(item.id, 'furosNaoPresente', e.target.checked);
-                              if (e.target.checked) updateProduct(item.id, 'furosSimPresente', false);
+                            name={`furos-${item.id}`}
+                            value="nao"
+                            checked={item.furosPresente === 'nao'}
+                            onChange={() => {
+                              updateProduct(item.id, 'furosPresente', 'nao');
                             }}
-                            className="rounded-full"
+                            className="w-4 h-4"
                           />
                           Não
                         </label>
@@ -618,7 +820,7 @@ const NewOrder = () => {
                       type="number"
                       step="0.01"
                       value={item.unitPrice}
-                      onChange={(e) => updateProduct(item.id, 'unitPrice', parseFloat(e.target.value))}
+                      onChange={(e) => updateProduct(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
                       placeholder="R$ 0,00"
                     />
                   </div>
@@ -793,7 +995,7 @@ const NewOrder = () => {
             <Save className="w-4 h-4 mr-2" />
             Salvar Rascunho
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button type="button" onClick={handleSendOrder} disabled={loading}>
             <Send className="w-4 h-4 mr-2" />
             Enviar Pedido
           </Button>
@@ -805,6 +1007,15 @@ const NewOrder = () => {
         onOpenChange={setIsCustomerDialogOpen}
         onSuccess={handleCustomerCreated}
       />
+
+      {isApprovalModalOpen && (
+        <OrderApprovalModal
+          open={isApprovalModalOpen}
+          onOpenChange={setIsApprovalModalOpen}
+          orderData={getOrderData()}
+          onConfirmSend={handleConfirmSend}
+        />
+      )}
     </div>
   );
 };

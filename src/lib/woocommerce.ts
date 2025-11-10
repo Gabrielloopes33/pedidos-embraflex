@@ -45,6 +45,17 @@ export interface WooCommerceProduct {
     name: string;
     options: string[];
   }>;
+  dimensions?: {
+    length: string;
+    width: string;
+    height: string;
+  };
+  weight?: string;
+  meta_data?: Array<{
+    id: number;
+    key: string;
+    value: string;
+  }>;
   description: string;
   short_description: string;
 }
