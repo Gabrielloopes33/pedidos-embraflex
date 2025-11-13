@@ -13,6 +13,7 @@ import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import ProductionPage from "./pages/Production"; // Importar ProductionPage
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
           <Route path="/orders" element={<DashboardLayout><Orders /></DashboardLayout>} />
           <Route path="/orders/new" element={<DashboardLayout><NewOrder /></DashboardLayout>} />
+          <Route path="/production" element={<DashboardLayout><ProductionPage /></DashboardLayout>} />
           <Route path="/products" element={<DashboardLayout><Products /></DashboardLayout>} />
           <Route path="/customers" element={<DashboardLayout><Customers /></DashboardLayout>} />
           <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />

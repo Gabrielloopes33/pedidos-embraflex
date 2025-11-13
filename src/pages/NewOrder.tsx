@@ -4,14 +4,16 @@ import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Label } from "@/componentes/ui/label";
 import { Textarea } from "@/componentes/ui/textarea";
-import { ArrowLeft, Save, Send, Plus, Trash2, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Search, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { getProducts, type WooCommerceProduct } from "@/lib/woocommerce";
 import { getCustomers, type WooCommerceCustomer } from "@/lib/customers";
 import { CustomerFormDialog } from "@/componentes/CustomerFormDialog";
-import { OrderApprovalModal } from "@/componentes/OrderApprovalModal";
+import { createProductionOrder } from "@/lib/api"; // Importar a nova API
+import { NewProductionOrder } from "@/lib/types"; // Importar o novo tipo
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/componentes/ui/select"; // Importar Select
 
 interface ProductItem {
   id: string;
@@ -55,7 +57,6 @@ const NewOrder = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<ProductItem[]>([{
     id: crypto.randomUUID(),
@@ -95,6 +96,10 @@ const NewOrder = () => {
   const [razaoSocial, setRazaoSocial] = useState("");
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [representante, setRepresentante] = useState("");
+
+  // Novos estados para a Ordem de Produção
+  const [priority, setPriority] = useState<'Normal' | 'Urgente'>('Normal');
+  const [generalNotes, setGeneralNotes] = useState<string>('');
 
   // Buscar produtos do WooCommerce
   const { data: products, isLoading: isLoadingProducts, error: productsError } = useQuery({
@@ -269,7 +274,7 @@ const NewOrder = () => {
     return selectedProducts.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -287,124 +292,39 @@ const NewOrder = () => {
       return;
     }
 
-    // Salvar como rascunho
-    setTimeout(() => {
-      toast.success("Rascunho salvo com sucesso!");
+    try {
+      const orderProducts = selectedProducts.map(p => ({
+        name: p.productName,
+        quantity: p.quantity,
+        // Incluir outros detalhes do produto que sejam relevantes para a produção
+        // Ex: codigo, material, discriminacaoProduto, largura, altura, lateral, cores,
+        // laminadoBrilho, laminadoFosco, vernizIE, autoMatizada, furosPresente, refile,
+        // cordaoBranco, cordaoPreto, cordaoBege, cordao, gorgurinho35cm, gorgurao35cm,
+        // sFrancisco35cm, ilhos, hotStampSacola, hotStampEtiqueta, outros, observacoes, unitPrice
+      }));
+
+      const newProductionOrder: NewProductionOrder = {
+        customerName: nomeFantasia, // Usando nome fantasia como nome do cliente
+        products: orderProducts,
+        priority: priority,
+        notes: generalNotes,
+      };
+
+      await createProductionOrder(newProductionOrder);
+      toast.success("Ordem de produção criada com sucesso!");
+      navigate("/orders"); // Redirecionar para a lista de ordens ou para o dashboard
+    } catch (error) {
+      console.error("Erro ao criar ordem de produção:", error);
+      toast.error("Erro ao criar ordem de produção. Tente novamente.");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
-  const handleSendOrder = () => {
-    console.log('Iniciando validação do pedido...');
-    console.log('Nome Fantasia:', nomeFantasia);
-    console.log('Razão Social:', razaoSocial);
-    console.log('Produtos selecionados:', selectedProducts);
-    
-    // *** VALIDAÇÕES TEMPORARIAMENTE DESABILITADAS PARA TESTE DO PDF ***
-    /*
-    // Validação antes de abrir o modal
-    if (!nomeFantasia.trim()) {
-      console.log('Erro: Nome fantasia vazio');
-      toast.error("Preencha o nome fantasia do cliente");
-      return;
-    }
-    
-    if (!razaoSocial.trim()) {
-      console.log('Erro: Razão social vazia');
-      toast.error("Preencha a razão social do cliente");
-      return;
-    }
-
-    // Filtrar produtos válidos (que têm nome)
-    const validProducts = selectedProducts.filter(p => p.productName && p.productName.trim());
-    console.log('Produtos válidos encontrados:', validProducts.length);
-    
-    if (validProducts.length === 0) {
-      console.log('Erro: Nenhum produto válido');
-      toast.error("Adicione pelo menos um produto ao pedido");
-      return;
-    }
-
-    const hasInvalidQuantity = validProducts.some(p => p.quantity <= 0);
-    console.log('Produtos com quantidade inválida:', hasInvalidQuantity);
-    if (hasInvalidQuantity) {
-      toast.error("Todos os produtos devem ter quantidade maior que zero");
-      return;
-    }
-
-    const hasInvalidPrice = validProducts.some(p => !p.unitPrice || p.unitPrice <= 0 || isNaN(p.unitPrice));
-    console.log('Produtos com preço inválido:', hasInvalidPrice);
-    if (hasInvalidPrice) {
-      console.log('Produtos com preço inválido:', validProducts.filter(p => !p.unitPrice || p.unitPrice <= 0 || isNaN(p.unitPrice)));
-      toast.error("Todos os produtos devem ter preço maior que zero");
-      return;
-    }
-    */
-
-    console.log('Validação passou! Abrindo modal...');
-    // Abrir modal de aprovação
-    setIsApprovalModalOpen(true);
-  };
-
-  const handleConfirmSend = () => {
-    // Aqui seria a lógica para enviar efetivamente o pedido
-    toast.success("Pedido enviado para aprovação!");
-    navigate("/orders");
-  };
-
-  // *** FUNÇÃO TEMPORARIAMENTE DESABILITADA PARA TESTE ***
-  /*
-  const isFormValid = () => {
-    if (!nomeFantasia.trim() || !razaoSocial.trim()) return false;
-    const validProducts = selectedProducts.filter(p => p.productName && p.productName.trim());
-    if (validProducts.length === 0) return false;
-    const hasInvalidQuantity = validProducts.some(p => p.quantity <= 0);
-    if (hasInvalidQuantity) return false;
-    const hasInvalidPrice = validProducts.some(p => !p.unitPrice || p.unitPrice <= 0 || isNaN(p.unitPrice));
-    if (hasInvalidPrice) return false;
-    return true;
-  };
-  */
-
-  const getOrderData = () => ({
-    nomeFantasia: nomeFantasia || 'Cliente não informado',
-    razaoSocial: razaoSocial || 'Razão social não informada',
-    cpfCnpj: cpfCnpj || '',
-    representante: representante || '',
-    produtos: selectedProducts.length > 0 ? selectedProducts : [{
-      id: 'temp',
-      productId: 0,
-      productName: 'Produto de teste',
-      quantity: 1,
-      codigo: '',
-      material: '',
-      discriminacaoProduto: '',
-      largura: '',
-      altura: '',
-      lateral: '',
-      cores: '',
-      laminadoBrilho: false,
-      laminadoFosco: false,
-      vernizIE: false,
-      autoMatizada: false,
-      furosPresente: '' as const,
-      refile: '',
-      cordaoBranco: false,
-      cordaoPreto: false,
-      cordaoBege: false,
-      cordao: '',
-      gorgurinho35cm: false,
-      gorgurao35cm: false,
-      sFrancisco35cm: false,
-      ilhos: false,
-      hotStampSacola: false,
-      hotStampEtiqueta: false,
-      outros: '',
-      observacoes: '',
-      unitPrice: 100
-    }],
-    total: calculateTotal()
-  });
+  // Removendo funções e componentes relacionados ao modal de aprovação
+  // const handleSendOrder = () => { ... };
+  // const handleConfirmSend = () => { ... };
+  // const getOrderData = () => ({ ... });
 
   return (
     <div className="space-y-6">
@@ -413,8 +333,8 @@ const NewOrder = () => {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Novo Pedido</h1>
-          <p className="text-muted-foreground mt-1">Crie um novo pedido para seu cliente</p>
+          <h1 className="text-3xl font-bold text-foreground">Nova Ordem de Produção</h1>
+          <p className="text-muted-foreground mt-1">Crie uma nova ordem de produção para a fábrica</p>
         </div>
       </div>
 
@@ -538,6 +458,40 @@ const NewOrder = () => {
                   placeholder="Nome do representante" 
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Informações da Ordem de Produção */}
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle>Detalhes da Ordem de Produção</CardTitle>
+            <CardDescription>Informações adicionais para a produção</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="priority">Prioridade</Label>
+                <Select value={priority} onValueChange={(value: 'Normal' | 'Urgente') => setPriority(value)}>
+                  <SelectTrigger id="priority">
+                    <SelectValue placeholder="Selecione a prioridade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Normal">Normal</SelectItem>
+                    <SelectItem value="Urgente">Urgente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="generalNotes">Observações Gerais para Produção</Label>
+              <Textarea
+                id="generalNotes"
+                value={generalNotes}
+                onChange={(e) => setGeneralNotes(e.target.value)}
+                placeholder="Adicione quaisquer observações importantes para a equipe de produção..."
+                rows={4}
+              />
             </div>
           </CardContent>
         </Card>
@@ -991,13 +945,9 @@ const NewOrder = () => {
           <Button type="button" variant="outline" onClick={() => navigate("/orders")}>
             Cancelar
           </Button>
-          <Button type="submit" variant="outline" disabled={loading}>
+          <Button type="submit" disabled={loading}>
             <Save className="w-4 h-4 mr-2" />
-            Salvar Rascunho
-          </Button>
-          <Button type="button" onClick={handleSendOrder} disabled={loading}>
-            <Send className="w-4 h-4 mr-2" />
-            Enviar Pedido
+            Criar Ordem de Produção
           </Button>
         </div>
       </form>
@@ -1007,15 +957,6 @@ const NewOrder = () => {
         onOpenChange={setIsCustomerDialogOpen}
         onSuccess={handleCustomerCreated}
       />
-
-      {isApprovalModalOpen && (
-        <OrderApprovalModal
-          open={isApprovalModalOpen}
-          onOpenChange={setIsApprovalModalOpen}
-          orderData={getOrderData()}
-          onConfirmSend={handleConfirmSend}
-        />
-      )}
     </div>
   );
 };
