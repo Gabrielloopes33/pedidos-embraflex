@@ -6,10 +6,11 @@ import { Label } from "@/componentes/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/componentes/ui/card";
 import { toast } from "sonner";
 import { Package } from "lucide-react";
+import { login } from "@/lib/api"; // Importar a função de login da API
 
 const Login = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -17,16 +18,24 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Mock authentication - replace with WooCommerce integration
-    setTimeout(() => {
-      if (email && password) {
-        toast.success("Login realizado com sucesso!");
-        navigate("/dashboard");
-      } else {
-        toast.error("Email e senha são obrigatórios");
-      }
+    try {
+      const { accessToken, user } = await login({ username, password });
+      
+      // Armazenar o token e os dados do usuário
+      localStorage.setItem('authToken', accessToken);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      toast.success("Login realizado com sucesso!");
+      
+      // Forçar um recarregamento da página para que a lógica de rotas em app.tsx seja reavaliada
+      window.location.href = '/dashboard';
+
+    } catch (error) {
+      console.error("Erro de login:", error);
+      toast.error("Falha no login. Verifique suas credenciais.");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -38,17 +47,7 @@ const Login = () => {
               src="/Logo-Embraflex-002.png" 
               alt="Embraflex Logo" 
               className="h-20 w-auto object-contain"
-              onError={(e) => {
-                // Fallback se a logo não existir
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const fallback = target.nextElementSibling as HTMLElement;
-                if (fallback) fallback.style.display = 'flex';
-              }}
             />
-            <div className="w-16 h-16 bg-gradient-primary rounded-2xl items-center justify-center shadow-primary" style={{ display: 'none' }}>
-              <Package className="w-8 h-8 text-primary-foreground" />
-            </div>
           </div>
           <div>
             <CardDescription className="text-base">
@@ -59,13 +58,13 @@ const Login = () => {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Usuário</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="ex: admin ou vendedor1"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 className="h-11"
               />

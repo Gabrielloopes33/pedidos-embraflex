@@ -2,8 +2,9 @@ import { Toaster } from "@/componentes/ui/toaster";
 import { Toaster as Sonner } from "@/componentes/ui/sonner";
 import { TooltipProvider } from "@/componentes/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { DashboardLayout } from "./componentes/layouts/DashboardLayout";
+import ProtectedRoute from "./componentes/ProtectedRoute"; // Importar o novo componente
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
@@ -13,32 +14,50 @@ import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import ProductionPage from "./pages/Production"; // Importar ProductionPage
+import ProductionPage from "./pages/Production";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
-          <Route path="/orders" element={<DashboardLayout><Orders /></DashboardLayout>} />
-          <Route path="/orders/new" element={<DashboardLayout><NewOrder /></DashboardLayout>} />
-          <Route path="/production" element={<DashboardLayout><ProductionPage /></DashboardLayout>} />
-          <Route path="/products" element={<DashboardLayout><Products /></DashboardLayout>} />
-          <Route path="/customers" element={<DashboardLayout><Customers /></DashboardLayout>} />
-          <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />
-          <Route path="/settings" element={<DashboardLayout><Settings /></DashboardLayout>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+// Layout principal para as páginas protegidas
+const AppLayout = () => (
+  <DashboardLayout>
+    <Outlet />
+  </DashboardLayout>
 );
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Rota de login é pública */}
+            <Route path="/login" element={<Login />} />
+
+            {/* Rotas protegidas */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/orders/new" element={<NewOrder />} />
+                <Route path="/production" element={<ProductionPage />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+            </Route>
+
+            {/* Rota para página não encontrada */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

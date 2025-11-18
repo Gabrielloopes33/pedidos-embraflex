@@ -4,16 +4,17 @@ import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Label } from "@/componentes/ui/label";
 import { Textarea } from "@/componentes/ui/textarea";
-import { ArrowLeft, Save, Plus, Trash2, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Search, UserPlus, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { getProducts, type WooCommerceProduct } from "@/lib/woocommerce";
+import { getProducts, getProductById, type WooCommerceProduct } from "@/lib/woocommerce";
 import { getCustomers, type WooCommerceCustomer } from "@/lib/customers";
 import { CustomerFormDialog } from "@/componentes/CustomerFormDialog";
-import { createProductionOrder } from "@/lib/api"; // Importar a nova API
-import { NewProductionOrder } from "@/lib/types"; // Importar o novo tipo
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/componentes/ui/select"; // Importar Select
+import { createProductionOrder } from "@/lib/api";
+import { NewProductionOrder } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/componentes/ui/select";
+import { OrderApprovalModal } from "@/componentes/OrderApprovalModal";
 
 interface ProductItem {
   id: string;
@@ -58,6 +59,7 @@ const NewOrder = () => {
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<ProductItem[]>([{
     id: crypto.randomUUID(),
     productId: 0,
@@ -171,72 +173,195 @@ const NewOrder = () => {
     ));
   };
 
-  const selectWooProduct = (itemId: string, product: WooCommerceProduct) => {
+  const selectWooProduct = async (itemId: string, product: WooCommerceProduct) => {
     console.log('Selecionando produto:', product.name, 'para item:', itemId);
     
-    updateProduct(itemId, 'productId', product.id);
-    updateProduct(itemId, 'productName', product.name);
-    updateProduct(itemId, 'unitPrice', parseFloat(product.price || '0'));
-    
-    // Preencher código com SKU se disponível
-    if (product.sku) {
-      updateProduct(itemId, 'codigo', product.sku);
-    }
-    
-    // Preencher discriminação com descrição curta
-    if (product.short_description) {
-      const cleanDescription = product.short_description.replace(/<[^>]*>/g, ''); // Remove HTML tags
-      updateProduct(itemId, 'discriminacaoProduto', cleanDescription);
-    }
-    
-    // Preencher dimensões se disponíveis
-    if (product.dimensions) {
-      if (product.dimensions.width) {
-        updateProduct(itemId, 'largura', product.dimensions.width);
-      }
-      if (product.dimensions.height) {
-        updateProduct(itemId, 'altura', product.dimensions.height);
-      }
-      if (product.dimensions.length) {
-        updateProduct(itemId, 'lateral', product.dimensions.length);
-      }
-    }
-    
-    // Buscar informações nos meta_data
-    if (product.meta_data) {
-      const materialMeta = product.meta_data.find(meta => 
-        meta.key.toLowerCase().includes('material') || 
-        meta.key === '_material'
-      );
-      if (materialMeta) {
-        updateProduct(itemId, 'material', materialMeta.value);
+    try {
+      // Buscar dados completos do produto (incluindo todos os atributos)
+      const fullProduct = await getProductById(product.id);
+      console.log('===== PRODUTO COMPLETO =====');
+      console.log('ID:', fullProduct.id);
+      console.log('Nome:', fullProduct.name);
+      console.log('SKU:', fullProduct.sku);
+      console.log('Preço:', fullProduct.price);
+      console.log('Dimensões:', fullProduct.dimensions);
+      console.log('Atributos:', fullProduct.attributes);
+      console.log('============================');
+      
+      // Criar objeto com todas as atualizações
+      const updates: Partial<ProductItem> = {
+        productId: fullProduct.id,
+        productName: fullProduct.name,
+        unitPrice: parseFloat(fullProduct.price || fullProduct.regular_price || '0'),
+      };
+      
+      console.log('Preço definido:', updates.unitPrice);
+      
+      // SKU → Código (SEMPRE preencher se existir)
+      if (fullProduct.sku && fullProduct.sku.trim()) {
+        updates.codigo = fullProduct.sku;
+        console.log('✅ SKU/Código preenchido:', fullProduct.sku);
+      } else {
+        console.log('⚠️ SKU não encontrado ou vazio');
       }
       
-      const coresMeta = product.meta_data.find(meta => 
-        meta.key.toLowerCase().includes('cores') || 
-        meta.key === '_cores' ||
-        meta.key.toLowerCase().includes('color')
-      );
-      if (coresMeta) {
-        updateProduct(itemId, 'cores', coresMeta.value);
+      // Descrição → Discriminação
+      if (fullProduct.description) {
+        const cleanDescription = fullProduct.description.replace(/<[^>]*>/g, '').trim();
+        if (cleanDescription) {
+          updates.discriminacaoProduto = cleanDescription.substring(0, 200);
+          console.log('Descrição preenchida');
+        }
+      } else if (fullProduct.short_description) {
+        const cleanDescription = fullProduct.short_description.replace(/<[^>]*>/g, '').trim();
+        if (cleanDescription) {
+          updates.discriminacaoProduto = cleanDescription;
+          console.log('Descrição curta preenchida');
+        }
       }
-    }
-    
-    // Buscar informações nos atributos
-    if (product.attributes) {
-      product.attributes.forEach(attr => {
-        const attrName = attr.name.toLowerCase();
-        if (attrName.includes('material')) {
-          updateProduct(itemId, 'material', attr.options.join(', '));
+      
+      // Dimensões (SEMPRE preencher se existirem)
+      if (fullProduct.dimensions) {
+        console.log('Processando dimensões:', fullProduct.dimensions);
+        
+        if (fullProduct.dimensions.width && fullProduct.dimensions.width.trim()) {
+          updates.largura = fullProduct.dimensions.width;
+          console.log('✅ Largura preenchida:', fullProduct.dimensions.width);
+        } else {
+          console.log('⚠️ Largura não encontrada');
         }
-        if (attrName.includes('cor') || attrName.includes('color')) {
-          updateProduct(itemId, 'cores', attr.options.join(', '));
+        
+        if (fullProduct.dimensions.height && fullProduct.dimensions.height.trim()) {
+          updates.altura = fullProduct.dimensions.height;
+          console.log('✅ Altura preenchida:', fullProduct.dimensions.height);
+        } else {
+          console.log('⚠️ Altura não encontrada');
         }
-      });
+        
+        if (fullProduct.dimensions.length && fullProduct.dimensions.length.trim()) {
+          updates.lateral = fullProduct.dimensions.length;
+          console.log('✅ Lateral preenchida:', fullProduct.dimensions.length);
+        } else {
+          console.log('⚠️ Lateral não encontrada');
+        }
+      } else {
+        console.log('⚠️ Produto sem dimensões definidas');
+      }
+      
+      // Processar atributos do produto
+      if (fullProduct.attributes && fullProduct.attributes.length > 0) {
+        console.log('Processando atributos:', fullProduct.attributes);
+        
+        fullProduct.attributes.forEach((attr: { name: string; slug?: string; options: string[] }) => {
+          const attrName = attr.name.toLowerCase();
+          const attrSlug = attr.slug?.toLowerCase() || '';
+          
+          // Papel → Material
+          if (attrName.includes('papel') || attrSlug.includes('papel')) {
+            updates.material = attr.options.join(', ');
+            console.log('Material/Papel preenchido:', attr.options.join(', '));
+          }
+          
+          // Cor de Impressão → Cores
+          if (attrName.includes('cor') && attrName.includes('impressão') || 
+              attrSlug.includes('cor-de-impressao')) {
+            updates.cores = attr.options.join(', ');
+            console.log('Cores preenchidas:', attr.options.join(', '));
+          }
+          
+          // Acabamento
+          if (attrName.includes('acabamento') || attrSlug.includes('acabamento')) {
+            const acabamentos = attr.options.map((opt: string) => opt.toLowerCase());
+            
+            // Mapear acabamentos para checkboxes
+            if (acabamentos.some((a: string) => a.includes('brilho'))) {
+              updates.laminadoBrilho = true;
+              console.log('Laminado Brilho ativado');
+            }
+            if (acabamentos.some((a: string) => a.includes('fosco'))) {
+              updates.laminadoFosco = true;
+              console.log('Laminado Fosco ativado');
+            }
+            if (acabamentos.some((a: string) => a.includes('verniz') || a.includes('i.e'))) {
+              updates.vernizIE = true;
+              console.log('Verniz I.E. ativado');
+            }
+          }
+          
+          // Tipo de Cordão
+          if (attrName.includes('tipo') && attrName.includes('cordão') || 
+              attrName.includes('tipo') && attrName.includes('cordao') ||
+              attrSlug.includes('tipo-de-cordao')) {
+            const cordoes = attr.options.map((opt: string) => opt.toLowerCase());
+            
+            if (cordoes.some((c: string) => c.includes('gorgurinho'))) {
+              updates.gorgurinho35cm = true;
+              console.log('Gorgurinho ativado');
+            }
+            if (cordoes.some((c: string) => c.includes('gorgurão') || c.includes('gorgurao'))) {
+              updates.gorgurao35cm = true;
+              console.log('Gorgurão ativado');
+            }
+            if (cordoes.some((c: string) => c.includes('francisco'))) {
+              updates.sFrancisco35cm = true;
+              console.log('São Francisco ativado');
+            }
+          }
+          
+          // Cor do Cordão
+          if (attrName.includes('cor') && (attrName.includes('cordão') || attrName.includes('cordao')) || 
+              attrSlug.includes('cor-cordao')) {
+            const cores = attr.options.map((opt: string) => opt.toLowerCase());
+            
+            if (cores.some((c: string) => c.includes('branco'))) {
+              updates.cordaoBranco = true;
+              console.log('Cordão Branco ativado');
+            }
+            if (cores.some((c: string) => c.includes('preto'))) {
+              updates.cordaoPreto = true;
+              console.log('Cordão Preto ativado');
+            }
+            if (cores.some((c: string) => c.includes('bege') || c.includes('bage'))) {
+              updates.cordaoBege = true;
+              console.log('Cordão Bege ativado');
+            }
+          }
+          
+          // Ilhós
+          if (attrName.includes('ilhós') || attrName.includes('ilhos') || 
+              attrSlug.includes('ilhos')) {
+            const temIlhos = attr.options.some((opt: string) => opt.toLowerCase().includes('sim'));
+            if (temIlhos) {
+              updates.ilhos = true;
+              console.log('Ilhós ativado');
+            }
+          }
+          
+          // HotStamping
+          if (attrName.includes('hotstamp') || attrName.includes('hot stamp') || 
+              attrSlug.includes('hotstamping')) {
+            const temHotStamp = attr.options.some((opt: string) => opt.toLowerCase().includes('sim'));
+            if (temHotStamp) {
+              updates.hotStampSacola = true;
+              console.log('Hot Stamp (Sacola) ativado');
+            }
+          }
+        });
+      }
+      
+      // Aplicar TODAS as atualizações de uma vez
+      console.log('Atualizações a serem aplicadas:', updates);
+      setSelectedProducts(selectedProducts.map(p =>
+        p.id === itemId ? { ...p, ...updates } : p
+      ));
+      
+      setSearchTerm("");
+      toast.success(`Produto "${fullProduct.name}" adicionado ao pedido`);
+      
+    } catch (error) {
+      console.error('Erro ao buscar dados completos do produto:', error);
+      toast.error('Erro ao carregar dados do produto. Tente novamente.');
     }
-    
-    setSearchTerm("");
-    toast.success(`Produto "${product.name}" adicionado ao pedido`);
   };
 
   const selectCustomer = (customer: WooCommerceCustomer) => {
@@ -276,43 +401,38 @@ const NewOrder = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    // Validação básica
+    
+    // Apenas validações básicas - não envia pro backend ainda
     if (!nomeFantasia || !razaoSocial) {
       toast.error("Preencha os dados do cliente");
-      setLoading(false);
       return;
     }
 
     const hasInvalidProducts = selectedProducts.some(p => !p.productName || p.quantity <= 0);
     if (hasInvalidProducts) {
       toast.error("Preencha todos os produtos corretamente");
-      setLoading(false);
       return;
     }
 
+    // Abrir modal de aprovação
+    setIsApprovalModalOpen(true);
+  };
+
+  const handleConfirmSend = async () => {
+    setLoading(true);
     try {
-      const orderProducts = selectedProducts.map(p => ({
-        name: p.productName,
-        quantity: p.quantity,
-        // Incluir outros detalhes do produto que sejam relevantes para a produção
-        // Ex: codigo, material, discriminacaoProduto, largura, altura, lateral, cores,
-        // laminadoBrilho, laminadoFosco, vernizIE, autoMatizada, furosPresente, refile,
-        // cordaoBranco, cordaoPreto, cordaoBege, cordao, gorgurinho35cm, gorgurao35cm,
-        // sFrancisco35cm, ilhos, hotStampSacola, hotStampEtiqueta, outros, observacoes, unitPrice
-      }));
-
-      const newProductionOrder: NewProductionOrder = {
-        customerName: nomeFantasia, // Usando nome fantasia como nome do cliente
-        products: orderProducts,
-        priority: priority,
-        notes: generalNotes,
-      };
-
-      await createProductionOrder(newProductionOrder);
-      toast.success("Ordem de produção criada com sucesso!");
-      navigate("/orders"); // Redirecionar para a lista de ordens ou para o dashboard
+      // TODO: Quando o backend estiver pronto, descomentar:
+      // const newProductionOrder: NewProductionOrder = {
+      //   customerName: nomeFantasia,
+      //   products: selectedProducts,
+      //   priority: priority,
+      //   notes: generalNotes,
+      // };
+      // await createProductionOrder(newProductionOrder);
+      
+      toast.success("Pedido enviado com sucesso!");
+      setIsApprovalModalOpen(false);
+      // navigate("/orders");
     } catch (error) {
       console.error("Erro ao criar ordem de produção:", error);
       toast.error("Erro ao criar ordem de produção. Tente novamente.");
@@ -321,10 +441,14 @@ const NewOrder = () => {
     }
   };
 
-  // Removendo funções e componentes relacionados ao modal de aprovação
-  // const handleSendOrder = () => { ... };
-  // const handleConfirmSend = () => { ... };
-  // const getOrderData = () => ({ ... });
+  const getOrderData = () => ({
+    nomeFantasia,
+    razaoSocial,
+    cpfCnpj,
+    representante,
+    produtos: selectedProducts,
+    total: calculateTotal(),
+  });
 
   return (
     <div className="space-y-6">
@@ -608,6 +732,24 @@ const NewOrder = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Nome do Produto Selecionado */}
+                {item.productName && (
+                  <div className="space-y-2">
+                    <Label>Produto Selecionado</Label>
+                    <div className="border rounded-md p-3 bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-primary" />
+                        <span className="font-medium">{item.productName}</span>
+                        {item.productId > 0 && (
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            ID: {item.productId}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -956,6 +1098,14 @@ const NewOrder = () => {
         open={isCustomerDialogOpen} 
         onOpenChange={setIsCustomerDialogOpen}
         onSuccess={handleCustomerCreated}
+      />
+
+      <OrderApprovalModal
+        open={isApprovalModalOpen}
+        onOpenChange={setIsApprovalModalOpen}
+        orderData={getOrderData()}
+        onConfirm={handleConfirmSend}
+        loading={loading}
       />
     </div>
   );
