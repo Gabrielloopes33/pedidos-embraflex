@@ -45,17 +45,18 @@ interface OrderApprovalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderData: OrderData;
-  onConfirmSend: () => void;
+  onConfirm: () => Promise<void>;
+  loading: boolean;
 }
 
-export const OrderApprovalModal = ({ 
-  open, 
-  onOpenChange, 
-  orderData, 
-  onConfirmSend 
+export const OrderApprovalModal = ({
+  open,
+  onOpenChange,
+  orderData,
+  onConfirm,
+  loading
 }: OrderApprovalModalProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isSending, setIsSending] = useState(false);
 
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
@@ -69,14 +70,8 @@ export const OrderApprovalModal = ({
     }
   };
 
-  const handleConfirmSend = () => {
-    setIsSending(true);
-    // Simula um delay para envio
-    setTimeout(() => {
-      onConfirmSend();
-      setIsSending(false);
-      onOpenChange(false);
-    }, 1500);
+  const handleConfirmSend = async () => {
+    await onConfirm();
   };
 
   const calculateTotal = () => {
@@ -318,20 +313,20 @@ export const OrderApprovalModal = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Voltar para Edição
           </Button>
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             onClick={handleDownloadPDF}
             disabled={isDownloading}
           >
             <Download className="w-4 h-4 mr-2" />
             {isDownloading ? "Gerando..." : "Baixar PDF"}
           </Button>
-          <Button 
+          <Button
             onClick={handleConfirmSend}
-            disabled={isSending}
+            disabled={loading}
           >
             <Send className="w-4 h-4 mr-2" />
-            {isSending ? "Enviando..." : "Confirmar Envio"}
+            {loading ? "Enviando..." : "Confirmar Envio"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -8,10 +8,11 @@ import { ArrowLeft, Save, Plus, Trash2, Search, UserPlus, Package } from "lucide
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { getProducts, getProductById, type WooCommerceProduct } from "@/lib/woocommerce";
-import { getCustomers, type WooCommerceCustomer } from "@/lib/customers";
+import { getProducts, getProductById } from "@/lib/woocommerce";
+import type { WooCommerceProduct, WooCommerceCustomer } from "@/lib/types";
+import { getCustomers } from "@/lib/customers";
 import { CustomerFormDialog } from "@/componentes/CustomerFormDialog";
-import { createProductionOrder } from "@/lib/api";
+import { createProductionOrder, createWooCommerceOrder } from "@/lib/api";
 import { NewProductionOrder } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/componentes/ui/select";
 import { OrderApprovalModal } from "@/componentes/OrderApprovalModal";
@@ -175,7 +176,7 @@ const NewOrder = () => {
 
   const selectWooProduct = async (itemId: string, product: WooCommerceProduct) => {
     console.log('Selecionando produto:', product.name, 'para item:', itemId);
-    
+
     try {
       // Buscar dados completos do produto (incluindo todos os atributos)
       const fullProduct = await getProductById(product.id);
@@ -187,16 +188,16 @@ const NewOrder = () => {
       console.log('Dimensões:', fullProduct.dimensions);
       console.log('Atributos:', fullProduct.attributes);
       console.log('============================');
-      
+
       // Criar objeto com todas as atualizações
       const updates: Partial<ProductItem> = {
         productId: fullProduct.id,
         productName: fullProduct.name,
         unitPrice: parseFloat(fullProduct.price || fullProduct.regular_price || '0'),
       };
-      
+
       console.log('Preço definido:', updates.unitPrice);
-      
+
       // SKU → Código (SEMPRE preencher se existir)
       if (fullProduct.sku && fullProduct.sku.trim()) {
         updates.codigo = fullProduct.sku;
@@ -204,7 +205,7 @@ const NewOrder = () => {
       } else {
         console.log('⚠️ SKU não encontrado ou vazio');
       }
-      
+
       // Descrição → Discriminação
       if (fullProduct.description) {
         const cleanDescription = fullProduct.description.replace(/<[^>]*>/g, '').trim();
@@ -219,25 +220,25 @@ const NewOrder = () => {
           console.log('Descrição curta preenchida');
         }
       }
-      
+
       // Dimensões (SEMPRE preencher se existirem)
       if (fullProduct.dimensions) {
         console.log('Processando dimensões:', fullProduct.dimensions);
-        
+
         if (fullProduct.dimensions.width && fullProduct.dimensions.width.trim()) {
           updates.largura = fullProduct.dimensions.width;
           console.log('✅ Largura preenchida:', fullProduct.dimensions.width);
         } else {
           console.log('⚠️ Largura não encontrada');
         }
-        
+
         if (fullProduct.dimensions.height && fullProduct.dimensions.height.trim()) {
           updates.altura = fullProduct.dimensions.height;
           console.log('✅ Altura preenchida:', fullProduct.dimensions.height);
         } else {
           console.log('⚠️ Altura não encontrada');
         }
-        
+
         if (fullProduct.dimensions.length && fullProduct.dimensions.length.trim()) {
           updates.lateral = fullProduct.dimensions.length;
           console.log('✅ Lateral preenchida:', fullProduct.dimensions.length);
@@ -247,32 +248,32 @@ const NewOrder = () => {
       } else {
         console.log('⚠️ Produto sem dimensões definidas');
       }
-      
+
       // Processar atributos do produto
       if (fullProduct.attributes && fullProduct.attributes.length > 0) {
         console.log('Processando atributos:', fullProduct.attributes);
-        
+
         fullProduct.attributes.forEach((attr: { name: string; slug?: string; options: string[] }) => {
           const attrName = attr.name.toLowerCase();
           const attrSlug = attr.slug?.toLowerCase() || '';
-          
+
           // Papel → Material
           if (attrName.includes('papel') || attrSlug.includes('papel')) {
             updates.material = attr.options.join(', ');
             console.log('Material/Papel preenchido:', attr.options.join(', '));
           }
-          
+
           // Cor de Impressão → Cores
-          if (attrName.includes('cor') && attrName.includes('impressão') || 
-              attrSlug.includes('cor-de-impressao')) {
+          if (attrName.includes('cor') && attrName.includes('impressão') ||
+            attrSlug.includes('cor-de-impressao')) {
             updates.cores = attr.options.join(', ');
             console.log('Cores preenchidas:', attr.options.join(', '));
           }
-          
+
           // Acabamento
           if (attrName.includes('acabamento') || attrSlug.includes('acabamento')) {
             const acabamentos = attr.options.map((opt: string) => opt.toLowerCase());
-            
+
             // Mapear acabamentos para checkboxes
             if (acabamentos.some((a: string) => a.includes('brilho'))) {
               updates.laminadoBrilho = true;
@@ -287,13 +288,13 @@ const NewOrder = () => {
               console.log('Verniz I.E. ativado');
             }
           }
-          
+
           // Tipo de Cordão
-          if (attrName.includes('tipo') && attrName.includes('cordão') || 
-              attrName.includes('tipo') && attrName.includes('cordao') ||
-              attrSlug.includes('tipo-de-cordao')) {
+          if (attrName.includes('tipo') && attrName.includes('cordão') ||
+            attrName.includes('tipo') && attrName.includes('cordao') ||
+            attrSlug.includes('tipo-de-cordao')) {
             const cordoes = attr.options.map((opt: string) => opt.toLowerCase());
-            
+
             if (cordoes.some((c: string) => c.includes('gorgurinho'))) {
               updates.gorgurinho35cm = true;
               console.log('Gorgurinho ativado');
@@ -307,12 +308,12 @@ const NewOrder = () => {
               console.log('São Francisco ativado');
             }
           }
-          
+
           // Cor do Cordão
-          if (attrName.includes('cor') && (attrName.includes('cordão') || attrName.includes('cordao')) || 
-              attrSlug.includes('cor-cordao')) {
+          if (attrName.includes('cor') && (attrName.includes('cordão') || attrName.includes('cordao')) ||
+            attrSlug.includes('cor-cordao')) {
             const cores = attr.options.map((opt: string) => opt.toLowerCase());
-            
+
             if (cores.some((c: string) => c.includes('branco'))) {
               updates.cordaoBranco = true;
               console.log('Cordão Branco ativado');
@@ -326,20 +327,20 @@ const NewOrder = () => {
               console.log('Cordão Bege ativado');
             }
           }
-          
+
           // Ilhós
-          if (attrName.includes('ilhós') || attrName.includes('ilhos') || 
-              attrSlug.includes('ilhos')) {
+          if (attrName.includes('ilhós') || attrName.includes('ilhos') ||
+            attrSlug.includes('ilhos')) {
             const temIlhos = attr.options.some((opt: string) => opt.toLowerCase().includes('sim'));
             if (temIlhos) {
               updates.ilhos = true;
               console.log('Ilhós ativado');
             }
           }
-          
+
           // HotStamping
-          if (attrName.includes('hotstamp') || attrName.includes('hot stamp') || 
-              attrSlug.includes('hotstamping')) {
+          if (attrName.includes('hotstamp') || attrName.includes('hot stamp') ||
+            attrSlug.includes('hotstamping')) {
             const temHotStamp = attr.options.some((opt: string) => opt.toLowerCase().includes('sim'));
             if (temHotStamp) {
               updates.hotStampSacola = true;
@@ -348,16 +349,16 @@ const NewOrder = () => {
           }
         });
       }
-      
+
       // Aplicar TODAS as atualizações de uma vez
       console.log('Atualizações a serem aplicadas:', updates);
       setSelectedProducts(selectedProducts.map(p =>
         p.id === itemId ? { ...p, ...updates } : p
       ));
-      
+
       setSearchTerm("");
       toast.success(`Produto "${fullProduct.name}" adicionado ao pedido`);
-      
+
     } catch (error) {
       console.error('Erro ao buscar dados completos do produto:', error);
       toast.error('Erro ao carregar dados do produto. Tente novamente.');
@@ -366,20 +367,20 @@ const NewOrder = () => {
 
   const selectCustomer = (customer: WooCommerceCustomer) => {
     setSelectedCustomerId(customer.id);
-    
+
     // Preencher campos com dados do cliente
-    const nomeFantasiaValue = customer.meta_data?.find(m => m.key === 'nome_fantasia')?.value || 
-                               customer.billing?.company || 
-                               `${customer.first_name} ${customer.last_name}`.trim();
-    const razaoSocialValue = customer.meta_data?.find(m => m.key === 'razao_social')?.value || 
-                              customer.billing?.company || '';
+    const nomeFantasiaValue = customer.meta_data?.find(m => m.key === 'nome_fantasia')?.value ||
+      customer.billing?.company ||
+      `${customer.first_name} ${customer.last_name}`.trim();
+    const razaoSocialValue = customer.meta_data?.find(m => m.key === 'razao_social')?.value ||
+      customer.billing?.company || '';
     const cpfCnpjValue = customer.meta_data?.find(m => m.key === 'cpf_cnpj')?.value || '';
-    
+
     setNomeFantasia(nomeFantasiaValue);
     setRazaoSocial(razaoSocialValue);
     setCpfCnpj(cpfCnpjValue);
     setCustomerSearchTerm("");
-    
+
     toast.success(`Cliente ${nomeFantasiaValue} selecionado`);
   };
 
@@ -401,7 +402,7 @@ const NewOrder = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Apenas validações básicas - não envia pro backend ainda
     if (!nomeFantasia || !razaoSocial) {
       toast.error("Preencha os dados do cliente");
@@ -421,21 +422,67 @@ const NewOrder = () => {
   const handleConfirmSend = async () => {
     setLoading(true);
     try {
-      // TODO: Quando o backend estiver pronto, descomentar:
-      // const newProductionOrder: NewProductionOrder = {
-      //   customerName: nomeFantasia,
-      //   products: selectedProducts,
-      //   priority: priority,
-      //   notes: generalNotes,
-      // };
-      // await createProductionOrder(newProductionOrder);
-      
-      toast.success("Pedido enviado com sucesso!");
+      // 1. Criar ordem de produção no banco de dados
+      const newProductionOrder: NewProductionOrder = {
+        customerName: nomeFantasia,
+        products: selectedProducts,
+        priority: priority,
+        notes: generalNotes,
+      };
+
+      const createdOrder = await createProductionOrder(newProductionOrder);
+      console.log('Ordem criada no banco:', createdOrder);
+
+      // 2. Criar pedido no WooCommerce
+      const wooOrderData = {
+        customerName: nomeFantasia,
+        customerEmail: '', // Pode adicionar campo de email se necessário
+        products: selectedProducts,
+        billing: {
+          firstName: nomeFantasia,
+          company: razaoSocial,
+        }
+      };
+
+      const wooResponse = await createWooCommerceOrder(wooOrderData);
+      console.log('Pedido criado no WooCommerce:', wooResponse);
+
+      // 3. Mostrar sucesso com link de pagamento
+      toast.success(
+        `Pedido criado com sucesso! ID WooCommerce: ${wooResponse.orderNumber}`,
+        {
+          duration: 5000,
+          description: wooResponse.paymentUrl ?
+            'Link de pagamento disponível. Copie e envie para o cliente.' :
+            'Pedido aguardando pagamento.'
+        }
+      );
+
+      // 4. Se houver link de pagamento, copiar para clipboard
+      if (wooResponse.paymentUrl) {
+        try {
+          await navigator.clipboard.writeText(wooResponse.paymentUrl);
+          toast.info('Link de pagamento copiado para a área de transferência!');
+        } catch (err) {
+          console.error('Erro ao copiar link:', err);
+        }
+      }
+
       setIsApprovalModalOpen(false);
-      // navigate("/orders");
-    } catch (error) {
-      console.error("Erro ao criar ordem de produção:", error);
-      toast.error("Erro ao criar ordem de produção. Tente novamente.");
+
+      // 5. Redirecionar para a página de produção (kanban)
+      setTimeout(() => {
+        navigate("/production");
+      }, 1500);
+
+    } catch (error: any) {
+      console.error("Erro ao criar pedido:", error);
+      toast.error(
+        error.response?.data?.message || "Erro ao criar pedido. Tente novamente.",
+        {
+          description: error.response?.data?.error || error.message
+        }
+      );
     } finally {
       setLoading(false);
     }
@@ -503,9 +550,9 @@ const NewOrder = () => {
                   {customerSearchTerm && customers && customers.length > 0 && !selectedCustomerId && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto z-10">
                       {customers.map((customer) => {
-                        const displayName = customer.billing?.company || 
-                                           `${customer.first_name} ${customer.last_name}`.trim() ||
-                                           customer.email;
+                        const displayName = customer.billing?.company ||
+                          `${customer.first_name} ${customer.last_name}`.trim() ||
+                          customer.email;
                         return (
                           <div
                             key={customer.id}
@@ -541,22 +588,22 @@ const NewOrder = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="nomeFantasia">Nome Fantasia</Label>
-                <Input 
-                  id="nomeFantasia" 
+                <Input
+                  id="nomeFantasia"
                   value={nomeFantasia}
                   onChange={(e) => setNomeFantasia(e.target.value)}
-                  placeholder="Nome fantasia do cliente" 
+                  placeholder="Nome fantasia do cliente"
                   required
                   disabled={!!selectedCustomerId}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="razaoSocial">Razão Social</Label>
-                <Input 
-                  id="razaoSocial" 
+                <Input
+                  id="razaoSocial"
                   value={razaoSocial}
                   onChange={(e) => setRazaoSocial(e.target.value)}
-                  placeholder="Razão social do cliente" 
+                  placeholder="Razão social do cliente"
                   required
                   disabled={!!selectedCustomerId}
                 />
@@ -565,8 +612,8 @@ const NewOrder = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="cpfCnpj">CPF/CNPJ</Label>
-                <Input 
-                  id="cpfCnpj" 
+                <Input
+                  id="cpfCnpj"
                   value={cpfCnpj}
                   onChange={(e) => setCpfCnpj(e.target.value)}
                   placeholder="CPF ou CNPJ"
@@ -575,11 +622,11 @@ const NewOrder = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="representante">Representante/Vendedor</Label>
-                <Input 
-                  id="representante" 
+                <Input
+                  id="representante"
                   value={representante}
                   onChange={(e) => setRepresentante(e.target.value)}
-                  placeholder="Nome do representante" 
+                  placeholder="Nome do representante"
                 />
               </div>
             </div>
@@ -640,7 +687,7 @@ const NewOrder = () => {
                 {selectedProducts.length > 1 && (
                   <Button
                     type="button"
-                    variant="ghost" 
+                    variant="ghost"
                     size="icon"
                     className="absolute top-2 right-2"
                     onClick={() => removeProduct(item.id)}
@@ -648,7 +695,7 @@ const NewOrder = () => {
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
                 )}
-                
+
                 <h4 className="font-semibold text-lg">Produto {index + 1}</h4>
 
                 {/* Busca de Produto */}
@@ -1094,8 +1141,8 @@ const NewOrder = () => {
         </div>
       </form>
 
-      <CustomerFormDialog 
-        open={isCustomerDialogOpen} 
+      <CustomerFormDialog
+        open={isCustomerDialogOpen}
         onOpenChange={setIsCustomerDialogOpen}
         onSuccess={handleCustomerCreated}
       />

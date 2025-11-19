@@ -200,6 +200,71 @@ initializeDb().then(() => {
     }
   });
 
+  // Criar pedido no WooCommerce (protegido)
+  app.post('/api/orders/woocommerce', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const { customerName, customerEmail, products, billing } = req.body;
+
+    if (!customerName || !products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ message: 'Cliente e produtos são obrigatórios.' });
+    }
+
+    try {
+      // Preparar line_items para WooCommerce
+      const lineItems = products.map((product: any) => ({
+        product_id: product.productId,
+        quantity: product.quantity || 1,
+        name: product.productName,
+        price: product.unitPrice?.toString() || '0'
+      }));
+
+      // Criar pedido no WooCommerce
+      const wooOrder = {
+        payment_method: 'bacs', // Transferência bancária
+        payment_method_title: 'Transferência Bancária',
+        set_paid: false,
+        billing: {
+          first_name: billing?.firstName || customerName,
+          last_name: billing?.lastName || '',
+          company: billing?.company || customerName,
+          email: customerEmail || billing?.email || '',
+          phone: billing?.phone || '',
+          address_1: billing?.address || '',
+          city: billing?.city || '',
+          state: billing?.state || '',
+          postcode: billing?.postcode || '',
+          country: 'BR'
+        },
+        line_items: lineItems,
+        meta_data: [
+          {
+            key: '_created_via_system',
+            value: 'Sistema de Pedidos Embraflex'
+          }
+        ]
+      };
+
+      const response = await wooCommerceApi.post('orders', wooOrder);
+      const createdOrder = response.data;
+
+      res.status(201).json({
+        success: true,
+        woocommerceOrderId: createdOrder.id,
+        orderNumber: createdOrder.number,
+        paymentUrl: createdOrder.payment_url || createdOrder._links?.payment?.href,
+        total: createdOrder.total,
+        status: createdOrder.status
+      });
+
+    } catch (error: any) {
+      console.error('Erro ao criar pedido no WooCommerce:', error.response?.data || error.message);
+      res.status(500).json({
+        message: 'Erro ao criar pedido no WooCommerce.',
+        error: error.response?.data?.message || error.message
+      });
+    }
+  });
+
+
   // Atualizar status da ordem (protegido)
   app.put('/api/orders/:id/status', authenticateToken, async (req: AuthenticatedRequest, res) => {
     const { id } = req.params;

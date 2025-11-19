@@ -5,7 +5,8 @@ import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Building2, Plus, Search, Mail, Phone, Loader2, AlertCircle, MapPin, FileText } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getCustomers, type WooCommerceCustomer } from "@/lib/customers";
+import { getCustomers } from "@/lib/customers";
+import type { WooCommerceCustomer } from "@/lib/types";
 import { CustomerFormDialog } from "@/componentes/CustomerFormDialog";
 import {
   Dialog,
@@ -70,8 +71,8 @@ const Customers = () => {
             <Button onClick={() => refetch()}>Tentar Novamente</Button>
           </div>
         </Card>
-        <CustomerFormDialog 
-          open={isDialogOpen} 
+        <CustomerFormDialog
+          open={isDialogOpen}
           onOpenChange={setIsDialogOpen}
           onSuccess={handleCustomerCreated}
         />
@@ -116,14 +117,14 @@ const Customers = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {customers.map((customer) => {
-              const displayName = customer.billing?.company || 
-                                 `${customer.first_name} ${customer.last_name}`.trim() ||
-                                 customer.email;
+              const displayName = customer.billing?.company ||
+                `${customer.first_name} ${customer.last_name}`.trim() ||
+                customer.email;
               const initials = displayName.substring(0, 2).toUpperCase();
 
               return (
-                <Card 
-                  key={customer.id} 
+                <Card
+                  key={customer.id}
                   className="shadow-md hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handleCustomerClick(customer)}
                 >
@@ -204,8 +205,8 @@ const Customers = () => {
         </Card>
       )}
 
-      <CustomerFormDialog 
-        open={isDialogOpen} 
+      <CustomerFormDialog
+        open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSuccess={handleCustomerCreated}
       />
@@ -219,7 +220,7 @@ const Customers = () => {
               Informações completas do cliente
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedCustomer && (
             <div className="space-y-6 mt-4">
               {/* Informações Principais */}
@@ -227,16 +228,16 @@ const Customers = () => {
                 <div className="flex items-center gap-4">
                   <Avatar className="w-16 h-16 bg-primary/10">
                     <AvatarFallback className="text-primary font-semibold text-xl">
-                      {(selectedCustomer.billing?.company || 
+                      {(selectedCustomer.billing?.company ||
                         `${selectedCustomer.first_name} ${selectedCustomer.last_name}`.trim() ||
                         selectedCustomer.email).substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <h3 className="text-xl font-bold text-foreground">
-                      {selectedCustomer.billing?.company || 
-                       `${selectedCustomer.first_name} ${selectedCustomer.last_name}`.trim() ||
-                       selectedCustomer.email}
+                      {selectedCustomer.billing?.company ||
+                        `${selectedCustomer.first_name} ${selectedCustomer.last_name}`.trim() ||
+                        selectedCustomer.email}
                     </h3>
                     {selectedCustomer.email && (
                       <p className="text-sm text-muted-foreground">{selectedCustomer.email}</p>
@@ -255,8 +256,8 @@ const Customers = () => {
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Nome Fantasia</Label>
                     <p className="text-sm font-medium">
-                      {selectedCustomer.meta_data?.find(m => m.key === 'nome_fantasia')?.value || 
-                       selectedCustomer.billing?.company || '-'}
+                      {selectedCustomer.meta_data?.find(m => m.key === 'nome_fantasia')?.value ||
+                        selectedCustomer.billing?.company || '-'}
                     </p>
                   </div>
                   <div className="space-y-1">

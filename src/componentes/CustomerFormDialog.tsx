@@ -4,7 +4,8 @@ import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Label } from "@/componentes/ui/label";
 import { Loader2 } from "lucide-react";
-import { createCustomer, type CustomerCreateData, type WooCommerceCustomer } from "@/lib/customers";
+import { createCustomer } from "@/lib/customers";
+import type { CustomerCreateData, WooCommerceCustomer } from "@/lib/types";
 import { toast } from "sonner";
 
 interface CustomerFormDialogProps {
@@ -25,7 +26,7 @@ export function CustomerFormDialog({ open, onOpenChange, onSuccess }: CustomerFo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.nomeFantasia || !formData.razaoSocial || !formData.email) {
       toast.error("Preencha os campos obrigatórios");
       return;
@@ -55,13 +56,13 @@ export function CustomerFormDialog({ open, onOpenChange, onSuccess }: CustomerFo
       };
 
       const newCustomer = await createCustomer(customerData);
-      
+
       toast.success("Cliente criado com sucesso!");
-      
+
       if (onSuccess) {
         onSuccess(newCustomer);
       }
-      
+
       // Limpar formulário
       setFormData({
         nomeFantasia: "",
@@ -70,11 +71,11 @@ export function CustomerFormDialog({ open, onOpenChange, onSuccess }: CustomerFo
         phone: "",
         cpfCnpj: "",
       });
-      
+
       onOpenChange(false);
     } catch (error) {
       console.error("Erro ao criar cliente:", error);
-      
+
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string } } };
         if (axiosError.response?.data?.message) {
@@ -99,7 +100,7 @@ export function CustomerFormDialog({ open, onOpenChange, onSuccess }: CustomerFo
             Cadastre um novo cliente no sistema
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="nomeFantasia">Nome Fantasia *</Label>

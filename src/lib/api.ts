@@ -55,3 +55,14 @@ export const addProductionOrderComment = async (
   const response = await apiClient.post(`/orders/${id}/comments`, { text });
   return response.data;
 };
+
+export const createWooCommerceOrder = async (orderData: {
+  customerName: string;
+  customerEmail?: string;
+  products: any[];
+  billing?: any;
+}) => {
+  const response = await apiClient.post('/orders/woocommerce', orderData);
+  return response.data;
+};
+
