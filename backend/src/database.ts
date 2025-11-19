@@ -9,7 +9,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'embraflex',
   port: parseInt(process.env.DB_PORT || '5432'),
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, // SSL necessário para Render (geralmente)
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 async function initializeDb(): Promise<Pool> {
