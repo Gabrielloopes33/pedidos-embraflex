@@ -440,7 +440,9 @@ const NewOrder = () => {
         products: selectedProducts,
         billing: {
           firstName: nomeFantasia,
+          lastName: representante || 'Responsável',
           company: razaoSocial,
+          cpfCnpj: cpfCnpj,
         }
       };
 
