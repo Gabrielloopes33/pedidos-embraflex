@@ -51,6 +51,16 @@ interface ProductItem {
   outros: string; // campo livre para outros acabamentos
   observacoes: string;
   unitPrice: number;
+  // Atributos disponíveis do WooCommerce
+  availableAttributes?: {
+    acabamento?: string[];
+    tipoCordao?: string[];
+    corCordao?: string[];
+    papel?: string[];
+    cores?: string[];
+    ilhos?: boolean;
+    hotStamp?: boolean;
+  };
 }
 
 const NewOrder = () => {
@@ -250,6 +260,8 @@ const NewOrder = () => {
       }
 
       // Processar atributos do produto
+      const availableAttributes: ProductItem['availableAttributes'] = {};
+
       if (fullProduct.attributes && fullProduct.attributes.length > 0) {
         console.log('Processando atributos:', fullProduct.attributes);
 
@@ -260,6 +272,7 @@ const NewOrder = () => {
           // Papel → Material
           if (attrName.includes('papel') || attrSlug.includes('papel')) {
             updates.material = attr.options.join(', ');
+            availableAttributes.papel = attr.options;
             console.log('Material/Papel preenchido:', attr.options.join(', '));
           }
 
@@ -267,12 +280,14 @@ const NewOrder = () => {
           if (attrName.includes('cor') && attrName.includes('impressão') ||
             attrSlug.includes('cor-de-impressao')) {
             updates.cores = attr.options.join(', ');
+            availableAttributes.cores = attr.options;
             console.log('Cores preenchidas:', attr.options.join(', '));
           }
 
           // Acabamento
           if (attrName.includes('acabamento') || attrSlug.includes('acabamento')) {
             const acabamentos = attr.options.map((opt: string) => opt.toLowerCase());
+            availableAttributes.acabamento = attr.options;
 
             // Mapear acabamentos para checkboxes
             if (acabamentos.some((a: string) => a.includes('brilho'))) {
@@ -294,6 +309,7 @@ const NewOrder = () => {
             attrName.includes('tipo') && attrName.includes('cordao') ||
             attrSlug.includes('tipo-de-cordao')) {
             const cordoes = attr.options.map((opt: string) => opt.toLowerCase());
+            availableAttributes.tipoCordao = attr.options;
 
             if (cordoes.some((c: string) => c.includes('gorgurinho'))) {
               updates.gorgurinho35cm = true;
@@ -313,6 +329,7 @@ const NewOrder = () => {
           if (attrName.includes('cor') && (attrName.includes('cordão') || attrName.includes('cordao')) ||
             attrSlug.includes('cor-cordao')) {
             const cores = attr.options.map((opt: string) => opt.toLowerCase());
+            availableAttributes.corCordao = attr.options;
 
             if (cores.some((c: string) => c.includes('branco'))) {
               updates.cordaoBranco = true;
@@ -332,6 +349,7 @@ const NewOrder = () => {
           if (attrName.includes('ilhós') || attrName.includes('ilhos') ||
             attrSlug.includes('ilhos')) {
             const temIlhos = attr.options.some((opt: string) => opt.toLowerCase().includes('sim'));
+            availableAttributes.ilhos = temIlhos;
             if (temIlhos) {
               updates.ilhos = true;
               console.log('Ilhós ativado');
@@ -342,6 +360,7 @@ const NewOrder = () => {
           if (attrName.includes('hotstamp') || attrName.includes('hot stamp') ||
             attrSlug.includes('hotstamping')) {
             const temHotStamp = attr.options.some((opt: string) => opt.toLowerCase().includes('sim'));
+            availableAttributes.hotStamp = temHotStamp;
             if (temHotStamp) {
               updates.hotStampSacola = true;
               console.log('Hot Stamp (Sacola) ativado');
@@ -349,6 +368,9 @@ const NewOrder = () => {
           }
         });
       }
+
+      // Adicionar availableAttributes às atualizações
+      updates.availableAttributes = availableAttributes;
 
       // Aplicar TODAS as atualizações de uma vez
       console.log('Atualizações a serem aplicadas:', updates);
@@ -846,42 +868,55 @@ const NewOrder = () => {
                     <Label>Acabamentos</Label>
                     <div className="border rounded-md p-3">
                       <div className="grid grid-cols-2 gap-2">
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={item.laminadoBrilho}
-                            onChange={(e) => updateProduct(item.id, 'laminadoBrilho', e.target.checked)}
-                            className="rounded"
-                          />
-                          Brilho
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={item.laminadoFosco}
-                            onChange={(e) => updateProduct(item.id, 'laminadoFosco', e.target.checked)}
-                            className="rounded"
-                          />
-                          Fosco
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={item.vernizIE}
-                            onChange={(e) => updateProduct(item.id, 'vernizIE', e.target.checked)}
-                            className="rounded"
-                          />
-                          I.E.
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={item.autoMatizada}
-                            onChange={(e) => updateProduct(item.id, 'autoMatizada', e.target.checked)}
-                            className="rounded"
-                          />
-                          Auto-Matizada
-                        </label>
+                        {/* Mostrar apenas acabamentos disponíveis */}
+                        {(!item.availableAttributes?.acabamento || 
+                          item.availableAttributes.acabamento.some(a => a.toLowerCase().includes('brilho'))) && (
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={item.laminadoBrilho}
+                              onChange={(e) => updateProduct(item.id, 'laminadoBrilho', e.target.checked)}
+                              className="rounded"
+                            />
+                            Brilho
+                          </label>
+                        )}
+                        {(!item.availableAttributes?.acabamento || 
+                          item.availableAttributes.acabamento.some(a => a.toLowerCase().includes('fosco'))) && (
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={item.laminadoFosco}
+                              onChange={(e) => updateProduct(item.id, 'laminadoFosco', e.target.checked)}
+                              className="rounded"
+                            />
+                            Fosco
+                          </label>
+                        )}
+                        {(!item.availableAttributes?.acabamento || 
+                          item.availableAttributes.acabamento.some(a => a.toLowerCase().includes('verniz') || a.toLowerCase().includes('i.e'))) && (
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={item.vernizIE}
+                              onChange={(e) => updateProduct(item.id, 'vernizIE', e.target.checked)}
+                              className="rounded"
+                            />
+                            I.E.
+                          </label>
+                        )}
+                        {/* Auto-Matizada sempre disponível se não houver restrições */}
+                        {!item.availableAttributes?.acabamento && (
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={item.autoMatizada}
+                              onChange={(e) => updateProduct(item.id, 'autoMatizada', e.target.checked)}
+                              className="rounded"
+                            />
+                            Auto-Matizada
+                          </label>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -985,113 +1020,141 @@ const NewOrder = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {/* Coluna 1 - Cordões */}
                     <div className="space-y-3">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.cordaoBranco}
-                          onChange={(e) => updateProduct(item.id, 'cordaoBranco', e.target.checked)}
-                          className="rounded"
-                        />
-                        Cordão Branco
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.cordaoPreto}
-                          onChange={(e) => updateProduct(item.id, 'cordaoPreto', e.target.checked)}
-                          className="rounded"
-                        />
-                        Cordão Preto
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.cordaoBege}
-                          onChange={(e) => updateProduct(item.id, 'cordaoBege', e.target.checked)}
-                          className="rounded"
-                        />
-                        Cordão Bege
-                      </label>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Cordão (outro)</Label>
-                        <Input
-                          value={item.cordao}
-                          onChange={(e) => updateProduct(item.id, 'cordao', e.target.value)}
-                          placeholder="Especificar"
-                          className="h-8 text-sm"
-                        />
-                      </div>
+                      {(!item.availableAttributes?.corCordao || 
+                        item.availableAttributes.corCordao.some(c => c.toLowerCase().includes('branco'))) && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.cordaoBranco}
+                            onChange={(e) => updateProduct(item.id, 'cordaoBranco', e.target.checked)}
+                            className="rounded"
+                          />
+                          Cordão Branco
+                        </label>
+                      )}
+                      {(!item.availableAttributes?.corCordao || 
+                        item.availableAttributes.corCordao.some(c => c.toLowerCase().includes('preto'))) && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.cordaoPreto}
+                            onChange={(e) => updateProduct(item.id, 'cordaoPreto', e.target.checked)}
+                            className="rounded"
+                          />
+                          Cordão Preto
+                        </label>
+                      )}
+                      {(!item.availableAttributes?.corCordao || 
+                        item.availableAttributes.corCordao.some(c => c.toLowerCase().includes('bege') || c.toLowerCase().includes('bage'))) && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.cordaoBege}
+                            onChange={(e) => updateProduct(item.id, 'cordaoBege', e.target.checked)}
+                            className="rounded"
+                          />
+                          Cordão Bege
+                        </label>
+                      )}
+                      {!item.availableAttributes?.corCordao && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">Cordão (outro)</Label>
+                          <Input
+                            value={item.cordao}
+                            onChange={(e) => updateProduct(item.id, 'cordao', e.target.value)}
+                            placeholder="Especificar"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     {/* Coluna 2 - Gorgurão e outros */}
                     <div className="space-y-3">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.gorgurinho35cm}
-                          onChange={(e) => updateProduct(item.id, 'gorgurinho35cm', e.target.checked)}
-                          className="rounded"
-                        />
-                        Gorgurinho 35cm
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.gorgurao35cm}
-                          onChange={(e) => updateProduct(item.id, 'gorgurao35cm', e.target.checked)}
-                          className="rounded"
-                        />
-                        Gorgurão 35cm
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.sFrancisco35cm}
-                          onChange={(e) => updateProduct(item.id, 'sFrancisco35cm', e.target.checked)}
-                          className="rounded"
-                        />
-                        S. Francisco 35cm
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.ilhos}
-                          onChange={(e) => updateProduct(item.id, 'ilhos', e.target.checked)}
-                          className="rounded"
-                        />
-                        Ilhós
-                      </label>
+                      {(!item.availableAttributes?.tipoCordao || 
+                        item.availableAttributes.tipoCordao.some(t => t.toLowerCase().includes('gorgurinho'))) && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.gorgurinho35cm}
+                            onChange={(e) => updateProduct(item.id, 'gorgurinho35cm', e.target.checked)}
+                            className="rounded"
+                          />
+                          Gorgurinho 35cm
+                        </label>
+                      )}
+                      {(!item.availableAttributes?.tipoCordao || 
+                        item.availableAttributes.tipoCordao.some(t => t.toLowerCase().includes('gorgurão') || t.toLowerCase().includes('gorgurao'))) && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.gorgurao35cm}
+                            onChange={(e) => updateProduct(item.id, 'gorgurao35cm', e.target.checked)}
+                            className="rounded"
+                          />
+                          Gorgurão 35cm
+                        </label>
+                      )}
+                      {(!item.availableAttributes?.tipoCordao || 
+                        item.availableAttributes.tipoCordao.some(t => t.toLowerCase().includes('francisco'))) && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.sFrancisco35cm}
+                            onChange={(e) => updateProduct(item.id, 'sFrancisco35cm', e.target.checked)}
+                            className="rounded"
+                          />
+                          S. Francisco 35cm
+                        </label>
+                      )}
+                      {(item.availableAttributes?.ilhos === true || !item.availableAttributes) && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.ilhos}
+                            onChange={(e) => updateProduct(item.id, 'ilhos', e.target.checked)}
+                            className="rounded"
+                          />
+                          Ilhós
+                        </label>
+                      )}
                     </div>
 
                     {/* Coluna 3 - Hot Stamp e Outros */}
                     <div className="space-y-3">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.hotStampSacola}
-                          onChange={(e) => updateProduct(item.id, 'hotStampSacola', e.target.checked)}
-                          className="rounded"
-                        />
-                        Hot Stamp (Sacola)
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={item.hotStampEtiqueta}
-                          onChange={(e) => updateProduct(item.id, 'hotStampEtiqueta', e.target.checked)}
-                          className="rounded"
-                        />
-                        Hot Stamp (Etiqueta)
-                      </label>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Outros</Label>
-                        <Input
-                          value={item.outros}
-                          onChange={(e) => updateProduct(item.id, 'outros', e.target.value)}
-                          placeholder="Especificar outros"
-                          className="h-8 text-sm"
-                        />
-                      </div>
+                      {(item.availableAttributes?.hotStamp === true || !item.availableAttributes) && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.hotStampSacola}
+                            onChange={(e) => updateProduct(item.id, 'hotStampSacola', e.target.checked)}
+                            className="rounded"
+                          />
+                          Hot Stamp (Sacola)
+                        </label>
+                      )}
+                      {!item.availableAttributes && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={item.hotStampEtiqueta}
+                            onChange={(e) => updateProduct(item.id, 'hotStampEtiqueta', e.target.checked)}
+                            className="rounded"
+                          />
+                          Hot Stamp (Etiqueta)
+                        </label>
+                      )}
+                      {!item.availableAttributes && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">Outros</Label>
+                          <Input
+                            value={item.outros}
+                            onChange={(e) => updateProduct(item.id, 'outros', e.target.value)}
+                            placeholder="Especificar outros"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
