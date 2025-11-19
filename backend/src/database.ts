@@ -9,8 +9,10 @@ async function initializeDb(): Promise<Database> {
     return db;
   }
 
+  const dbPath = process.env.DATABASE_PATH || './database.sqlite';
+
   const newDb = await open({
-    filename: './database.sqlite',
+    filename: dbPath,
     driver: sqlite3.Database
   });
 
