@@ -271,17 +271,17 @@ const NewOrder = () => {
 
           // Papel → Material
           if (attrName.includes('papel') || attrSlug.includes('papel')) {
-            updates.material = attr.options.join(', ');
+            updates.material = ''; // Limpar para que o usuário escolha
             availableAttributes.papel = attr.options;
-            console.log('Material/Papel preenchido:', attr.options.join(', '));
+            console.log('Material/Papel disponível:', attr.options.join(', '));
           }
 
           // Cor de Impressão → Cores
           if (attrName.includes('cor') && attrName.includes('impressão') ||
             attrSlug.includes('cor-de-impressao')) {
-            updates.cores = attr.options.join(', ');
+            updates.cores = ''; // Limpar para que o usuário escolha
             availableAttributes.cores = attr.options;
-            console.log('Cores preenchidas:', attr.options.join(', '));
+            console.log('Cores disponíveis:', attr.options.join(', '));
           }
 
           // Acabamento
@@ -289,60 +289,27 @@ const NewOrder = () => {
             const acabamentos = attr.options.map((opt: string) => opt.toLowerCase());
             availableAttributes.acabamento = attr.options;
 
-            // Mapear acabamentos para checkboxes
-            if (acabamentos.some((a: string) => a.includes('brilho'))) {
-              updates.laminadoBrilho = true;
-              console.log('Laminado Brilho ativado');
-            }
-            if (acabamentos.some((a: string) => a.includes('fosco'))) {
-              updates.laminadoFosco = true;
-              console.log('Laminado Fosco ativado');
-            }
-            if (acabamentos.some((a: string) => a.includes('verniz') || a.includes('i.e'))) {
-              updates.vernizIE = true;
-              console.log('Verniz I.E. ativado');
-            }
+            // NÃO marcar automaticamente - deixar para o usuário escolher
+            console.log('Acabamentos disponíveis:', attr.options.join(', '));
           }
 
           // Tipo de Cordão
           if (attrName.includes('tipo') && attrName.includes('cordão') ||
             attrName.includes('tipo') && attrName.includes('cordao') ||
             attrSlug.includes('tipo-de-cordao')) {
-            const cordoes = attr.options.map((opt: string) => opt.toLowerCase());
             availableAttributes.tipoCordao = attr.options;
 
-            if (cordoes.some((c: string) => c.includes('gorgurinho'))) {
-              updates.gorgurinho35cm = true;
-              console.log('Gorgurinho ativado');
-            }
-            if (cordoes.some((c: string) => c.includes('gorgurão') || c.includes('gorgurao'))) {
-              updates.gorgurao35cm = true;
-              console.log('Gorgurão ativado');
-            }
-            if (cordoes.some((c: string) => c.includes('francisco'))) {
-              updates.sFrancisco35cm = true;
-              console.log('São Francisco ativado');
-            }
+            // NÃO marcar automaticamente - deixar para o usuário escolher
+            console.log('Tipos de cordão disponíveis:', attr.options.join(', '));
           }
 
           // Cor do Cordão
           if (attrName.includes('cor') && (attrName.includes('cordão') || attrName.includes('cordao')) ||
             attrSlug.includes('cor-cordao')) {
-            const cores = attr.options.map((opt: string) => opt.toLowerCase());
             availableAttributes.corCordao = attr.options;
 
-            if (cores.some((c: string) => c.includes('branco'))) {
-              updates.cordaoBranco = true;
-              console.log('Cordão Branco ativado');
-            }
-            if (cores.some((c: string) => c.includes('preto'))) {
-              updates.cordaoPreto = true;
-              console.log('Cordão Preto ativado');
-            }
-            if (cores.some((c: string) => c.includes('bege') || c.includes('bage'))) {
-              updates.cordaoBege = true;
-              console.log('Cordão Bege ativado');
-            }
+            // NÃO marcar automaticamente - deixar para o usuário escolher
+            console.log('Cores de cordão disponíveis:', attr.options.join(', '));
           }
 
           // Ilhós
@@ -350,10 +317,8 @@ const NewOrder = () => {
             attrSlug.includes('ilhos')) {
             const temIlhos = attr.options.some((opt: string) => opt.toLowerCase().includes('sim'));
             availableAttributes.ilhos = temIlhos;
-            if (temIlhos) {
-              updates.ilhos = true;
-              console.log('Ilhós ativado');
-            }
+            // NÃO marcar automaticamente
+            console.log('Ilhós disponível:', temIlhos);
           }
 
           // HotStamping
@@ -361,10 +326,8 @@ const NewOrder = () => {
             attrSlug.includes('hotstamping')) {
             const temHotStamp = attr.options.some((opt: string) => opt.toLowerCase().includes('sim'));
             availableAttributes.hotStamp = temHotStamp;
-            if (temHotStamp) {
-              updates.hotStampSacola = true;
-              console.log('Hot Stamp (Sacola) ativado');
-            }
+            // NÃO marcar automaticamente
+            console.log('Hot Stamp disponível:', temHotStamp);
           }
         });
       }
@@ -845,12 +808,32 @@ const NewOrder = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Material</Label>
-                    <Input
-                      value={item.material}
-                      onChange={(e) => updateProduct(item.id, 'material', e.target.value)}
-                      placeholder="Material"
-                    />
+                    <Label>Material/Papel</Label>
+                    {item.availableAttributes?.papel && item.availableAttributes.papel.length > 0 ? (
+                      <div className="border rounded-md p-3">
+                        <div className="space-y-2">
+                          {item.availableAttributes.papel.map((papel) => (
+                            <label key={papel} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`material-${item.id}`}
+                                value={papel}
+                                checked={item.material === papel}
+                                onChange={(e) => updateProduct(item.id, 'material', e.target.value)}
+                                className="w-4 h-4"
+                              />
+                              {papel}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <Input
+                        value={item.material}
+                        onChange={(e) => updateProduct(item.id, 'material', e.target.value)}
+                        placeholder="Material"
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Discriminação do Produto</Label>
@@ -983,12 +966,32 @@ const NewOrder = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Cores (Quantidade)</Label>
-                    <Input
-                      value={item.cores}
-                      onChange={(e) => updateProduct(item.id, 'cores', e.target.value)}
-                      placeholder="Qtd. Cores"
-                    />
+                    <Label>Cores (Impressão)</Label>
+                    {item.availableAttributes?.cores && item.availableAttributes.cores.length > 0 ? (
+                      <div className="border rounded-md p-3">
+                        <div className="space-y-2">
+                          {item.availableAttributes.cores.map((cor) => (
+                            <label key={cor} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`cores-${item.id}`}
+                                value={cor}
+                                checked={item.cores === cor}
+                                onChange={(e) => updateProduct(item.id, 'cores', e.target.value)}
+                                className="w-4 h-4"
+                              />
+                              {cor}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <Input
+                        value={item.cores}
+                        onChange={(e) => updateProduct(item.id, 'cores', e.target.value)}
+                        placeholder="Qtd. Cores"
+                      />
+                    )}
                   </div>
                 </div>
 
