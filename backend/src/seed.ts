@@ -1,6 +1,9 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import dotenv from 'dotenv';
 import { initializeDb, pool } from './database';
+
+dotenv.config();
 
 const saltRounds = 10;
 

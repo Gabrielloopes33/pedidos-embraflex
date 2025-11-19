@@ -12,7 +12,7 @@ import wooCommerceApi from './woocommerce';
 dotenv.config();
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_super_secreto';
 
