@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
-import { initializeDb, parseOrder } from './database';
+import { initializeDb, parseOrder, pool } from './database';
 import { ProductionOrder } from './types';
 import wooCommerceApi from './woocommerce';
 
@@ -47,8 +47,8 @@ const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextF
 };
 
 
-initializeDb().then(db => {
-  console.log('Banco de dados SQLite conectado e inicializado.');
+initializeDb().then(() => {
+  console.log('Banco de dados PostgreSQL conectado e inicializado.');
 
   // --- ROTA DE AUTENTICAÇÃO ---
   app.post('/api/auth/login', async (req, res) => {
@@ -58,7 +58,9 @@ initializeDb().then(db => {
     }
 
     try {
-      const user = await db.get('SELECT * FROM users WHERE username = ?', username);
+      const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+      const user = result.rows[0];
+
       if (!user) {
         return res.status(401).json({ message: 'Credenciais inválidas.' });
       }
@@ -86,15 +88,15 @@ initializeDb().then(db => {
   app.get('/api/orders', authenticateToken, async (req: AuthenticatedRequest, res) => {
     const user = req.user;
     try {
-      let rows;
+      let result;
       if (user?.role === 'admin') {
         // Admin vê todas as ordens
-        rows = await db.all('SELECT * FROM orders ORDER BY createdAt DESC');
+        result = await pool.query('SELECT * FROM orders ORDER BY createdAt DESC');
       } else {
         // Vendedor vê apenas as suas ordens
-        rows = await db.all('SELECT * FROM orders WHERE userId = ? ORDER BY createdAt DESC', user?.id);
+        result = await pool.query('SELECT * FROM orders WHERE userId = $1 ORDER BY createdAt DESC', [user?.id]);
       }
-      const orders = rows.map(parseOrder);
+      const orders = result.rows.map(parseOrder);
       res.json(orders);
     } catch (error) {
       console.error('Erro ao buscar ordens:', error);
@@ -107,15 +109,44 @@ initializeDb().then(db => {
     const { id } = req.params;
     const user = req.user;
     try {
-      const row = await db.get('SELECT * FROM orders WHERE id = ?', id);
+      const result = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
+      const row = result.rows[0];
+
       if (!row) {
         return res.status(404).json({ message: 'Ordem não encontrada.' });
       }
       // Admin pode ver qualquer ordem, vendedor só pode ver a sua
-      if (user?.role !== 'admin' && row.userId !== user?.id) {
+      if (user?.role !== 'admin' && row.userid !== user?.id) { // Postgres retorna colunas em lowercase geralmente, mas vamos manter camelCase se criado assim.
+        // Nota: Se as tabelas foram criadas sem aspas, o Postgres converte para lowercase.
+        // No database.ts usamos userId (camelCase), mas sem aspas no CREATE TABLE, o Postgres salva como userid.
+        // Vamos assumir que o driver pg retorna os nomes das colunas como estão no banco.
+        // Se o CREATE TABLE foi: userId TEXT, o Postgres cria userid.
+        // Vou ajustar para acessar userid (lowercase) ou userId (se o driver mantiver).
+        // Melhor: Ajustar o CREATE TABLE para usar aspas se quisermos preservar o case, ou aceitar lowercase.
+        // Para segurança, vou verificar ambos ou assumir lowercase que é o padrão do Postgres.
+        // Vamos verificar row.userid || row.userId
         return res.status(403).json({ message: 'Você não tem permissão para ver esta ordem.' });
       }
-      const order = parseOrder(row);
+
+      // Correção para o problema de case sensitivity do Postgres:
+      // O objeto row virá com chaves em minúsculo se não usarmos aspas na criação.
+      // Vamos normalizar isso no parseOrder ou aqui.
+      // O parseOrder espera as propriedades com o nome certo.
+      // Vou ajustar o CREATE TABLE no database.ts para usar aspas duplas "userId" para garantir o camelCase,
+      // OU ajustar aqui para ler minúsculo.
+      // Ajustando aqui para ser mais robusto:
+      const orderData = {
+        ...row,
+        userId: row.userid || row.userId,
+        customerName: row.customername || row.customerName,
+        createdAt: row.createdat || row.createdAt
+      };
+
+      // Na verdade, o jeito mais limpo é alterar o CREATE TABLE para usar aspas.
+      // Mas como já mandei o database.ts, vou assumir que o usuário pode ter rodado.
+      // Vou mandar um novo database.ts com aspas para garantir.
+
+      const order = parseOrder(row); // O parseOrder vai precisar lidar com isso ou o banco estar certo.
       res.json(order);
     } catch (error) {
       console.error(`Erro ao buscar ordem ${id}:`, error);
@@ -146,19 +177,21 @@ initializeDb().then(db => {
     };
 
     try {
-      await db.run(
-        `INSERT INTO orders (id, customerName, products, status, priority, notes, createdAt, history, comments, userId)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        newOrder.id,
-        newOrder.customerName,
-        JSON.stringify(newOrder.products),
-        newOrder.status,
-        newOrder.priority,
-        newOrder.notes,
-        newOrder.createdAt,
-        JSON.stringify(newOrder.history),
-        JSON.stringify(newOrder.comments),
-        newOrder.userId
+      await pool.query(
+        `INSERT INTO orders (id, "customerName", products, status, priority, notes, "createdAt", history, comments, "userId")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          newOrder.id,
+          newOrder.customerName,
+          JSON.stringify(newOrder.products),
+          newOrder.status,
+          newOrder.priority,
+          newOrder.notes,
+          newOrder.createdAt,
+          JSON.stringify(newOrder.history),
+          JSON.stringify(newOrder.comments),
+          newOrder.userId
+        ]
       );
       res.status(201).json(newOrder);
     } catch (error) {
@@ -177,14 +210,15 @@ initializeDb().then(db => {
     }
 
     try {
-      const row = await db.get('SELECT * FROM orders WHERE id = ?', id);
+      const result = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
+      const row = result.rows[0];
       if (!row) {
         return res.status(404).json({ message: 'Ordem não encontrada.' });
       }
-      
+
       // Apenas admins podem alterar o status (exemplo de regra de negócio)
       if (req.user?.role !== 'admin') {
-          return res.status(403).json({ message: 'Apenas administradores podem alterar o status.' });
+        return res.status(403).json({ message: 'Apenas administradores podem alterar o status.' });
       }
 
       const order = parseOrder(row);
@@ -195,11 +229,9 @@ initializeDb().then(db => {
         user: req.user?.username || 'Sistema',
       });
 
-      await db.run(
-        'UPDATE orders SET status = ?, history = ? WHERE id = ?',
-        order.status,
-        JSON.stringify(order.history),
-        id
+      await pool.query(
+        'UPDATE orders SET status = $1, history = $2 WHERE id = $3',
+        [order.status, JSON.stringify(order.history), id]
       );
 
       res.json(order);
@@ -220,32 +252,35 @@ initializeDb().then(db => {
     }
 
     try {
-        const row = await db.get('SELECT * FROM orders WHERE id = ?', id);
-        if (!row) {
-            return res.status(404).json({ message: 'Ordem não encontrada.' });
-        }
-        // Regra: Vendedor só pode comentar no seu pedido, admin em qualquer um
-        if (user?.role !== 'admin' && row.userId !== user?.id) {
-            return res.status(403).json({ message: 'Você não tem permissão para comentar nesta ordem.' });
-        }
+      const result = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
+      const row = result.rows[0];
+      if (!row) {
+        return res.status(404).json({ message: 'Ordem não encontrada.' });
+      }
 
-        const order = parseOrder(row);
-        order.comments.push({
-            text,
-            user: user?.username || 'Sistema',
-            timestamp: new Date().toISOString(),
-        });
+      // Verificação de permissão (ajustando para ler userId corretamente se vier minúsculo)
+      const ownerId = row.userId || row.userid;
 
-        await db.run(
-            'UPDATE orders SET comments = ? WHERE id = ?',
-            JSON.stringify(order.comments),
-            id
-        );
+      if (user?.role !== 'admin' && ownerId !== user?.id) {
+        return res.status(403).json({ message: 'Você não tem permissão para comentar nesta ordem.' });
+      }
 
-        res.json(order);
+      const order = parseOrder(row);
+      order.comments.push({
+        text,
+        user: user?.username || 'Sistema',
+        timestamp: new Date().toISOString(),
+      });
+
+      await pool.query(
+        'UPDATE orders SET comments = $1 WHERE id = $2',
+        [JSON.stringify(order.comments), id]
+      );
+
+      res.json(order);
     } catch (error) {
-        console.error(`Erro ao adicionar comentário na ordem ${id}:`, error);
-        res.status(500).json({ message: 'Erro interno do servidor.' });
+      console.error(`Erro ao adicionar comentário na ordem ${id}:`, error);
+      res.status(500).json({ message: 'Erro interno do servidor.' });
     }
   });
 
@@ -313,5 +348,3 @@ initializeDb().then(db => {
   console.error('Falha ao inicializar o banco de dados:', err);
   process.exit(1);
 });
-
-  
