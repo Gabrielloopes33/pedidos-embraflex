@@ -7,6 +7,8 @@
     "dev": "nodemon src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "ts-node src/seed.ts",
+    "setup-db": "ts-node src/setup-database.ts",
+    "hash": "ts-node src/hash-password.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
@@ -14,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.84.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
