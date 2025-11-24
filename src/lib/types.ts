@@ -147,6 +147,7 @@ export interface CustomerCreateData {
   first_name: string;
   last_name: string;
   username?: string;
+  password?: string;
   billing?: {
     first_name?: string;
     last_name?: string;

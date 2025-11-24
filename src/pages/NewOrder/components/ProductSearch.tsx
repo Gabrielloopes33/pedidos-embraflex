@@ -1,0 +1,122 @@
+import { useState } from "react";
+import { Button } from "@/componentes/ui/button";
+import { Input } from "@/componentes/ui/input";
+import { Label } from "@/componentes/ui/label";
+import { Search, Package } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getProducts, getProductById } from "@/lib/woocommerce";
+import type { WooCommerceProduct } from "@/lib/types";
+import type { ProductItem } from "../types";
+import { toast } from "sonner";
+
+interface ProductSearchProps {
+  item: ProductItem;
+  onSelect: (product: WooCommerceProduct) => void;
+  onClear: () => void;
+}
+
+export function ProductSearch({ item, onSelect, onClear }: ProductSearchProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { data: products, isLoading: isLoadingProducts, error: productsError } = useQuery({
+    queryKey: ['products-search', searchTerm],
+    queryFn: () => getProducts({
+      search: searchTerm || undefined,
+      per_page: 50,
+    }),
+    enabled: searchTerm.length > 2,
+  });
+
+  const handleSelect = async (product: WooCommerceProduct) => {
+    try {
+      const fullProduct = await getProductById(product.id);
+      onSelect(fullProduct);
+      setSearchTerm("");
+    } catch (error) {
+      console.error('Erro ao buscar dados completos do produto:', error);
+      toast.error('Erro ao carregar dados do produto.');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>Produto (WooCommerce)</Label>
+      <div className="flex gap-2">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            placeholder="Digite pelo menos 3 caracteres para buscar..."
+            value={item.productId > 0 ? item.productName : searchTerm}
+            onChange={(e) => {
+              if (item.productId === 0) {
+                setSearchTerm(e.target.value);
+              }
+            }}
+            className="pl-10"
+            disabled={item.productId > 0}
+          />
+          {searchTerm.length > 2 && item.productId === 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
+              {isLoadingProducts ? (
+                <div className="p-3 text-center text-muted-foreground">
+                  Buscando produtos...
+                </div>
+              ) : productsError ? (
+                <div className="p-3 text-center text-destructive">
+                  Erro ao buscar produtos
+                </div>
+              ) : products && products.length > 0 ? (
+                products.map((product) => (
+                  <div
+                    key={product.id}
+                    className="p-3 hover:bg-accent cursor-pointer border-b last:border-b-0 transition-colors"
+                    onClick={() => handleSelect(product)}
+                  >
+                    <div className="font-medium">{product.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      R$ {parseFloat(product.price || '0').toFixed(2).replace('.', ',')}
+                    </div>
+                    {product.sku && (
+                      <div className="text-xs text-muted-foreground">
+                        SKU: {product.sku}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : searchTerm.length > 2 ? (
+                <div className="p-3 text-center text-muted-foreground">
+                  Nenhum produto encontrado
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+        {item.productId > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClear}
+          >
+            Limpar
+          </Button>
+        )}
+      </div>
+
+      {/* Produto Selecionado */}
+      {item.productName && (
+        <div className="border rounded-md p-3 bg-muted/50 mt-2">
+          <div className="flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" />
+            <span className="font-medium">{item.productName}</span>
+            {item.productId > 0 && (
+              <span className="text-xs text-muted-foreground ml-auto">
+                ID: {item.productId}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

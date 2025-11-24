@@ -154,6 +154,8 @@ initializeDb().then(() => {
     const { customerName, products, priority, notes } = req.body;
     const userId = req.user?.id;
 
+    console.log('📝 Criando ordem de produção:', { customerName, productsCount: products?.length, priority, userId });
+
     if (!customerName || !products) {
       return res.status(400).json({ message: 'Cliente e produtos são obrigatórios.' });
     }
@@ -172,27 +174,52 @@ initializeDb().then(() => {
     };
 
     try {
-      const { error } = await supabase
-        .from('orders')
-        .insert([{
-          id: newOrder.id,
-          customerName: newOrder.customerName,
-          products: JSON.stringify(newOrder.products),
-          status: newOrder.status,
-          priority: newOrder.priority,
-          notes: newOrder.notes,
-          createdAt: newOrder.createdAt,
-          history: JSON.stringify(newOrder.history),
-          comments: JSON.stringify(newOrder.comments),
-          userId: newOrder.userId
-        }]);
+      const dataToInsert = {
+        id: newOrder.id,
+        customerName: newOrder.customerName,
+        products: JSON.stringify(newOrder.products),
+        status: newOrder.status,
+        priority: newOrder.priority,
+        notes: newOrder.notes,
+        createdAt: newOrder.createdAt,
+        history: JSON.stringify(newOrder.history),
+        comments: JSON.stringify(newOrder.comments),
+        userId: newOrder.userId
+      };
 
-      if (error) throw error;
+      console.log('💾 Inserindo no Supabase:', dataToInsert);
+
+      // Tentar inserir com .select() para forçar retorno
+      const insertResult = await supabase
+        .from('orders')
+        .insert([dataToInsert])
+        .select();
+
+      console.log('📤 Resultado do insert:', insertResult);
+
+      if (insertResult.error) {
+        console.error('❌ Erro do Supabase:', JSON.stringify(insertResult.error, null, 2));
+        console.error('❌ Erro code:', insertResult.error.code);
+        console.error('❌ Erro message:', insertResult.error.message);
+        console.error('❌ Erro details:', insertResult.error.details);
+        console.error('❌ Erro hint:', insertResult.error.hint);
+        
+        // Tentar verificar se é problema de RLS
+        const { data: rlsCheck, error: rlsError } = await supabase
+          .from('orders')
+          .select('*')
+          .limit(1);
+        
+        console.log('🔍 Teste de leitura (RLS check):', { hasData: !!rlsCheck, error: rlsError });
+        
+        throw insertResult.error;
+      }
       
+      console.log('✅ Ordem criada com sucesso:', newOrder.id);
       res.status(201).json(newOrder);
     } catch (error) {
-      console.error('Erro ao criar ordem:', error);
-      res.status(500).json({ message: 'Erro interno do servidor.' });
+      console.error('❌ Erro ao criar ordem:', error);
+      res.status(500).json({ message: 'Erro interno do servidor.', error: String(error) });
     }
   });
 
@@ -419,11 +446,36 @@ initializeDb().then(() => {
 
   app.post('/api/wc/customers', async (req, res) => {
     try {
+      console.log('📝 Recebendo requisição para criar cliente:', JSON.stringify(req.body, null, 2));
       const { data } = await wooCommerceApi.post('customers', req.body);
+      console.log('✅ Cliente criado com sucesso:', data);
       res.status(201).json(data);
     } catch (error: any) {
-      console.error('Erro ao criar cliente no WooCommerce:', error.response?.data);
-      res.status(500).json({ message: 'Falha ao criar cliente no WooCommerce.' });
+      console.error('❌ Erro ao criar cliente no WooCommerce:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        body: req.body
+      });
+      
+      // Extrair mensagem de erro específica do WooCommerce
+      let errorMessage = 'Falha ao criar cliente no WooCommerce.';
+      let errorDetails = error.response?.data;
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.data?.params) {
+        // Erros de validação do WooCommerce
+        const params = error.response.data.data.params;
+        const paramErrors = Object.keys(params).map(key => `${key}: ${params[key]}`).join(', ');
+        errorMessage = `Erro de validação: ${paramErrors}`;
+      }
+      
+      res.status(error.response?.status || 500).json({ 
+        message: errorMessage,
+        error: errorDetails,
+        details: errorDetails
+      });
     }
   });
 

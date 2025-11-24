@@ -4,7 +4,7 @@ import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Label } from "@/componentes/ui/label";
 import { Loader2 } from "lucide-react";
-import { createCustomer } from "@/lib/customers";
+import { createCustomer, getCustomers } from "@/lib/customers";
 import type { CustomerCreateData, WooCommerceCustomer } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -35,21 +35,48 @@ export function CustomerFormDialog({ open, onOpenChange, onSuccess }: CustomerFo
     setLoading(true);
 
     try {
+      // Verificar se o cliente já existe pelo email
+      const existingCustomers = await getCustomers({ search: formData.email });
+      if (existingCustomers && existingCustomers.length > 0) {
+        const existingCustomer = existingCustomers.find(c => c.email === formData.email);
+        if (existingCustomer) {
+          toast.info("Cliente já existe no sistema!");
+          if (onSuccess) {
+            onSuccess(existingCustomer);
+          }
+          onOpenChange(false);
+          return;
+        }
+      }
+
+      // Gerar username único baseado no email e timestamp
+      const timestamp = Date.now();
+      const usernameBase = formData.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      const username = `${usernameBase}_${timestamp}`;
+      
+      // Gerar senha aleatória para o WooCommerce (usuário pode resetar depois)
+      const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+
       const customerData: CustomerCreateData = {
         email: formData.email,
         first_name: formData.nomeFantasia,
         last_name: "",
-        username: formData.email.split('@')[0],
+        username: username,
+        password: randomPassword,
         billing: {
           first_name: formData.nomeFantasia,
           last_name: "",
           company: formData.razaoSocial,
           email: formData.email,
-          phone: formData.phone,
+          phone: formData.phone || "",
+          address_1: "",
+          city: "",
+          state: "",
+          postcode: "",
           country: "BR",
         },
         meta_data: [
-          { key: "_billing_cpf_cnpj", value: formData.cpfCnpj },
+          { key: "_billing_cpf_cnpj", value: formData.cpfCnpj || "" },
           { key: "_nome_fantasia", value: formData.nomeFantasia },
           { key: "_razao_social", value: formData.razaoSocial },
         ],
@@ -77,9 +104,11 @@ export function CustomerFormDialog({ open, onOpenChange, onSuccess }: CustomerFo
       console.error("Erro ao criar cliente:", error);
 
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { message?: string } } };
-        if (axiosError.response?.data?.message) {
-          toast.error(`Erro: ${axiosError.response.data.message}`);
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        const errorMessage = axiosError.response?.data?.message || axiosError.response?.data?.error;
+        
+        if (errorMessage) {
+          toast.error(errorMessage);
         } else {
           toast.error("Erro ao criar cliente. Verifique os dados e tente novamente.");
         }
