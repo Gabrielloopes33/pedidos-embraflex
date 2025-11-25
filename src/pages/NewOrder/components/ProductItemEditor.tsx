@@ -21,6 +21,7 @@ interface ProductItemEditorProps {
 export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductItemEditorProps) {
   const [availableImpressionTypes, setAvailableImpressionTypes] = useState<string[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<number[]>([]);
+  const [priceByQuantity, setPriceByQuantity] = useState<Map<number, number>>(new Map());
 
   const handleProductSelect = (product: WooCommerceProduct) => {
     const updatedItem: ProductItem = {
@@ -60,27 +61,84 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       }
     }
 
+    // Buscar preços por quantidade nos meta_data do produto
+    // Formato esperado: "1000:2.22|1500:2.10|3000:2.01"
+    const priceMetaData = product.meta_data?.find(meta => 
+      meta.key === 'precos_por_quantidade' || meta.key === '_precos_por_quantidade'
+    );
+    
+    console.log('🔍 Procurando preços por quantidade no produto:', product.name);
+    console.log('📦 Meta data do produto:', product.meta_data);
+    
+    if (priceMetaData && typeof priceMetaData.value === 'string') {
+      console.log('✅ Meta data de preços encontrado:', priceMetaData.value);
+      const priceMap = new Map<number, number>();
+      const priceEntries = priceMetaData.value.split('|');
+      
+      priceEntries.forEach(entry => {
+        const [qty, price] = entry.split(':');
+        const qtyNum = parseInt(qty);
+        const priceNum = parseFloat(price);
+        if (!isNaN(qtyNum) && !isNaN(priceNum)) {
+          priceMap.set(qtyNum, priceNum);
+          console.log(`  📊 Adicionado: ${qtyNum} un = R$ ${priceNum}`);
+        }
+      });
+      
+      setPriceByQuantity(priceMap);
+      console.log('✅ Tabela de preços carregada:', Array.from(priceMap.entries()));
+      
+      // Definir o preço inicial baseado na primeira quantidade
+      if (updatedItem.quantity && priceMap.has(updatedItem.quantity)) {
+        updatedItem.unitPrice = priceMap.get(updatedItem.quantity)!;
+        console.log(`💰 Preço inicial definido: ${updatedItem.quantity} un = R$ ${updatedItem.unitPrice}`);
+      }
+    } else {
+      console.log('⚠️ Meta data de preços NÃO encontrado');
+      setPriceByQuantity(new Map()); // Limpar mapa se não houver preços
+    }
+
     // Pegar largura e altura dos atributos
     const widthAttr = product.attributes?.find(attr => {
+      const name = attr.name?.toLowerCase() || '';
       const slug = attr.slug?.toLowerCase() || '';
-      return slug.includes('largura') || slug.includes('width');
+      return name.includes('largura') || name.includes('width') || 
+             slug.includes('largura') || slug.includes('width');
     });
     
     const heightAttr = product.attributes?.find(attr => {
+      const name = attr.name?.toLowerCase() || '';
       const slug = attr.slug?.toLowerCase() || '';
-      return slug.includes('altura') || slug.includes('height');
+      return name.includes('altura') || name.includes('height') || 
+             slug.includes('altura') || slug.includes('height');
     });
 
+    // Tentar pegar dos attributes primeiro
     if (widthAttr?.options?.[0]) {
-      const widthValue = parseFloat(widthAttr.options[0].replace(',', '.'));
-      if (!isNaN(widthValue)) {
+      const widthValue = parseFloat(widthAttr.options[0].replace(',', '.').replace(/[^0-9.]/g, ''));
+      if (!isNaN(widthValue) && widthValue > 0) {
         updatedItem.larguraCm = widthValue;
       }
     }
 
     if (heightAttr?.options?.[0]) {
-      const heightValue = parseFloat(heightAttr.options[0].replace(',', '.'));
-      if (!isNaN(heightValue)) {
+      const heightValue = parseFloat(heightAttr.options[0].replace(',', '.').replace(/[^0-9.]/g, ''));
+      if (!isNaN(heightValue) && heightValue > 0) {
+        updatedItem.alturaCm = heightValue;
+      }
+    }
+
+    // Se não encontrou nos attributes, tentar nas dimensions do produto
+    if (!updatedItem.larguraCm && product.dimensions?.width) {
+      const widthValue = parseFloat(product.dimensions.width.replace(',', '.'));
+      if (!isNaN(widthValue) && widthValue > 0) {
+        updatedItem.larguraCm = widthValue;
+      }
+    }
+
+    if (!updatedItem.alturaCm && product.dimensions?.height) {
+      const heightValue = parseFloat(product.dimensions.height.replace(',', '.'));
+      if (!isNaN(heightValue) && heightValue > 0) {
         updatedItem.alturaCm = heightValue;
       }
     }
@@ -101,13 +159,33 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
   };
 
   const handleUpdate = <K extends keyof ProductItem>(field: K, value: ProductItem[K]) => {
-    onUpdate(index, {
+    const updatedItem = {
       ...item,
       [field]: value,
-    });
+    };
+    
+    // Se mudou a quantidade e temos preços tabelados, atualizar o preço unitário
+    if (field === 'quantity' && priceByQuantity.size > 0) {
+      const newQuantity = value as number;
+      console.log('🔄 Mudança de quantidade detectada:', newQuantity);
+      console.log('📊 Tabela de preços disponível:', Array.from(priceByQuantity.entries()));
+      
+      if (priceByQuantity.has(newQuantity)) {
+        const newPrice = priceByQuantity.get(newQuantity)!;
+        console.log('✅ Preço encontrado para quantidade', newQuantity, ':', newPrice);
+        updatedItem.unitPrice = newPrice;
+      } else {
+        console.log('⚠️ Preço não encontrado para quantidade', newQuantity);
+      }
+    }
+    
+    // Recalcular total imediatamente
+    const total = calculateItemTotal(updatedItem);
+    console.log('💰 Total recalculado:', total, 'para item:', updatedItem);
+    onUpdate(index, { ...updatedItem, total });
   };
 
-  // Recalcular total quando os valores mudarem
+  // Recalcular total quando os valores mudarem (backup)
   useEffect(() => {
     const total = calculateItemTotal(item);
     if (total !== item.total) {
@@ -146,6 +224,7 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
           item={item} 
           onUpdate={handleUpdate}
           availableQuantities={availableQuantities}
+          availableImpressionTypes={availableImpressionTypes}
         />
 
         <Separator />
@@ -153,7 +232,6 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
         <ProductDimensions 
           item={item} 
           onUpdate={handleUpdate}
-          availableImpressionTypes={availableImpressionTypes}
         />
 
         <Separator />

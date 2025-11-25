@@ -32,6 +32,10 @@ Sistema web completo desenvolvido para gerenciamento de pedidos, produtos e clie
 - **Axios 1.13.2** - Cliente HTTP para requisições
 - **WooCommerce REST API v3** - Integração completa com produtos e clientes
 
+### Geração de Documentos
+- **jsPDF 2.5.2** - Geração de PDFs de pedidos
+- **jsPDF-AutoTable** - Tabelas formatadas em PDFs
+
 ### Notificações e Feedback
 - **Sonner** - Sistema de toast notifications elegante
 - **Radix UI Toast** - Componente de toast acessível
@@ -54,12 +58,24 @@ src/
 │   │   └── ...
 │   ├── AppSidebar.tsx             # Navegação lateral com logo
 │   ├── NavLink.tsx                # Componente de link de navegação
-│   └── CustomerFormDialog.tsx     # Formulário de cadastro de clientes
+│   ├── CustomerFormDialog.tsx     # Formulário de cadastro de clientes
+│   ├── OrderApprovalModal.tsx     # Modal de aprovação e finalização de pedido
+│   └── OrderSuccessModal.tsx      # Modal de sucesso com geração de PDF
 ├── pages/
 │   ├── Dashboard.tsx              # Visão geral e métricas
 │   ├── Login.tsx                  # Autenticação com logo
 │   ├── Orders.tsx                 # Listagem de pedidos
 │   ├── NewOrder.tsx               # Criação detalhada de pedidos
+│   ├── NewOrder/                  # Componentes modulares do pedido
+│   │   ├── types.ts               # Interfaces e tipos TypeScript
+│   │   ├── utils/
+│   │   │   └── pricing.ts         # Cálculos de preços e totais
+│   │   └── components/
+│   │       ├── ProductSearch.tsx          # Busca de produtos WooCommerce
+│   │       ├── ProductBasicInfo.tsx       # Quantidade, Preço, Tipo Impressão
+│   │       ├── ProductDimensions.tsx      # Largura e Altura
+│   │       ├── ProductFinishing.tsx       # Acabamentos (Cordão + Acessórios)
+│   │       └── ProductItemEditor.tsx      # Editor completo do item
 │   ├── Products.tsx               # Gerenciamento de produtos (WooCommerce)
 │   ├── Customers.tsx              # Gerenciamento de clientes (WooCommerce)
 │   ├── Reports.tsx                # Relatórios e análises
@@ -70,7 +86,9 @@ src/
 ├── lib/
 │   ├── utils.ts                   # Funções utilitárias
 │   ├── woocommerce.ts             # Serviço de integração WooCommerce (Produtos)
-│   └── customers.ts               # Serviço de integração WooCommerce (Clientes)
+│   ├── customers.ts               # Serviço de integração WooCommerce (Clientes)
+│   ├── api.ts                     # Cliente API base
+│   └── pdf-generator.ts           # Geração de PDFs de pedidos (jsPDF)
 ├── app.tsx                        # Configuração de rotas
 └── main.tsx                       # Entry point da aplicação
 ```
@@ -89,23 +107,34 @@ src/
 - **Criação de Clientes**: Formulário integrado para criar novos clientes durante o pedido
 - **Múltiplos Produtos**: Adicione vários produtos em um único pedido
 - **Busca de Produtos WooCommerce**: Autocomplete com busca em tempo real
+- **Filtro por Categoria**: Sistema filtra automaticamente apenas produtos da categoria "Interna"
+- **Preços Dinâmicos por Quantidade**: 
+  - Tabela de preços configurável por produto no WooCommerce
+  - Atualização automática do preço unitário ao mudar quantidade
+  - Formato: `1000:2.22|1500:2.10|3000:2.01` (campo personalizado `precos_por_quantidade`)
+  - Consulte `PRECOS_POR_QUANTIDADE.md` para instruções completas
+- **Auto-preenchimento Inteligente**:
+  - Dimensões (Largura e Altura) extraídas automaticamente dos atributos ou dimensões do produto
+  - Campos se tornam somente leitura quando preenchidos automaticamente
+  - Código/SKU do produto WooCommerce
 - **Campos Específicos por Produto**:
-  - Quantidade e Código
-  - Material e Discriminação
-  - Dimensões (Largura, Altura, Lateral, Cores)
-  - Acabamentos (Brilho, Fosco, I.E., Auto-Matizada)
-  - Furos (Sim/Não)
-  - Refile
-  - **Acabamentos Especiais Completos**:
-    - Cordões (Branco, Preto, Bege, Outros)
-    - Gorgurinho 35cm, Gorgurão 35cm, S. Francisco 35cm
-    - Ilhós
-    - Hot Stamp (Sacola e Etiqueta)
-    - Outros acabamentos personalizados
+  - **Linha 1** (3 colunas): Quantidade | Valor Unitário | Tipo de Impressão
+  - **Linha 2** (full width): Discriminação do Produto
+  - **Linha 3** (2 colunas): Largura (cm) | Altura (cm)
+  - **Cores de Impressão** (condicional): Exibido apenas para Serigrafia (1x0, 1x1, 2x0, 2x2, 4x0, 4x4)
+  - **Acabamentos Categorizados**:
+    - **Cordão**: Possui cordão + Cor (Branco, Preto, Bege, Outros)
+    - **Acessórios**: Gorgurinho, Gorgurão, S. Francisco, Ilhós, Furos, Hot Stamp (Sacola/Etiqueta)
   - Observações por produto
-- **Cálculo Automático**: Subtotal por produto e total geral
-- **Valores Unitários**: Preenchimento manual ou automático do WooCommerce
-- **Validação de Formulário**: Campos obrigatórios e validações
+- **Cálculo Automático**: 
+  - Subtotal por produto (quantidade × valor unitário + acabamentos)
+  - Total geral do pedido
+  - Exibição detalhada de custos de acabamentos
+- **Geração de PDF**: 
+  - Pedido completo formatado para impressão
+  - Inclui todos os produtos, acabamentos e totalizadores
+  - Download direto do arquivo
+- **Validação de Formulário**: Campos obrigatórios e validações em tempo real
 
 ### Gerenciamento de Produtos
 - **Integração Total WooCommerce**:
@@ -230,7 +259,7 @@ npm run lint
 
 ## Configuração do WooCommerce
 
-O sistema integra-se com a API REST do WooCommerce para gerenciar produtos. Para configurar:
+O sistema integra-se com a API REST do WooCommerce para gerenciar produtos e clientes. Para configurar:
 
 ### 1. Gerar credenciais no WooCommerce
 
@@ -253,7 +282,31 @@ VITE_WOOCOMMERCE_CONSUMER_KEY=ck_sua_chave_aqui
 VITE_WOOCOMMERCE_CONSUMER_SECRET=cs_seu_secret_aqui
 ```
 
-### 3. Reiniciar o servidor
+### 3. Configurar Produtos no WooCommerce
+
+Para aproveitar todos os recursos do sistema, configure seus produtos:
+
+#### A. Categoria "Interna"
+- Crie uma categoria chamada **"Interna"** no WooCommerce
+- Atribua seus produtos de uso interno a essa categoria
+- O sistema filtrará automaticamente apenas produtos dessa categoria
+
+#### B. Atributos do Produto
+Configure os seguintes atributos para auto-preenchimento:
+- **Largura**: Ex: `15` ou `15.0` (em cm)
+- **Altura**: Ex: `20` ou `20.0` (em cm)
+- **Cor de Impressão**: Ex: `Digital`, `Serigrafia`, `Offset`
+- **Quantidade**: Ex: `1000`, `1500`, `3000`, `5000`
+
+#### C. Campo Personalizado para Preços Dinâmicos
+Adicione um campo personalizado (meta_data) no produto:
+- **Nome**: `precos_por_quantidade` ou `_precos_por_quantidade`
+- **Valor**: String no formato `quantidade:preço|quantidade:preço|...`
+- **Exemplo**: `1000:2.22|1500:2.10|3000:2.01|5000:1.95`
+
+**Consulte o arquivo `PRECOS_POR_QUANTIDADE.md` para instruções detalhadas sobre configuração de preços.**
+
+### 4. Reiniciar o servidor
 
 Após configurar, reinicie o servidor de desenvolvimento para aplicar as mudanças.
 
@@ -363,15 +416,23 @@ createCustomer({
 - [ ] Implementação de autenticação real com WooCommerce/WordPress
 - [ ] Sistema de permissões de usuário
 - [ ] Sincronização automática de estoque
-- [ ] Exportação de relatórios em PDF
 - [ ] Notificações em tempo real
 - [ ] Dashboard com gráficos interativos (Chart.js/Recharts)
 - [ ] Upload de arquivos e imagens nos pedidos
-- [ ] Sistema de aprovação de pedidos
-- [ ] Histórico de alterações
+- [ ] Sistema de aprovação de pedidos (workflow)
+- [ ] Histórico de alterações e versionamento
 - [ ] Integração com sistema de pagamento
-- [ ] Notificações por email
+- [ ] Notificações por email automáticas
 - [ ] Modo offline com sincronização
+- [ ] Impressão direta de pedidos
+- [ ] Exportação de relatórios em Excel
+
+## Documentação Adicional
+
+- 📄 **PRECOS_POR_QUANTIDADE.md** - Guia completo para configurar preços dinâmicos por quantidade
+- 📄 **WOOCOMMERCE_CONFIG.md** - Detalhes da integração com WooCommerce
+- 📄 **CORRECAO_CORS.md** - Solução de problemas de CORS
+- 📄 **SOLUCAO_RLS.md** - Configuração de Row Level Security (se aplicável)
 
 ## Componentes Desenvolvidos
 
@@ -394,15 +455,29 @@ createCustomer({
 - ✅ NavLink - Link de navegação com estado ativo
 - ✅ CustomerFormDialog - Formulário de cadastro de clientes
 - ✅ DashboardLayout - Layout principal do sistema
+- ✅ OrderApprovalModal - Modal de revisão e aprovação de pedido
+- ✅ OrderSuccessModal - Modal de sucesso com geração de PDF
+- ✅ ProductSearch - Busca de produtos WooCommerce com autocomplete
+- ✅ ProductBasicInfo - Formulário de informações básicas (Qtd, Preço, Impressão)
+- ✅ ProductDimensions - Formulário de dimensões (Largura, Altura)
+- ✅ ProductFinishing - Formulário de acabamentos categorizados
+- ✅ ProductItemEditor - Editor completo de item do pedido
 
 ## Recursos Implementados
 
 - ✅ Roteamento completo com React Router
 - ✅ Integração WooCommerce (Produtos e Clientes)
+- ✅ Filtro automático por categoria "Interna"
+- ✅ Sistema de preços dinâmicos por quantidade
+- ✅ Auto-preenchimento de dimensões dos produtos
+- ✅ Tipos de impressão dinâmicos (Digital, Serigrafia, Offset)
 - ✅ Sistema de busca e filtros avançados
 - ✅ Paginação de dados
 - ✅ Modal de detalhes (Produtos e Clientes)
 - ✅ Formulários com validação
+- ✅ Geração de PDF de pedidos (jsPDF)
+- ✅ Cálculo automático de totais com acabamentos
+- ✅ Interface modular e componentizada
 - ✅ Toast notifications
 - ✅ Loading states
 - ✅ Error handling
