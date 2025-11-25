@@ -9,7 +9,7 @@ import { ProductBasicInfo } from "./ProductBasicInfo";
 import { ProductDimensions } from "./ProductDimensions";
 import { ProductFinishing } from "./ProductFinishing";
 import { calculateFinishingCosts, calculateItemTotal } from "../utils/pricing";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface ProductItemEditorProps {
   item: ProductItem;
@@ -19,6 +19,9 @@ interface ProductItemEditorProps {
 }
 
 export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductItemEditorProps) {
+  const [availableImpressionTypes, setAvailableImpressionTypes] = useState<string[]>([]);
+  const [availableQuantities, setAvailableQuantities] = useState<number[]>([]);
+
   const handleProductSelect = (product: WooCommerceProduct) => {
     const updatedItem: ProductItem = {
       ...item,
@@ -29,14 +32,32 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       discriminacaoProduto: product.name,
     };
 
-    // Pegar cores como primeiro atributo
-    const colorAttr = product.attributes?.find(attr => {
+    // Pegar "Cor de Impressão" como tipo de impressão
+    const impressionAttr = product.attributes?.find(attr => {
       const attrName = attr.name.toLowerCase();
-      return attrName.includes('cor') && !attrName.includes('cordão');
+      return attrName.includes('cor de impressão') || attrName.includes('cor de impressao');
     });
     
-    if (colorAttr) {
-      updatedItem.coresImpressao = colorAttr.options?.[0] || '';
+    if (impressionAttr && impressionAttr.options) {
+      setAvailableImpressionTypes(impressionAttr.options);
+      // Definir o primeiro como padrão
+      updatedItem.tipoImpressao = impressionAttr.options[0]?.toLowerCase() || '';
+    }
+
+    // Pegar quantidade disponível do atributo
+    const quantityAttr = product.attributes?.find(attr => {
+      const attrName = attr.name.toLowerCase();
+      return attrName.includes('quantidade') || attrName.includes('qtd');
+    });
+    
+    if (quantityAttr && quantityAttr.options) {
+      const quantities = quantityAttr.options
+        .map(q => parseInt(q.replace(/\D/g, '')))
+        .filter(q => !isNaN(q) && q > 0);
+      setAvailableQuantities(quantities);
+      if (quantities.length > 0) {
+        updatedItem.quantity = quantities[0];
+      }
     }
 
     // Pegar largura e altura dos atributos
@@ -68,6 +89,8 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
   };
 
   const handleClearProduct = () => {
+    setAvailableImpressionTypes([]);
+    setAvailableQuantities([]);
     onUpdate(index, {
       ...item,
       productId: 0,
@@ -91,7 +114,7 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       onUpdate(index, { ...item, total });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.unitPrice, item.quantity, item.finishing]);
+  }, [item.unitPrice, item.quantity, item.finishing, item.tipoImpressao]);
 
   const finishingCost = calculateFinishingCosts(item.finishing);
   const unitWithFinishing = item.unitPrice + finishingCost;
@@ -119,11 +142,19 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
 
         <Separator />
 
-        <ProductBasicInfo item={item} onUpdate={handleUpdate} />
+        <ProductBasicInfo 
+          item={item} 
+          onUpdate={handleUpdate}
+          availableQuantities={availableQuantities}
+        />
 
         <Separator />
 
-        <ProductDimensions item={item} onUpdate={handleUpdate} />
+        <ProductDimensions 
+          item={item} 
+          onUpdate={handleUpdate}
+          availableImpressionTypes={availableImpressionTypes}
+        />
 
         <Separator />
 

@@ -24,11 +24,11 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
       tipoImpressao: '',
       coresImpressao: '',
       finishing: {
-        cordaoColorido: false,
-        gorgurinho: false,
-        gorgurao: false,
-        ilhos: false,
         hotStamp: false,
+        ilhos: false,
+        furoPresente: false,
+        cordao: '',
+        corCordao: '',
       },
     };
 

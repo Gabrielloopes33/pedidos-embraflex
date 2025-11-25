@@ -19,24 +19,27 @@ interface ProductItem {
   largura: string;
   altura: string;
   lateral: string;
-  cores: string;
+  tipoImpressao: string;
+  coresImpressao?: string;
   laminadoBrilho: boolean;
   laminadoFosco: boolean;
   vernizIE: boolean;
   autoMatizada: boolean;
   furosPresente: 'sim' | 'nao' | '';
   refile: string;
-  cordaoBranco: boolean;
-  cordaoPreto: boolean;
-  cordaoBege: boolean;
-  cordao: string;
-  gorgurinho35cm: boolean;
-  gorgurao35cm: boolean;
-  sFrancisco35cm: boolean;
-  ilhos: boolean;
-  hotStampSacola: boolean;
-  hotStampEtiqueta: boolean;
-  outros: string;
+  finishing: {
+    acessorios: {
+      gorgurinho35cm: boolean;
+      gorgurao35cm: boolean;
+      sFrancisco35cm: boolean;
+      ilhos: boolean;
+      hotStampSacola: boolean;
+      hotStampEtiqueta: boolean;
+      outros: string;
+    };
+    cordao: 'nenhum' | 'padrão' | 'colorido' | 'personalizado';
+    corCordao?: 'branco' | 'preto' | 'bege';
+  };
   observacoes: string;
   unitPrice: number;
 }
@@ -96,17 +99,38 @@ export const OrderApprovalModal = ({
 
   const getAcabamentosEspeciais = (produto: ProductItem) => {
     const especiais = [];
-    if (produto.cordaoBranco) especiais.push('Cordão Branco');
-    if (produto.cordaoPreto) especiais.push('Cordão Preto');
-    if (produto.cordaoBege) especiais.push('Cordão Bege');
-    if (produto.cordao) especiais.push(`Cordão: ${produto.cordao}`);
-    if (produto.gorgurinho35cm) especiais.push('Gorgurinho 35cm');
-    if (produto.gorgurao35cm) especiais.push('Gorgurão 35cm');
-    if (produto.sFrancisco35cm) especiais.push('S. Francisco 35cm');
-    if (produto.ilhos) especiais.push('Ilhós');
-    if (produto.hotStampSacola) especiais.push('Hot Stamp (Sacola)');
-    if (produto.hotStampEtiqueta) especiais.push('Hot Stamp (Etiqueta)');
-    if (produto.outros) especiais.push(`Outros: ${produto.outros}`);
+    
+    // Tipo de cordão
+    if (produto.finishing?.cordao && produto.finishing.cordao !== 'nenhum') {
+      const cordaoLabels = {
+        'padrão': 'Cordão Padrão',
+        'colorido': 'Cordão Colorido',
+        'personalizado': 'Cordão Personalizado'
+      };
+      especiais.push(cordaoLabels[produto.finishing.cordao]);
+      
+      // Cor do cordão (se aplicável)
+      if (produto.finishing.corCordao) {
+        const corLabels = {
+          'branco': 'Branco',
+          'preto': 'Preto',
+          'bege': 'Bege'
+        };
+        especiais.push(`Cor: ${corLabels[produto.finishing.corCordao]}`);
+      }
+    }
+    
+    // Acessórios
+    if (produto.finishing?.acessorios) {
+      if (produto.finishing.acessorios.gorgurinho35cm) especiais.push('Gorgurinho 35cm');
+      if (produto.finishing.acessorios.gorgurao35cm) especiais.push('Gorgurão 35cm');
+      if (produto.finishing.acessorios.sFrancisco35cm) especiais.push('S. Francisco 35cm');
+      if (produto.finishing.acessorios.ilhos) especiais.push('Ilhós');
+      if (produto.finishing.acessorios.hotStampSacola) especiais.push('Hot Stamp (Sacola)');
+      if (produto.finishing.acessorios.hotStampEtiqueta) especiais.push('Hot Stamp (Etiqueta)');
+      if (produto.finishing.acessorios.outros) especiais.push(`Outros: ${produto.finishing.acessorios.outros}`);
+    }
+    
     return especiais;
   };
 
@@ -223,12 +247,18 @@ export const OrderApprovalModal = ({
                     </div>
                   )}
 
-                  {(produto.largura || produto.altura || produto.lateral || produto.cores) && (
+                  {(produto.largura || produto.altura || produto.lateral || produto.tipoImpressao) && (
                     <div className="grid grid-cols-4 gap-2 text-sm">
                       {produto.largura && <div><span className="font-medium">Largura:</span> {produto.largura}</div>}
                       {produto.altura && <div><span className="font-medium">Altura:</span> {produto.altura}</div>}
                       {produto.lateral && <div><span className="font-medium">Lateral:</span> {produto.lateral}</div>}
-                      {produto.cores && <div><span className="font-medium">Cores:</span> {produto.cores}</div>}
+                      {produto.tipoImpressao && <div><span className="font-medium">Impressão:</span> {produto.tipoImpressao}</div>}
+                    </div>
+                  )}
+
+                  {produto.tipoImpressao === 'serigrafia' && produto.coresImpressao && (
+                    <div className="text-sm">
+                      <span className="font-medium">Cores de Impressão:</span> {produto.coresImpressao}
                     </div>
                   )}
 

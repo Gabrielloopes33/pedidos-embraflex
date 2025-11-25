@@ -7,25 +7,42 @@ import { FINISHING_PRICES } from '../types';
 export function calculateFinishingCosts(finishing: Finishing): number {
   let total = 0;
 
-  if (finishing.cordaoColorido) {
-    total += FINISHING_PRICES.cordaoColorido;
-  }
-
-  if (finishing.gorgurinho) {
-    total += FINISHING_PRICES.gorgurinho;
-  }
-
-  if (finishing.gorgurao) {
-    total += FINISHING_PRICES.gorgurao;
+  // Acessórios
+  if (finishing.hotStamp) {
+    total += FINISHING_PRICES.hotStamp;
   }
 
   if (finishing.ilhos) {
     total += FINISHING_PRICES.ilhos;
   }
 
-  if (finishing.hotStamp) {
-    total += FINISHING_PRICES.hotStamp;
+  if (finishing.furoPresente) {
+    total += FINISHING_PRICES.furoPresente;
   }
+
+  // Cordão
+  if (finishing.cordao) {
+    switch (finishing.cordao) {
+      case 'padrão':
+        total += FINISHING_PRICES.cordaoPadrao;
+        break;
+      case 'colorido':
+        total += FINISHING_PRICES.cordaoColorido;
+        break;
+      case 'gorgurinho':
+        total += FINISHING_PRICES.gorgurinho;
+        break;
+      case 'gorgurão':
+        total += FINISHING_PRICES.gorgurao;
+        break;
+      case 'são francisco':
+        total += FINISHING_PRICES.saoFrancisco;
+        break;
+    }
+  }
+
+  // Cor do cordão (apenas se for padrão, mas não tem custo adicional)
+  // As cores preto, branco e bege não têm custo adicional
 
   return total;
 }

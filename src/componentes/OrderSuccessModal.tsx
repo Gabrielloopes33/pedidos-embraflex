@@ -94,8 +94,9 @@ export function OrderSuccessModal({
             <Button 
               type="button"
               onClick={() => {
+                console.log('Botão Gerar PDF clicado');
                 onGeneratePDF();
-                onOpenChange(false);
+                console.log('Após chamar onGeneratePDF');
               }}
               className="w-full sm:w-auto"
             >

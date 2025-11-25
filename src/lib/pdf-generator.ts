@@ -14,24 +14,27 @@ interface ProductItem {
   largura: string;
   altura: string;
   lateral: string;
-  cores: string;
+  tipoImpressao: string;
+  coresImpressao?: string;
   laminadoBrilho: boolean;
   laminadoFosco: boolean;
   vernizIE: boolean;
   autoMatizada: boolean;
   furosPresente: 'sim' | 'nao' | '';
   refile: string;
-  cordaoBranco: boolean;
-  cordaoPreto: boolean;
-  cordaoBege: boolean;
-  cordao: string;
-  gorgurinho35cm: boolean;
-  gorgurao35cm: boolean;
-  sFrancisco35cm: boolean;
-  ilhos: boolean;
-  hotStampSacola: boolean;
-  hotStampEtiqueta: boolean;
-  outros: string;
+  finishing: {
+    acessorios: {
+      gorgurinho35cm: boolean;
+      gorgurao35cm: boolean;
+      sFrancisco35cm: boolean;
+      ilhos: boolean;
+      hotStampSacola: boolean;
+      hotStampEtiqueta: boolean;
+      outros: string;
+    };
+    cordao: 'nenhum' | 'padrão' | 'colorido' | 'personalizado';
+    corCordao?: 'branco' | 'preto' | 'bege';
+  };
   observacoes: string;
   unitPrice: number;
 }
@@ -173,14 +176,20 @@ export const generateOrderPDF = (orderData: OrderData): jsPDF => {
     }
 
     // Dimensões
-    if (produto.largura || produto.altura || produto.lateral || produto.cores) {
+    if (produto.largura || produto.altura || produto.lateral || produto.tipoImpressao) {
       const dimensoes = [];
       if (produto.largura) dimensoes.push(`Largura: ${produto.largura}`);
       if (produto.altura) dimensoes.push(`Altura: ${produto.altura}`);
       if (produto.lateral) dimensoes.push(`Lateral: ${produto.lateral}`);
-      if (produto.cores) dimensoes.push(`Cores: ${produto.cores}`);
+      if (produto.tipoImpressao) dimensoes.push(`Impressão: ${produto.tipoImpressao}`);
       
       doc.text(`Dimensões: ${dimensoes.join(' | ')}`, 25, yPosition);
+      yPosition += 5;
+    }
+
+    // Cores de impressão (apenas para serigrafia)
+    if (produto.tipoImpressao === 'serigrafia' && produto.coresImpressao) {
+      doc.text(`Cores de Impressão: ${produto.coresImpressao}`, 25, yPosition);
       yPosition += 5;
     }
 
@@ -210,17 +219,37 @@ export const generateOrderPDF = (orderData: OrderData): jsPDF => {
 
     // Acabamentos especiais
     const acabamentosEspeciais = [];
-    if (produto.cordaoBranco) acabamentosEspeciais.push('Cordão Branco');
-    if (produto.cordaoPreto) acabamentosEspeciais.push('Cordão Preto');
-    if (produto.cordaoBege) acabamentosEspeciais.push('Cordão Bege');
-    if (produto.cordao) acabamentosEspeciais.push(`Cordão: ${produto.cordao}`);
-    if (produto.gorgurinho35cm) acabamentosEspeciais.push('Gorgurinho 35cm');
-    if (produto.gorgurao35cm) acabamentosEspeciais.push('Gorgurão 35cm');
-    if (produto.sFrancisco35cm) acabamentosEspeciais.push('S. Francisco 35cm');
-    if (produto.ilhos) acabamentosEspeciais.push('Ilhós');
-    if (produto.hotStampSacola) acabamentosEspeciais.push('Hot Stamp (Sacola)');
-    if (produto.hotStampEtiqueta) acabamentosEspeciais.push('Hot Stamp (Etiqueta)');
-    if (produto.outros) acabamentosEspeciais.push(`Outros: ${produto.outros}`);
+    
+    // Tipo de cordão
+    if (produto.finishing?.cordao && produto.finishing.cordao !== 'nenhum') {
+      const cordaoLabels = {
+        'padrão': 'Cordão Padrão',
+        'colorido': 'Cordão Colorido',
+        'personalizado': 'Cordão Personalizado'
+      };
+      acabamentosEspeciais.push(cordaoLabels[produto.finishing.cordao]);
+      
+      // Cor do cordão (se aplicável)
+      if (produto.finishing.corCordao) {
+        const corLabels = {
+          'branco': 'Branco',
+          'preto': 'Preto',
+          'bege': 'Bege'
+        };
+        acabamentosEspeciais.push(`Cor: ${corLabels[produto.finishing.corCordao]}`);
+      }
+    }
+    
+    // Acessórios
+    if (produto.finishing?.acessorios) {
+      if (produto.finishing.acessorios.gorgurinho35cm) acabamentosEspeciais.push('Gorgurinho 35cm');
+      if (produto.finishing.acessorios.gorgurao35cm) acabamentosEspeciais.push('Gorgurão 35cm');
+      if (produto.finishing.acessorios.sFrancisco35cm) acabamentosEspeciais.push('S. Francisco 35cm');
+      if (produto.finishing.acessorios.ilhos) acabamentosEspeciais.push('Ilhós');
+      if (produto.finishing.acessorios.hotStampSacola) acabamentosEspeciais.push('Hot Stamp (Sacola)');
+      if (produto.finishing.acessorios.hotStampEtiqueta) acabamentosEspeciais.push('Hot Stamp (Etiqueta)');
+      if (produto.finishing.acessorios.outros) acabamentosEspeciais.push(`Outros: ${produto.finishing.acessorios.outros}`);
+    }
 
     if (acabamentosEspeciais.length > 0) {
       addMultilineText(`Acabamentos Especiais: ${acabamentosEspeciais.join(', ')}`, 25, 150);

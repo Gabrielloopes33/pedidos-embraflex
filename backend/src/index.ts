@@ -441,8 +441,29 @@ initializeDb().then(() => {
   app.get('/api/wc/products', async (req, res) => {
     try {
       console.log('📦 Buscando produtos do WooCommerce com params:', req.query);
-      const { data } = await wooCommerceApi.get('products', req.query);
-      console.log(`✅ ${data.length} produtos encontrados`);
+      
+      // Primeiro, buscar a categoria "Interna"
+      const { data: categories } = await wooCommerceApi.get('products/categories', {
+        search: 'Interna',
+        per_page: 1
+      });
+      
+      let categoryId = null;
+      if (categories && categories.length > 0) {
+        categoryId = categories[0].id;
+        console.log(`📁 Categoria "Interna" encontrada com ID: ${categoryId}`);
+      } else {
+        console.warn('⚠️ Categoria "Interna" não encontrada, buscando todos os produtos');
+      }
+      
+      // Adicionar filtro de categoria aos parâmetros
+      const params = {
+        ...req.query,
+        ...(categoryId && { category: categoryId })
+      };
+      
+      const { data } = await wooCommerceApi.get('products', params);
+      console.log(`✅ ${data.length} produtos encontrados da categoria Interna`);
       res.json(data);
     } catch (error: any) {
       console.error('❌ Erro ao buscar produtos do WooCommerce:', error.response?.data || error.message);

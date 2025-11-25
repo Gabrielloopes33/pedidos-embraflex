@@ -11,7 +11,7 @@ import { ProductsStep } from "./NewOrder/components/ProductsStep";
 import { OrderDetailsStep } from "./NewOrder/components/OrderDetailsStep";
 import { OrderSuccessModal } from "@/componentes/OrderSuccessModal";
 import { createProductionOrder, createWooCommerceOrder } from "@/lib/api";
-import { generateOrderPDF } from "@/lib/pdf-generator";
+import { downloadOrderPDF } from "@/lib/pdf-generator";
 import type { NewProductionOrder, ProductionOrder } from "@/lib/types";
 
 const STEPS = [
@@ -109,15 +109,16 @@ export default function NewOrder() {
           laminadoFosco: false,
           vernizIE: false,
           autoMatizada: false,
-          furosPresente: '' as 'sim' | 'nao' | '',
+          furosPresente: item.finishing.furoPresente ? 'sim' : 'nao',
           refile: '',
-          cordaoBranco: false,
-          cordaoPreto: false,
-          cordaoBege: false,
-          cordao: item.finishing.cordaoColorido ? 'Colorido' : '',
-          gorgurinho35cm: item.finishing.gorgurinho,
-          gorgurao35cm: item.finishing.gorgurao,
-          sFrancisco35cm: false,
+          // Mapear cordões
+          cordaoBranco: item.finishing.cordao === 'padrão' && item.finishing.corCordao === 'branco',
+          cordaoPreto: item.finishing.cordao === 'padrão' && item.finishing.corCordao === 'preto',
+          cordaoBege: item.finishing.cordao === 'padrão' && item.finishing.corCordao === 'bege',
+          cordao: item.finishing.cordao === 'colorido' ? 'Colorido' : '',
+          gorgurinho35cm: item.finishing.cordao === 'gorgurinho',
+          gorgurao35cm: item.finishing.cordao === 'gorgurão',
+          sFrancisco35cm: item.finishing.cordao === 'são francisco',
           ilhos: item.finishing.ilhos,
           hotStampSacola: item.finishing.hotStamp,
           hotStampEtiqueta: false,
@@ -157,17 +158,26 @@ export default function NewOrder() {
   };
 
   const handleGeneratePDF = () => {
-    if (createdOrder) {
-      // Converter ProductionOrder para OrderData
-      const orderPDF: any = {
-        nomeFantasia: createdOrder.customerName,
-        razaoSocial: createdOrder.customerName,
-        cpfCnpj: '',
-        representante: '',
-        produtos: createdOrder.products,
-        total: createdOrder.products.reduce((sum, p) => sum + (p.unitPrice * p.quantity), 0)
-      };
-      generateOrderPDF(orderPDF);
+    try {
+      console.log('Gerando PDF...', createdOrder);
+      if (createdOrder) {
+        // Converter ProductionOrder para OrderData
+        const orderPDF: any = {
+          nomeFantasia: createdOrder.customerName,
+          razaoSocial: createdOrder.customerName,
+          cpfCnpj: '',
+          representante: '',
+          produtos: createdOrder.products,
+          total: createdOrder.products.reduce((sum, p) => sum + (p.unitPrice * p.quantity), 0)
+        };
+        console.log('Dados do PDF:', orderPDF);
+        downloadOrderPDF(orderPDF);
+        console.log('PDF gerado com sucesso!');
+      } else {
+        console.error('Nenhum pedido criado para gerar PDF');
+      }
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
     }
   };
 
