@@ -17,17 +17,34 @@ const port = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_super_secreto';
 
 // Configuração do CORS para permitir o frontend
-app.use(cors({
-  origin: [
-    'https://extraordinary-shortbread-ca83bc.netlify.app',
-    'http://localhost:5173',
-    'http://localhost:3000'
-  ],
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    const allowedOrigins = [
+      'https://extraordinary-shortbread-ca83bc.netlify.app',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    ];
+    
+    // Permitir requisições sem origin (mobile apps, Postman, etc)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('❌ Origin bloqueada pelo CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With'],
+  maxAge: 86400 // 24 horas de cache para preflight
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Handler para requisições OPTIONS (preflight)
+app.options('*', cors(corsOptions));
 
 // Estendendo a interface Request do Express para incluir o usuário
 interface AuthenticatedRequest extends Request {
@@ -40,6 +57,11 @@ interface AuthenticatedRequest extends Request {
 
 // Middleware de autenticação
 const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  // Permitir requisições OPTIONS (preflight) sem autenticação
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -59,6 +81,24 @@ const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextF
 
 initializeDb().then(() => {
   console.log('Banco de dados Supabase conectado e inicializado.');
+
+  // --- ROTA DE HEALTH CHECK ---
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      service: 'Embraflex Backend API'
+    });
+  });
+
+  app.get('/api/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      service: 'Embraflex Backend API',
+      database: 'connected'
+    });
+  });
 
   // --- ROTA DE AUTENTICAÇÃO ---
   app.post('/api/auth/login', async (req, res) => {
@@ -403,11 +443,16 @@ initializeDb().then(() => {
 
   app.get('/api/wc/products', async (req, res) => {
     try {
+      console.log('📦 Buscando produtos do WooCommerce com params:', req.query);
       const { data } = await wooCommerceApi.get('products', req.query);
+      console.log(`✅ ${data.length} produtos encontrados`);
       res.json(data);
     } catch (error: any) {
-      console.error('Erro ao buscar produtos do WooCommerce:', error.response?.data);
-      res.status(500).json({ message: 'Falha ao buscar produtos do WooCommerce.' });
+      console.error('❌ Erro ao buscar produtos do WooCommerce:', error.response?.data || error.message);
+      res.status(500).json({ 
+        message: 'Falha ao buscar produtos do WooCommerce.',
+        error: error.response?.data || error.message 
+      });
     }
   });
 

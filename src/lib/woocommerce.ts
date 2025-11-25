@@ -4,10 +4,17 @@ import type { ProductsParams, WooCommerceProduct } from './types'; // Importar t
 // Buscar produtos através do nosso backend (proxy)
 export const getProducts = async (params?: ProductsParams): Promise<WooCommerceProduct[]> => {
   try {
+    console.log('🔍 Buscando produtos via proxy com params:', params);
     const response = await apiClient.get(`/wc/products`, { params });
+    console.log('✅ Produtos recebidos:', response.data?.length || 0);
     return response.data;
-  } catch (error) {
-    console.error('Erro ao buscar produtos via proxy:', error);
+  } catch (error: any) {
+    console.error('❌ Erro ao buscar produtos via proxy:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
     throw error;
   }
 };
