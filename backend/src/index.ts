@@ -43,9 +43,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Handler para requisições OPTIONS (preflight)
-app.options('*', cors(corsOptions));
-
 // Estendendo a interface Request do Express para incluir o usuário
 interface AuthenticatedRequest extends Request {
   user?: {
