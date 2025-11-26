@@ -47,127 +47,69 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       discriminacaoProduto: product.name,
     };
 
-    // Verificar se é produto variável
-    const isVariable = product.type === 'variable';
-    setIsVariableProduct(isVariable);
+    // Pegar "Cor de Impressão" como tipo de impressão
+    const impressionAttr = product.attributes?.find(attr => {
+      const attrName = attr.name.toLowerCase();
+      return attrName.includes('cor de impressão') || attrName.includes('cor de impressao');
+    });
     
-    console.log('🔍 Produto selecionado:', product.name, '- Tipo:', product.type);
+    if (impressionAttr && impressionAttr.options) {
+      setAvailableImpressionTypes(impressionAttr.options);
+      // Definir o primeiro como padrão
+      updatedItem.tipoImpressao = impressionAttr.options[0]?.toLowerCase() || '';
+    }
 
-    // Se for produto variável, buscar variações
-    if (isVariable) {
-      try {
-        console.log('📦 Buscando variações do produto...');
-        const variations = await getProductVariations(product.id);
-        console.log('✅ Variações encontradas:', variations.length);
-        setProductVariations(variations);
-        
-        // Processar variações para extrair quantidades e preços
-        const quantityMap = new Map<number, number>();
-        const quantitiesSet = new Set<number>(); // Usar Set para evitar duplicatas
-        
-        variations.forEach((variation: ProductVariation) => {
-          // Procurar atributo de quantidade
-          const qtyAttr = variation.attributes.find(attr => {
-            const attrName = attr.name.toLowerCase();
-            return attrName.includes('quantidade') || attrName.includes('qtd');
-          });
-          
-          if (qtyAttr) {
-            const qty = parseInt(qtyAttr.option.replace(/\D/g, ''));
-            if (!isNaN(qty) && qty > 0 && !quantitiesSet.has(qty)) {
-              quantitiesSet.add(qty);
-              const price = parseFloat(variation.price || variation.regular_price || '0');
-              quantityMap.set(qty, price);
-              console.log(`  📊 Variação: ${qty} un = R$ ${price}`);
-            }
-          }
-        });
-        
-        // Converter Set para Array e ordenar
-        const quantities = Array.from(quantitiesSet).sort((a, b) => a - b);
-        setAvailableQuantities(quantities);
-        setPriceByQuantity(quantityMap);
-        
-        // Definir quantidade e preço inicial
-        if (quantities.length > 0) {
-          updatedItem.quantity = quantities[0];
-          updatedItem.unitPrice = quantityMap.get(quantities[0]) || 0;
-          console.log(`💰 Preço inicial (variável): ${quantities[0]} un = R$ ${updatedItem.unitPrice}`);
+    // Pegar quantidade disponível do atributo
+    const quantityAttr = product.attributes?.find(attr => {
+      const attrName = attr.name.toLowerCase();
+      return attrName.includes('quantidade') || attrName.includes('qtd');
+    });
+    
+    if (quantityAttr && quantityAttr.options) {
+      const quantities = quantityAttr.options
+        .map(q => parseInt(q.replace(/\D/g, '')))
+        .filter(q => !isNaN(q) && q > 0);
+      setAvailableQuantities(quantities);
+      if (quantities.length > 0) {
+        updatedItem.quantity = quantities[0];
+      }
+    }
+
+    // Buscar preços por quantidade nos meta_data do produto
+    // Formato esperado: "1000:2.22|1500:2.10|3000:2.01"
+    const priceMetaData = product.meta_data?.find(meta => 
+      meta.key === 'precos_por_quantidade' || meta.key === '_precos_por_quantidade'
+    );
+    
+    console.log('🔍 Procurando preços por quantidade no produto:', product.name);
+    console.log('📦 Meta data do produto:', product.meta_data);
+    
+    if (priceMetaData && typeof priceMetaData.value === 'string') {
+      console.log('✅ Meta data de preços encontrado:', priceMetaData.value);
+      const priceMap = new Map<number, number>();
+      const priceEntries = priceMetaData.value.split('|');
+      
+      priceEntries.forEach(entry => {
+        const [qty, price] = entry.split(':');
+        const qtyNum = parseInt(qty);
+        const priceNum = parseFloat(price);
+        if (!isNaN(qtyNum) && !isNaN(priceNum)) {
+          priceMap.set(qtyNum, priceNum);
+          console.log(`  📊 Adicionado: ${qtyNum} un = R$ ${priceNum}`);
         }
-        
-      } catch (error) {
-        console.error('Erro ao buscar variações:', error);
+      });
+      
+      setPriceByQuantity(priceMap);
+      console.log('✅ Tabela de preços carregada:', Array.from(priceMap.entries()));
+      
+      // Definir o preço inicial baseado na primeira quantidade
+      if (updatedItem.quantity && priceMap.has(updatedItem.quantity)) {
+        updatedItem.unitPrice = priceMap.get(updatedItem.quantity)!;
+        console.log(`💰 Preço inicial definido: ${updatedItem.quantity} un = R$ ${updatedItem.unitPrice}`);
       }
     } else {
-      // Produto simples - usar lógica anterior
-      console.log('📝 Produto simples - buscando atributos...');
-      
-      // Pegar "Cor de Impressão" como tipo de impressão
-      const impressionAttr = product.attributes?.find(attr => {
-        const attrName = attr.name.toLowerCase();
-        return attrName.includes('cor de impressão') || attrName.includes('cor de impressao');
-      });
-      
-      if (impressionAttr && impressionAttr.options) {
-        setAvailableImpressionTypes(impressionAttr.options);
-        updatedItem.tipoImpressao = impressionAttr.options[0]?.toLowerCase() || '';
-      }
-
-      // Pegar quantidade disponível do atributo
-      const quantityAttr = product.attributes?.find(attr => {
-        const attrName = attr.name.toLowerCase();
-        return attrName.includes('quantidade') || attrName.includes('qtd');
-      });
-      
-      if (quantityAttr && quantityAttr.options) {
-        // Usar Set para evitar duplicatas
-        const quantitiesSet = new Set<number>();
-        quantityAttr.options.forEach(q => {
-          const qty = parseInt(q.replace(/\D/g, ''));
-          if (!isNaN(qty) && qty > 0) {
-            quantitiesSet.add(qty);
-          }
-        });
-        const quantities = Array.from(quantitiesSet).sort((a, b) => a - b);
-        setAvailableQuantities(quantities);
-        if (quantities.length > 0) {
-          updatedItem.quantity = quantities[0];
-        }
-      }
-
-      // Buscar preços por quantidade nos meta_data do produto
-      const priceMetaData = product.meta_data?.find(meta => 
-        meta.key === 'precos_por_quantidade' || meta.key === '_precos_por_quantidade'
-      );
-      
-      console.log('🔍 Procurando preços por quantidade no meta_data...');
-      
-      if (priceMetaData && typeof priceMetaData.value === 'string') {
-        console.log('✅ Meta data de preços encontrado:', priceMetaData.value);
-        const priceMap = new Map<number, number>();
-        const priceEntries = priceMetaData.value.split('|');
-        
-        priceEntries.forEach(entry => {
-          const [qty, price] = entry.split(':');
-          const qtyNum = parseInt(qty);
-          const priceNum = parseFloat(price);
-          if (!isNaN(qtyNum) && !isNaN(priceNum)) {
-            priceMap.set(qtyNum, priceNum);
-            console.log(`  📊 Adicionado: ${qtyNum} un = R$ ${priceNum}`);
-          }
-        });
-        
-        setPriceByQuantity(priceMap);
-        
-        // Definir o preço inicial baseado na primeira quantidade
-        if (updatedItem.quantity && priceMap.has(updatedItem.quantity)) {
-          updatedItem.unitPrice = priceMap.get(updatedItem.quantity)!;
-          console.log(`💰 Preço inicial: ${updatedItem.quantity} un = R$ ${updatedItem.unitPrice}`);
-        }
-      } else {
-        console.log('⚠️ Meta data de preços NÃO encontrado');
-        setPriceByQuantity(new Map());
-      }
+      console.log('⚠️ Meta data de preços NÃO encontrado');
+      setPriceByQuantity(new Map()); // Limpar mapa se não houver preços
     }
 
     // Pegar largura e altura dos atributos
@@ -221,9 +163,6 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
   const handleClearProduct = () => {
     setAvailableImpressionTypes([]);
     setAvailableQuantities([]);
-    setPriceByQuantity(new Map());
-    setProductVariations([]);
-    setIsVariableProduct(false);
     onUpdate(index, {
       ...item,
       productId: 0,
@@ -251,16 +190,6 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
         updatedItem.unitPrice = newPrice;
       } else {
         console.log('⚠️ Preço não encontrado para quantidade', newQuantity);
-        // Tentar encontrar o preço mais próximo
-        const sortedQtys = Array.from(priceByQuantity.keys()).sort((a, b) => a - b);
-        const closestQty = sortedQtys.reduce((prev, curr) => {
-          return Math.abs(curr - newQuantity) < Math.abs(prev - newQuantity) ? curr : prev;
-        });
-        if (closestQty) {
-          const closestPrice = priceByQuantity.get(closestQty)!;
-          console.log(`ℹ️ Usando preço da quantidade mais próxima (${closestQty}): R$ ${closestPrice}`);
-          updatedItem.unitPrice = closestPrice;
-        }
       }
     }
     
@@ -285,14 +214,7 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-lg">
-          Produto {index + 1}
-          {isVariableProduct && (
-            <span className="ml-2 text-xs text-muted-foreground font-normal">
-              (Produto Variável)
-            </span>
-          )}
-        </CardTitle>
+        <CardTitle className="text-lg">Produto {index + 1}</CardTitle>
         <Button
           type="button"
           variant="ghost"
@@ -334,31 +256,6 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
 
         {/* Resumo de Preços */}
         <div className="bg-primary/5 rounded-md p-4 space-y-2">
-          {priceByQuantity.size > 0 && (
-            <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
-              <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                📊 Tabela de Preços por Quantidade:
-              </p>
-              <div className="grid grid-cols-2 gap-1 text-xs">
-                {Array.from(priceByQuantity.entries())
-                  .sort((a, b) => a[0] - b[0])
-                  .map(([qty, price]) => (
-                    <div 
-                      key={qty} 
-                      className={`flex justify-between px-2 py-1 rounded ${
-                        item.quantity === qty 
-                          ? 'bg-blue-200 dark:bg-blue-900 font-semibold' 
-                          : 'bg-blue-100 dark:bg-blue-950'
-                      }`}
-                    >
-                      <span>{qty} un:</span>
-                      <span>R$ {price.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-          
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Valor base unitário:</span>
             <span className="font-medium">

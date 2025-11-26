@@ -122,7 +122,7 @@ initializeDb().then(() => {
       }
 
       const tokenPayload = { id: user.id, role: user.role, username: user.username };
-      const accessToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '8h' });
+      const accessToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '12h' });
 
       res.json({ accessToken, user: tokenPayload });
 
@@ -442,28 +442,43 @@ initializeDb().then(() => {
     try {
       console.log('📦 Buscando produtos do WooCommerce com params:', req.query);
       
-      // Primeiro, buscar a categoria "Interna"
+      // Buscar a categoria "Interno" (ou "Interna")
       const { data: categories } = await wooCommerceApi.get('products/categories', {
-        search: 'Interna',
-        per_page: 1
+        search: 'Interno',
+        per_page: 10
       });
       
       let categoryId = null;
       if (categories && categories.length > 0) {
-        categoryId = categories[0].id;
-        console.log(`📁 Categoria "Interna" encontrada com ID: ${categoryId}`);
+        // Procurar categoria com nome exato "Interno" ou "Interna"
+        const internoCategory = categories.find((cat: any) => 
+          cat.name.toLowerCase() === 'interno' || 
+          cat.name.toLowerCase() === 'interna'
+        );
+        
+        if (internoCategory) {
+          categoryId = internoCategory.id;
+          console.log(`📁 Categoria "${internoCategory.name}" encontrada com ID: ${categoryId}`);
+        } else {
+          console.warn('⚠️ Categoria "Interno" não encontrada nas categorias:', categories.map((c: any) => c.name));
+        }
       } else {
-        console.warn('⚠️ Categoria "Interna" não encontrada, buscando todos os produtos');
+        console.warn('⚠️ Nenhuma categoria encontrada com busca "Interno"');
       }
       
-      // Adicionar filtro de categoria aos parâmetros
+      // SEMPRE adicionar filtro de categoria - se não encontrou, retorna vazio
+      if (!categoryId) {
+        console.log('❌ Categoria Interno não encontrada - retornando lista vazia');
+        return res.json([]);
+      }
+      
       const params = {
         ...req.query,
-        ...(categoryId && { category: categoryId })
+        category: categoryId.toString()
       };
       
       const { data } = await wooCommerceApi.get('products', params);
-      console.log(`✅ ${data.length} produtos encontrados da categoria Interna`);
+      console.log(`✅ ${data.length} produtos encontrados da categoria Interno`);
       res.json(data);
     } catch (error: any) {
       console.error('❌ Erro ao buscar produtos do WooCommerce:', error.response?.data || error.message);
@@ -485,11 +500,106 @@ initializeDb().then(() => {
     }
   });
 
-  // Proxy para buscar categorias de produtos
+  // Buscar preço variável por quantidade
+  app.get('/api/wc/products/:id/price', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { quantity } = req.query;
+      
+      const { data: product } = await wooCommerceApi.get(`products/${id}`);
+      
+      // Verificar tier pricing no meta_data
+      let price = parseFloat(product.sale_price || product.price || product.regular_price || '0');
+      
+      if (quantity && product.meta_data) {
+        const qty = parseInt(quantity as string, 10);
+        const tierPricingMeta = product.meta_data.find(
+          (meta: any) => meta.key === '_tier_pricing' || meta.key === 'tier_pricing'
+        );
+
+        if (tierPricingMeta && tierPricingMeta.value) {
+          let tiers: any[] = [];
+          
+          if (typeof tierPricingMeta.value === 'string') {
+            try {
+              tiers = JSON.parse(tierPricingMeta.value);
+            } catch (e) {
+              console.warn('Erro ao parsear tier pricing:', e);
+            }
+          } else if (Array.isArray(tierPricingMeta.value)) {
+            tiers = tierPricingMeta.value;
+          }
+
+          for (const tier of tiers) {
+            const minQty = tier.min_qty || tier.min || 0;
+            const maxQty = tier.max_qty || tier.max || null;
+            
+            if (qty >= minQty && (maxQty === null || qty <= maxQty)) {
+              const tierPrice = parseFloat(tier.price || '0');
+              if (!isNaN(tierPrice)) {
+                price = tierPrice;
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      res.json({
+        productId: product.id,
+        productName: product.name,
+        quantity: quantity ? parseInt(quantity as string, 10) : 1,
+        price: price,
+        formattedPrice: `R$ ${price.toFixed(2).replace('.', ',')}`
+      });
+    } catch (error: any) {
+      console.error('Erro ao buscar preço do produto:', error.response?.data);
+      res.status(500).json({ message: 'Falha ao buscar preço do produto.' });
+    }
+  });
+
+  // Buscar variações de um produto variável
+  app.get('/api/wc/products/:id/variations', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { data } = await wooCommerceApi.get(`products/${id}/variations`, {
+        per_page: 100
+      });
+      res.json(data);
+    } catch (error: any) {
+      console.error('Erro ao buscar variações do produto:', error.response?.data);
+      res.status(500).json({ message: 'Falha ao buscar variações do produto.' });
+    }
+  });
+
+  // Buscar variação específica de um produto
+  app.get('/api/wc/products/:id/variations/:variationId', async (req, res) => {
+    try {
+      const { id, variationId } = req.params;
+      const { data } = await wooCommerceApi.get(`products/${id}/variations/${variationId}`);
+      res.json(data);
+    } catch (error: any) {
+      console.error('Erro ao buscar variação do produto:', error.response?.data);
+      res.status(500).json({ message: 'Falha ao buscar variação do produto.' });
+    }
+  });
+
+  // Proxy para buscar categorias de produtos (apenas INTERNO)
   app.get('/api/wc/products/categories', async (req, res) => {
     try {
-      const { data } = await wooCommerceApi.get('products/categories', req.query);
-      res.json(data);
+      // Buscar apenas a categoria "Interno" ou "Interna"
+      const { data: allCategories } = await wooCommerceApi.get('products/categories', {
+        per_page: 100
+      });
+      
+      // Filtrar apenas categorias que contenham "Interno" no nome
+      const internoCategories = allCategories.filter((cat: any) => {
+        const name = cat.name.toLowerCase();
+        return name === 'interno' || name === 'interna' || name.includes('intern');
+      });
+      
+      console.log('📁 Categorias filtradas (apenas INTERNO):', internoCategories.map((c: any) => c.name));
+      res.json(internoCategories);
     } catch (error: any) {
       console.error('Erro ao buscar categorias do WooCommerce:', error.response?.data);
       res.status(500).json({ message: 'Falha ao buscar categorias do WooCommerce.' });

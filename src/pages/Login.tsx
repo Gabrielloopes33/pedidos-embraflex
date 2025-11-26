@@ -24,6 +24,10 @@ const Login = () => {
       // Armazenar o token e os dados do usuário
       localStorage.setItem('authToken', accessToken);
       localStorage.setItem('user', JSON.stringify(user));
+      
+      // Armazenar timestamp de expiração (12 horas a partir de agora)
+      const expirationTime = new Date().getTime() + (12 * 60 * 60 * 1000);
+      localStorage.setItem('tokenExpiration', expirationTime.toString());
 
       toast.success("Login realizado com sucesso!");
       

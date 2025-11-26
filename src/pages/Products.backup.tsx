@@ -23,145 +23,12 @@ interface Category {
   count?: number;
 }
 
-// Cores para cada categoria
-const getCategoryColor = (categoryName: string): { bg: string; text: string; badge: string; border: string } => {
-  const lowerName = categoryName.toLowerCase();
-  
-  // Mapeamento de cores baseado na imagem de referência (UI/UX)
-  
-  // Linha Econômica: cores claras e amigáveis
-  if (lowerName.includes('econômica') || lowerName.includes('economica')) {
-    return { 
-      bg: 'bg-amber-50/80 dark:bg-amber-950/30', 
-      text: 'text-amber-900 dark:text-amber-100',
-      badge: 'bg-amber-200 text-amber-900 hover:bg-amber-300',
-      border: 'border-amber-200 dark:border-amber-800'
-    };
-  }
-
-  // Linha Premium: tons escuros/metálicos (sofisticada, exclusiva)
-  if (lowerName.includes('premium')) {
-    return { 
-      bg: 'bg-slate-100 dark:bg-slate-900', 
-      text: 'text-slate-900 dark:text-slate-100',
-      badge: 'bg-slate-800 text-white hover:bg-slate-700',
-      border: 'border-slate-300 dark:border-slate-700'
-    };
-  }
-
-  // Linha Técnica: azul, cinza (precisão, robustez)
-  if (lowerName.includes('técnica') || lowerName.includes('tecnica')) {
-    return { 
-      bg: 'bg-blue-50/80 dark:bg-blue-950/30', 
-      text: 'text-blue-900 dark:text-blue-100',
-      badge: 'bg-blue-600 text-white hover:bg-blue-700',
-      border: 'border-blue-200 dark:border-blue-800'
-    };
-  }
-
-  // Linha Sustentável: verdes (natural, ecológica)
-  if (lowerName.includes('sustentável') || lowerName.includes('sustentavel')) {
-    return { 
-      bg: 'bg-emerald-50/80 dark:bg-emerald-950/30', 
-      text: 'text-emerald-900 dark:text-emerald-100',
-      badge: 'bg-emerald-600 text-white hover:bg-emerald-700',
-      border: 'border-emerald-200 dark:border-emerald-800'
-    };
-  }
-
-  // Linha Infantil / Criativa: amarelo, laranja, roxo (lúdica, vibrante)
-  if (lowerName.includes('infantil') || lowerName.includes('criativa')) {
-    return { 
-      bg: 'bg-purple-50/80 dark:bg-purple-950/30', 
-      text: 'text-purple-900 dark:text-purple-100',
-      badge: 'bg-purple-500 text-white hover:bg-purple-600',
-      border: 'border-purple-200 dark:border-purple-800'
-    };
-  }
-  
-  // Manter compatibilidade com mapeamento antigo por quantidade (fallback)
-  if (lowerName.includes('100 unidades') || lowerName === '100 unidades') {
-    return { 
-      bg: 'bg-blue-50 dark:bg-blue-950', 
-      text: 'text-blue-900 dark:text-blue-100',
-      badge: 'bg-blue-500 text-white',
-      border: 'border-blue-200 dark:border-blue-800'
-    };
-  }
-  if (lowerName.includes('1000 unidades') || lowerName === '1000 unidades') {
-    return { 
-      bg: 'bg-purple-50 dark:bg-purple-950', 
-      text: 'text-purple-900 dark:text-purple-100',
-      badge: 'bg-purple-500 text-white',
-      border: 'border-purple-200 dark:border-purple-800'
-    };
-  }
-  if (lowerName.includes('150 unidades') || lowerName === '150 unidades') {
-    return { 
-      bg: 'bg-green-50 dark:bg-green-950', 
-      text: 'text-green-900 dark:text-green-100',
-      badge: 'bg-green-500 text-white',
-      border: 'border-green-200 dark:border-green-800'
-    };
-  }
-  if (lowerName.includes('1500 unidades') || lowerName === '1500 unidades') {
-    return { 
-      bg: 'bg-orange-50 dark:bg-orange-950', 
-      text: 'text-orange-900 dark:text-orange-100',
-      badge: 'bg-orange-500 text-white',
-      border: 'border-orange-200 dark:border-orange-800'
-    };
-  }
-  if (lowerName.includes('300 unidades') || lowerName === '300 unidades') {
-    return { 
-      bg: 'bg-pink-50 dark:bg-pink-950', 
-      text: 'text-pink-900 dark:text-pink-100',
-      badge: 'bg-pink-500 text-white',
-      border: 'border-pink-200 dark:border-pink-800'
-    };
-  }
-  if (lowerName.includes('3000 unidades') || lowerName === '3000 unidades') {
-    return { 
-      bg: 'bg-indigo-50 dark:bg-indigo-950', 
-      text: 'text-indigo-900 dark:text-indigo-100',
-      badge: 'bg-indigo-500 text-white',
-      border: 'border-indigo-200 dark:border-indigo-800'
-    };
-  }
-  if (lowerName.includes('50 unidades') || lowerName === '50 unidades') {
-    return { 
-      bg: 'bg-teal-50 dark:bg-teal-950', 
-      text: 'text-teal-900 dark:text-teal-100',
-      badge: 'bg-teal-500 text-white',
-      border: 'border-teal-200 dark:border-teal-800'
-    };
-  }
-  if (lowerName.includes('500 unidades') || lowerName === '500 unidades') {
-    return { 
-      bg: 'bg-amber-50 dark:bg-amber-950', 
-      text: 'text-amber-900 dark:text-amber-100',
-      badge: 'bg-amber-500 text-white',
-      border: 'border-amber-200 dark:border-amber-800'
-    };
-  }
-  
-  // Default para categorias não mapeadas
-  return { 
-    bg: 'bg-gray-50 dark:bg-gray-950', 
-    text: 'text-gray-900 dark:text-gray-100',
-    badge: 'bg-gray-500 text-white',
-    border: 'border-gray-200 dark:border-gray-800'
-  };
-};
-
 const ProductCarousel = ({ 
   products, 
-  onProductClick,
-  categoryColor
+  onProductClick 
 }: { 
   products: WooCommerceProduct[];
   onProductClick: (product: WooCommerceProduct) => void;
-  categoryColor: ReturnType<typeof getCategoryColor>;
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -218,7 +85,6 @@ const ProductCarousel = ({
             key={product.id} 
             product={product} 
             onClick={() => onProductClick(product)}
-            categoryColor={categoryColor}
           />
         ))}
       </div>
@@ -239,19 +105,35 @@ const ProductCarousel = ({
 
 const ProductCard = ({ 
   product, 
-  onClick,
-  categoryColor
+  onClick 
 }: { 
   product: WooCommerceProduct;
   onClick: () => void;
-  categoryColor: ReturnType<typeof getCategoryColor>;
 }) => {
   const price = calculatePriceByQuantity(product, 1);
   const priceTiers = getPriceTiers(product);
 
+  const getStockStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+    const variantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      'instock': 'default',
+      'outofstock': 'destructive',
+      'onbackorder': 'secondary',
+    };
+    return variantMap[status] || 'outline';
+  };
+
+  const getStockStatusText = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'instock': 'Em estoque',
+      'outofstock': 'Fora de estoque',
+      'onbackorder': 'Sob encomenda',
+    };
+    return statusMap[status] || status;
+  };
+
   return (
     <Card 
-      className={`flex-shrink-0 shadow-md hover:shadow-xl transition-all cursor-pointer hover:scale-105 duration-200 border-2 ${categoryColor.border}`}
+      className="flex-shrink-0 shadow-md hover:shadow-xl transition-all cursor-pointer hover:scale-105 duration-200"
       onClick={onClick}
       style={{ width: 'calc(22.5% - 12px)', minWidth: '200px' }}
     >
@@ -269,7 +151,7 @@ const ProductCard = ({
         )}
       </div>
       <CardContent className="p-4">
-        <h3 className="font-semibold text-sm line-clamp-2 mb-3 min-h-[2.5rem]">
+        <h3 className="font-semibold text-sm line-clamp-2 mb-2 min-h-[2.5rem]">
           {product.name}
         </h3>
         <div className="space-y-2">
@@ -288,30 +170,24 @@ const ProductCard = ({
               Preço variável por quantidade
             </p>
           )}
-          {/* Apenas Badges de Categoria - SEM badge de estoque */}
+          {/* Badges de Categoria e Estoque */}
           <div className="flex flex-wrap gap-1">
             {product.categories && product.categories.length > 0 && (
               product.categories.map((cat) => (
-                <Badge 
-                  key={cat.id} 
-                  className={`text-xs font-semibold ${categoryColor.badge}`}
-                >
+                <Badge key={cat.id} variant="outline" className="text-xs font-semibold">
                   {cat.name}
                 </Badge>
               ))
             )}
+            <Badge variant={getStockStatusVariant(product.stock_status)} className="text-xs">
+              {getStockStatusText(product.stock_status)}
+            </Badge>
           </div>
         </div>
       </CardContent>
     </Card>
   );
 };
-
-// Interface para agrupar produtos por linha
-interface ProductLine {
-  name: string;
-  products: WooCommerceProduct[];
-}
 
 const CategorySection = ({ 
   category, 
@@ -320,54 +196,20 @@ const CategorySection = ({
   category: Category;
   onProductClick: (product: WooCommerceProduct) => void;
 }) => {
-  const { data: allProducts, isLoading } = useQuery({
+  const { data: products, isLoading } = useQuery({
     queryKey: ['products-by-category', category.id],
     queryFn: () => getProducts({
       category: category.id.toString(),
-      per_page: 100,
-      orderby: 'menu_order',
-      order: 'asc'
+      per_page: 20,
+      orderby: 'popularity',
+      order: 'desc'
     }),
   });
 
-  // Agrupar produtos por linha (Linha Premium, Linha Econômica, etc.)
-  const groupProductsByLine = (): ProductLine[] => {
-    if (!allProducts || allProducts.length === 0) return [];
-    
-    const lineMap = new Map<string, WooCommerceProduct[]>();
-    
-    allProducts.forEach((product: WooCommerceProduct) => {
-      if (product.categories && product.categories.length > 0) {
-        // Procurar categorias que sejam "linhas"
-        const lineCategories = product.categories.filter(cat => {
-          const catName = cat.name.toLowerCase();
-          return catName.includes('linha') || 
-                 catName.includes('premium') || 
-                 catName.includes('econômica') || 
-                 catName.includes('economica');
-        });
-        
-        // Adicionar produto a cada linha que ele pertence
-        lineCategories.forEach(lineCat => {
-          const existing = lineMap.get(lineCat.name) || [];
-          existing.push(product);
-          lineMap.set(lineCat.name, existing);
-        });
-      }
-    });
-    
-    // Converter Map para array de ProductLine
-    return Array.from(lineMap.entries()).map(([name, products]) => ({
-      name,
-      products
-    }));
-  };
-
-  const productLines = groupProductsByLine();
-
   if (isLoading) {
     return (
-      <div className="bg-muted/30 rounded-xl p-6">
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-foreground">{category.name}</h2>
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
@@ -375,33 +217,20 @@ const CategorySection = ({
     );
   }
 
-  if (!allProducts || allProducts.length === 0 || productLines.length === 0) {
+  if (!products || products.length === 0) {
     return null;
   }
 
-  // Renderizar um carrossel para cada linha
   return (
-    <>
-      {productLines.map((line) => {
-        const colors = getCategoryColor(line.name);
-        
-        return (
-          <div key={line.name} className={`rounded-xl p-6 ${colors.bg} ${colors.border} border-2`}>
-            <div className="flex items-baseline gap-3 mb-4">
-              <h2 className={`text-2xl font-bold ${colors.text}`}>{line.name}</h2>
-              <span className={`text-sm ${colors.text} opacity-70`}>
-                {line.products.length} {line.products.length === 1 ? 'produto' : 'produtos'}
-              </span>
-            </div>
-            <ProductCarousel 
-              products={line.products} 
-              onProductClick={onProductClick}
-              categoryColor={colors}
-            />
-          </div>
-        );
-      })}
-    </>
+    <div className="space-y-4">
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-2xl font-bold text-foreground">{category.name}</h2>
+        <span className="text-sm text-muted-foreground">
+          {products.length} {products.length === 1 ? 'produto' : 'produtos'}
+        </span>
+      </div>
+      <ProductCarousel products={products} onProductClick={onProductClick} />
+    </div>
   );
 };
 
@@ -502,23 +331,19 @@ const Products = () => {
             >
               Todas as categorias
             </Button>
-            {categories.map((cat: Category) => {
-              const colors = getCategoryColor(cat.name);
-              return (
-                <Button
-                  key={cat.id}
-                  variant={selectedCategoryFilter === cat.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategoryFilter(cat.id)}
-                  className={selectedCategoryFilter === cat.id ? colors.badge : ''}
-                >
-                  {cat.name}
-                  {cat.count && cat.count > 0 && (
-                    <span className="ml-1.5 text-xs opacity-70">({cat.count})</span>
-                  )}
-                </Button>
-              );
-            })}
+            {categories.map((cat: Category) => (
+              <Button
+                key={cat.id}
+                variant={selectedCategoryFilter === cat.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategoryFilter(cat.id)}
+              >
+                {cat.name}
+                {cat.count && cat.count > 0 && (
+                  <span className="ml-1.5 text-xs opacity-70">({cat.count})</span>
+                )}
+              </Button>
+            ))}
           </div>
         </div>
       )}
@@ -532,13 +357,7 @@ const Products = () => {
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : searchResults && searchResults.length > 0 ? (
-            <div className="bg-muted/30 rounded-xl p-6">
-              <ProductCarousel 
-                products={searchResults} 
-                onProductClick={handleProductClick}
-                categoryColor={getCategoryColor('default')}
-              />
-            </div>
+            <ProductCarousel products={searchResults} onProductClick={handleProductClick} />
           ) : (
             <Card className="p-8">
               <div className="flex flex-col items-center justify-center text-center space-y-4">
@@ -561,7 +380,7 @@ const Products = () => {
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : categories && categories.length > 0 ? (
-        <div className="space-y-8">
+        <div className="space-y-12">
           {categories
             .filter((cat: Category) => {
               // Filtrar por categoria selecionada se houver
@@ -616,7 +435,7 @@ const Products = () => {
                   </div>
                   {selectedProduct.images.length > 1 && (
                     <div className="grid grid-cols-4 gap-2">
-                      {selectedProduct.images.slice(1, 5).map((image: { src: string; alt: string }, index: number) => (
+                      {selectedProduct.images.slice(1, 5).map((image, index) => (
                         <div key={index} className="w-full h-20 bg-muted rounded overflow-hidden">
                           <img
                             src={image.src}
@@ -638,14 +457,11 @@ const Products = () => {
                   </h3>
                   {selectedProduct.categories && selectedProduct.categories.length > 0 && (
                     <div className="flex gap-2 flex-wrap mt-2">
-                      {selectedProduct.categories.map((category: { id: number; name: string }) => {
-                        const colors = getCategoryColor(category.name);
-                        return (
-                          <Badge key={category.id} className={colors.badge}>
-                            {category.name}
-                          </Badge>
-                        );
-                      })}
+                      {selectedProduct.categories.map((category) => (
+                        <Badge key={category.id} variant="outline">
+                          {category.name}
+                        </Badge>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -661,7 +477,7 @@ const Products = () => {
                           type="number"
                           min="1"
                           value={selectedQuantity}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSelectedQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          onChange={(e) => setSelectedQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                           className="w-full"
                         />
                       </div>
@@ -686,7 +502,7 @@ const Products = () => {
                         <div className="bg-muted/50 rounded-lg p-3">
                           <p className="text-sm font-semibold mb-2">Tabela de Preços:</p>
                           <div className="space-y-1">
-                            {tiers.map((tier: { min: number; max: number | null; price: number }, index: number) => (
+                            {tiers.map((tier, index) => (
                               <div key={index} className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">
                                   {tier.min} - {tier.max === null ? '∞' : tier.max} unidades:
