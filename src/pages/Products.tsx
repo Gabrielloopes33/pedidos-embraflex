@@ -23,6 +23,20 @@ interface Category {
   count?: number;
 }
 
+const PRODUCT_LINE_FILTERS = [
+  { label: "Linha Premium", value: "linha premium" },
+  { label: "Linha Comercial", value: "linha comercial" },
+  { label: "Linha Econômica", value: "linha economica" },
+] as const;
+
+const normalizeLineName = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
 // Cores para cada categoria
 const getCategoryColor = (categoryName: string): { bg: string; text: string; badge: string; border: string } => {
   const lowerName = categoryName.toLowerCase();
@@ -49,33 +63,13 @@ const getCategoryColor = (categoryName: string): { bg: string; text: string; bad
     };
   }
 
-  // Linha Técnica: azul, cinza (precisão, robustez)
-  if (lowerName.includes('técnica') || lowerName.includes('tecnica')) {
+  // Linha Comercial: tons neutros e profissionais
+  if (lowerName.includes('comercial')) {
     return { 
       bg: 'bg-blue-50/80 dark:bg-blue-950/30', 
       text: 'text-blue-900 dark:text-blue-100',
       badge: 'bg-blue-600 text-white hover:bg-blue-700',
       border: 'border-blue-200 dark:border-blue-800'
-    };
-  }
-
-  // Linha Sustentável: verdes (natural, ecológica)
-  if (lowerName.includes('sustentável') || lowerName.includes('sustentavel')) {
-    return { 
-      bg: 'bg-emerald-50/80 dark:bg-emerald-950/30', 
-      text: 'text-emerald-900 dark:text-emerald-100',
-      badge: 'bg-emerald-600 text-white hover:bg-emerald-700',
-      border: 'border-emerald-200 dark:border-emerald-800'
-    };
-  }
-
-  // Linha Infantil / Criativa: amarelo, laranja, roxo (lúdica, vibrante)
-  if (lowerName.includes('infantil') || lowerName.includes('criativa')) {
-    return { 
-      bg: 'bg-purple-50/80 dark:bg-purple-950/30', 
-      text: 'text-purple-900 dark:text-purple-100',
-      badge: 'bg-purple-500 text-white hover:bg-purple-600',
-      border: 'border-purple-200 dark:border-purple-800'
     };
   }
   
@@ -315,10 +309,12 @@ interface ProductLine {
 
 const CategorySection = ({ 
   category, 
-  onProductClick 
+  onProductClick,
+  selectedLineFilter
 }: { 
   category: Category;
   onProductClick: (product: WooCommerceProduct) => void;
+  selectedLineFilter: string | null;
 }) => {
   const { data: allProducts, isLoading } = useQuery({
     queryKey: ['products-by-category', category.id],
@@ -343,6 +339,7 @@ const CategorySection = ({
           const catName = cat.name.toLowerCase();
           return catName.includes('linha') || 
                  catName.includes('premium') || 
+                 catName.includes('comercial') || 
                  catName.includes('econômica') || 
                  catName.includes('economica');
         });
@@ -364,6 +361,9 @@ const CategorySection = ({
   };
 
   const productLines = groupProductsByLine();
+  const filteredLines = selectedLineFilter
+    ? productLines.filter(line => normalizeLineName(line.name).includes(selectedLineFilter))
+    : productLines;
 
   if (isLoading) {
     return (
@@ -375,14 +375,14 @@ const CategorySection = ({
     );
   }
 
-  if (!allProducts || allProducts.length === 0 || productLines.length === 0) {
+  if (!allProducts || allProducts.length === 0 || filteredLines.length === 0) {
     return null;
   }
 
   // Renderizar um carrossel para cada linha
   return (
     <>
-      {productLines.map((line) => {
+      {filteredLines.map((line) => {
         const colors = getCategoryColor(line.name);
         
         return (
@@ -410,7 +410,7 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState<WooCommerceProduct | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<number | null>(null);
+  const [selectedLineFilter, setSelectedLineFilter] = useState<string | null>(null);
 
   const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useQuery({
     queryKey: ['categories'],
@@ -490,38 +490,35 @@ const Products = () => {
         />
       </div>
 
-      {/* Filtros de Categoria */}
-      {categories && categories.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Filtrar por categoria:</p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={selectedCategoryFilter === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategoryFilter(null)}
-            >
-              Todas as categorias
-            </Button>
-            {categories.map((cat: Category) => {
-              const colors = getCategoryColor(cat.name);
-              return (
-                <Button
-                  key={cat.id}
-                  variant={selectedCategoryFilter === cat.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategoryFilter(cat.id)}
-                  className={selectedCategoryFilter === cat.id ? colors.badge : ''}
-                >
-                  {cat.name}
-                  {cat.count && cat.count > 0 && (
-                    <span className="ml-1.5 text-xs opacity-70">({cat.count})</span>
-                  )}
-                </Button>
-              );
-            })}
-          </div>
+      {/* Filtros por linha */}
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">Filtrar por linha:</p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={selectedLineFilter === null ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedLineFilter(null)}
+          >
+            Todas as linhas
+          </Button>
+          {PRODUCT_LINE_FILTERS.map((line) => {
+            const colors = getCategoryColor(line.label);
+            const isSelected = selectedLineFilter === line.value;
+
+            return (
+              <Button
+                key={line.value}
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedLineFilter(isSelected ? null : line.value)}
+                className={`${colors.badge} ${isSelected ? 'ring-2 ring-offset-2 ring-primary' : 'opacity-70 hover:opacity-100'}`}
+              >
+                {line.label}
+              </Button>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* Resultados da Busca */}
       {searchTerm && (
@@ -563,18 +560,13 @@ const Products = () => {
       ) : categories && categories.length > 0 ? (
         <div className="space-y-8">
           {categories
-            .filter((cat: Category) => {
-              // Filtrar por categoria selecionada se houver
-              if (selectedCategoryFilter !== null) {
-                return cat.id === selectedCategoryFilter;
-              }
-              return cat.count && cat.count > 0;
-            })
+            .filter((cat: Category) => cat.count && cat.count > 0)
             .map((category: Category) => (
               <CategorySection 
                 key={category.id} 
                 category={category}
                 onProductClick={handleProductClick}
+                selectedLineFilter={selectedLineFilter}
               />
             ))}
         </div>
