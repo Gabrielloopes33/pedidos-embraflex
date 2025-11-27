@@ -34,6 +34,7 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
   const [editedItem, setEditedItem] = useState<ProductItem | null>(item);
   const [availableImpressionTypes, setAvailableImpressionTypes] = useState<string[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<number[]>([]);
+  const [availableColors, setAvailableColors] = useState<string[]>([]);
   const [priceByQuantity, setPriceByQuantity] = useState<Map<number, number>>(new Map());
   const [isVariableProduct, setIsVariableProduct] = useState(false);
 
@@ -123,6 +124,30 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
         setAvailableImpressionTypes(impressionAttr.options);
         updatedItem.tipoImpressao = impressionAttr.options[0]?.toLowerCase() || '';
         console.log('✅ Tipos de impressão disponíveis:', impressionAttr.options);
+      }
+
+      // Pegar "Cores de Impressão" dos atributos
+      const colorsAttr = product.attributes?.find(attr => {
+        const attrName = attr.name.toLowerCase();
+        const attrSlug = attr.slug?.toLowerCase() || '';
+        return attrName.includes('cor de impressão') || 
+               attrName.includes('cor de impressao') ||
+               attrName.includes('cores de impressão') ||
+               attrName.includes('cores de impressao') ||
+               attrName.includes('cores') ||
+               attrSlug.includes('cor-de-impressao') ||
+               attrSlug.includes('cores-de-impressao') ||
+               attrSlug.includes('cores');
+      });
+      
+      console.log('🌈 Atributo de cores encontrado:', colorsAttr);
+      
+      if (colorsAttr && colorsAttr.options) {
+        setAvailableColors(colorsAttr.options);
+        updatedItem.coresImpressao = colorsAttr.options[0] || '';
+        console.log('✅ Cores de impressão disponíveis:', colorsAttr.options);
+      } else {
+        setAvailableColors([]);
       }
 
       // Pegar quantidade disponível do atributo
@@ -247,6 +272,7 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
     
     setAvailableImpressionTypes([]);
     setAvailableQuantities([]);
+    setAvailableColors([]);
     setPriceByQuantity(new Map());
     setIsVariableProduct(false);
     
@@ -346,6 +372,7 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
             onUpdate={handleUpdate}
             availableQuantities={availableQuantities}
             availableImpressionTypes={availableImpressionTypes}
+            availableColors={availableColors}
           />
 
           <Separator />

@@ -16,6 +16,7 @@ import { getProductionOrders } from "@/lib/api";
 import { ProductionOrder } from "@/lib/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { OrderEditModal } from "@/componentes/OrderEditModal";
 
 const statusConfig = {
   "Pendente": { label: "Aguardando", color: "bg-primary" },
@@ -31,6 +32,8 @@ const Orders = () => {
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<ProductionOrder | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -56,6 +59,17 @@ const Orders = () => {
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const handleOrderClick = (order: ProductionOrder) => {
+    setSelectedOrder(order);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveOrder = (updatedOrder: ProductionOrder) => {
+    // Atualizar a lista de pedidos
+    setOrders(orders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+    // TODO: Chamar API para salvar no backend
+  };
 
   return (
     <div className="space-y-6">
@@ -128,11 +142,11 @@ const Orders = () => {
                 <div
                   key={order.id}
                   className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-all cursor-pointer border border-transparent hover:border-primary/20"
-                  onClick={() => navigate(`/production`)}
+                  onClick={() => handleOrderClick(order)}
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <p className="font-semibold text-foreground text-lg">{order.id}</p>
+                      <p className="font-semibold text-foreground text-xl">{order.customerName}</p>
                       <Badge className={statusConfig[order.status as keyof typeof statusConfig].color}>
                         {statusConfig[order.status as keyof typeof statusConfig].label}
                       </Badge>
@@ -140,7 +154,7 @@ const Orders = () => {
                         <Badge variant="destructive">Urgente</Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                    <p className="text-xs text-muted-foreground opacity-70">ID: {order.id}</p>
                     <p className="text-xs text-muted-foreground mt-1">{order.products.length} produto(s)</p>
                   </div>
                   <div className="text-right">
@@ -152,6 +166,14 @@ const Orders = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Edição de Pedido */}
+      <OrderEditModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        order={selectedOrder}
+        onSave={handleSaveOrder}
+      />
     </div>
   );
 };

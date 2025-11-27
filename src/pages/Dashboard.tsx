@@ -144,7 +144,7 @@ const Dashboard = () => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <p className="font-semibold text-foreground">{order.id}</p>
+                      <p className="text-xl font-semibold text-foreground">{order.customerName}</p>
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[order.status as keyof typeof statusColors]}`}>
                         {order.status}
                       </span>
@@ -152,7 +152,7 @@ const Dashboard = () => {
                         <Badge variant="destructive" className="text-xs">Urgente</Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">{order.customerName}</p>
+                    <p className="text-xs text-muted-foreground opacity-70 mt-1">ID: {order.id}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>

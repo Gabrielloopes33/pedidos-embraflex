@@ -8,15 +8,37 @@ interface ProductBasicInfoProps {
   onUpdate: <K extends keyof ProductItem>(field: K, value: ProductItem[K]) => void;
   availableQuantities?: number[]; // Quantidades disponíveis vindas do produto
   availableImpressionTypes?: string[]; // Tipos de impressão vindos do produto
+  availableColors?: string[]; // Cores disponíveis vindas do produto
 }
 
-export function ProductBasicInfo({ item, onUpdate, availableQuantities, availableImpressionTypes }: ProductBasicInfoProps) {
+export function ProductBasicInfo({ item, onUpdate, availableQuantities, availableImpressionTypes, availableColors }: ProductBasicInfoProps) {
   const hasAvailableQuantities = availableQuantities && availableQuantities.length > 0;
   
   // Se o produto tiver tipos de impressão específicos, usar eles
   const impressionTypes = availableImpressionTypes && availableImpressionTypes.length > 0 
     ? availableImpressionTypes 
     : ['Digital', 'Serigrafia', 'Offset'];
+
+  // Cores padrão caso não venham do produto
+  const defaultColors = [
+    '1x0 (1 cor frente)',
+    '1x1 (1 cor frente e verso)',
+    '2x0 (2 cores frente)',
+    '2x2 (2 cores frente e verso)',
+    '4x0 (4 cores frente)',
+    '4x4 (4 cores frente e verso)',
+  ];
+
+  // Usar cores do produto se disponíveis, senão usar padrão
+  const colors = availableColors && availableColors.length > 0 
+    ? availableColors 
+    : defaultColors;
+
+  // Mostrar campo de cores se:
+  // 1. Houver cores disponíveis no produto (independente do tipo de impressão)
+  // 2. OU se o tipo for serigrafia
+  const shouldShowColors = (availableColors && availableColors.length > 0) || 
+                          item.tipoImpressao?.toLowerCase() === 'serigrafia';
 
   return (
     <>
@@ -89,10 +111,15 @@ export function ProductBasicInfo({ item, onUpdate, availableQuantities, availabl
         />
       </div>
 
-      {/* Mostrar cores de impressão apenas para serigrafia */}
-      {item.tipoImpressao?.toLowerCase() === 'serigrafia' && (
+      {/* Mostrar cores de impressão se disponível no produto ou se for serigrafia */}
+      {shouldShowColors && (
         <div className="space-y-2">
-          <Label>Cores de Impressão</Label>
+          <Label>
+            Cores de Impressão
+            {availableColors && availableColors.length > 0 && (
+              <span className="ml-2 text-xs text-muted-foreground">(do produto)</span>
+            )}
+          </Label>
           <Select
             value={item.coresImpressao}
             onValueChange={(value) => onUpdate('coresImpressao', value)}
@@ -101,12 +128,11 @@ export function ProductBasicInfo({ item, onUpdate, availableQuantities, availabl
               <SelectValue placeholder="Selecione as cores" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1x0">1x0 (1 cor frente)</SelectItem>
-              <SelectItem value="1x1">1x1 (1 cor frente e verso)</SelectItem>
-              <SelectItem value="2x0">2x0 (2 cores frente)</SelectItem>
-              <SelectItem value="2x2">2x2 (2 cores frente e verso)</SelectItem>
-              <SelectItem value="4x0">4x0 (4 cores frente)</SelectItem>
-              <SelectItem value="4x4">4x4 (4 cores frente e verso)</SelectItem>
+              {colors.map((color) => (
+                <SelectItem key={color} value={color}>
+                  {color}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
