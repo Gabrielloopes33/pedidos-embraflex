@@ -2,6 +2,10 @@
   command = "npm run build"
   publish = "dist"
 
+# Desabilitar secrets scanning para arquivos de exemplo
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = ".env.example,backend/.env.example,backend/*.sql,backend/package-lock.json,backend/src/setup-database.ts"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
