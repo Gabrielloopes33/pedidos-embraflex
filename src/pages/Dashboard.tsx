@@ -1,54 +1,82 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/componentes/ui/card";
 import { Button } from "@/componentes/ui/button";
-import { ShoppingCart, Package, Users, TrendingUp, Plus } from "lucide-react";
+import { ShoppingCart, Package, Users, TrendingUp, Plus, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const statsCards = [
-  {
-    title: "Pedidos do Mês",
-    value: "142",
-    change: "+12%",
-    icon: ShoppingCart,
-    trend: "up",
-  },
-  {
-    title: "Produtos Vendidos",
-    value: "8,234",
-    change: "+23%",
-    icon: Package,
-    trend: "up",
-  },
-  {
-    title: "Clientes Ativos",
-    value: "89",
-    change: "+5%",
-    icon: Users,
-    trend: "up",
-  },
-  {
-    title: "Faturamento",
-    value: "R$ 124.5k",
-    change: "+18%",
-    icon: TrendingUp,
-    trend: "up",
-  },
-];
-
-const recentOrders = [
-  { id: "PED-2024-001", customer: "Empresa ABC Ltda", status: "Em Produção", value: "R$ 3,450.00", date: "01/11/2025" },
-  { id: "PED-2024-002", customer: "Indústria XYZ S.A.", status: "Aguardando Aprovação", value: "R$ 8,920.00", date: "02/11/2025" },
-  { id: "PED-2024-003", customer: "Comércio 123", status: "Pronto", value: "R$ 1,250.00", date: "03/11/2025" },
-  { id: "PED-2024-004", customer: "Distribuidora Novo Mundo", status: "Em Produção", value: "R$ 5,670.00", date: "04/11/2025" },
-];
+import { useState, useEffect } from "react";
+import { getProductionOrders } from "@/lib/api";
+import { ProductionOrder } from "@/lib/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Badge } from "@/componentes/ui/badge";
 
 const statusColors = {
   "Em Produção": "bg-warning/10 text-warning",
-  "Aguardando Aprovação": "bg-primary/10 text-primary",
-  "Pronto": "bg-success/10 text-success",
+  "Pendente": "bg-primary/10 text-primary",
+  "Controle de Qualidade": "bg-success/10 text-success",
+  "Finalizado": "bg-muted/10 text-muted-foreground",
 };
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [orders, setOrders] = useState<ProductionOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const data = await getProductionOrders();
+        setOrders(data);
+      } catch (error) {
+        console.error('Erro ao carregar pedidos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  // Calcular estatísticas dos pedidos reais
+  const totalOrders = orders.length;
+  const totalProducts = orders.reduce((sum, order) => 
+    sum + order.products.reduce((pSum, p) => pSum + p.quantity, 0), 0
+  );
+  const uniqueCustomers = new Set(orders.map(o => o.customerName)).size;
+  
+  // Pegar os 4 pedidos mais recentes
+  const recentOrders = orders
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 4);
+
+  const statsCards = [
+    {
+      title: "Pedidos Ativos",
+      value: totalOrders.toString(),
+      change: "+12%",
+      icon: ShoppingCart,
+      trend: "up",
+    },
+    {
+      title: "Produtos em Produção",
+      value: totalProducts.toLocaleString('pt-BR'),
+      change: "+23%",
+      icon: Package,
+      trend: "up",
+    },
+    {
+      title: "Clientes Ativos",
+      value: uniqueCustomers.toString(),
+      change: "+5%",
+      icon: Users,
+      trend: "up",
+    },
+    {
+      title: "Pedidos Urgentes",
+      value: orders.filter(o => o.priority === 'Urgente').length.toString(),
+      change: "+18%",
+      icon: TrendingUp,
+      trend: "up",
+    },
+  ];
 
   return (
     <div className="space-y-8">
@@ -93,29 +121,42 @@ const Dashboard = () => {
           <CardTitle>Pedidos Recentes</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentOrders.map((order) => (
-              <div
-                key={order.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-colors cursor-pointer"
-                onClick={() => navigate(`/orders/${order.id}`)}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <p className="font-semibold text-foreground">{order.id}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[order.status as keyof typeof statusColors]}`}>
-                      {order.status}
-                    </span>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : recentOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Nenhum pedido encontrado</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recentOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-colors cursor-pointer"
+                  onClick={() => navigate(`/production`)}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <p className="font-semibold text-foreground">{order.id}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[order.status as keyof typeof statusColors]}`}>
+                        {order.status}
+                      </span>
+                      {order.priority === 'Urgente' && (
+                        <Badge variant="destructive" className="text-xs">Urgente</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{order.customerName}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{order.customer}</p>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
+                    <p className="text-xs text-muted-foreground">{order.products.length} produto(s)</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-foreground">{order.value}</p>
-                  <p className="text-sm text-muted-foreground">{order.date}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           <Button variant="outline" className="w-full mt-4" onClick={() => navigate("/orders")}>
             Ver Todos os Pedidos
           </Button>

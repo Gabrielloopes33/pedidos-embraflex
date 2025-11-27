@@ -49,33 +49,38 @@ export interface ProductsParams {
 export interface ProductionProduct {
   id: string;
   productId: number;
+  name: string; // Nome do produto
   productName: string;
   quantity: number;
-  codigo: string;
-  material: string;
-  discriminacaoProduto: string;
-  largura: string;
-  altura: string;
-  lateral: string;
-  cores: string;
-  laminadoBrilho: boolean;
-  laminadoFosco: boolean;
-  vernizIE: boolean;
-  autoMatizada: boolean;
-  furosPresente: 'sim' | 'nao' | '';
-  refile: string;
-  cordaoBranco: boolean;
-  cordaoPreto: boolean;
-  cordaoBege: boolean;
-  cordao: string;
-  gorgurinho35cm: boolean;
-  gorgurao35cm: boolean;
-  sFrancisco35cm: boolean;
-  ilhos: boolean;
-  hotStampSacola: boolean;
-  hotStampEtiqueta: boolean;
-  outros: string;
-  observacoes: string;
+  codigo?: string;
+  material?: string;
+  discriminacaoProduto?: string;
+  largura?: string;
+  altura?: string;
+  lateral?: string;
+  comprimentoCm?: string;
+  tipoImpressao?: string;
+  coresImpressao?: string;
+  laminadoBrilho?: boolean;
+  laminadoFosco?: boolean;
+  vernizIE?: boolean;
+  autoMatizada?: boolean;
+  furosPresente?: 'sim' | 'nao' | '';
+  refile?: string;
+  finishing?: {
+    acessorios: {
+      gorgurinho35cm?: boolean;
+      gorgurao35cm?: boolean;
+      sFrancisco35cm?: boolean;
+      ilhos?: boolean;
+      hotStampSacola?: boolean;
+      hotStampEtiqueta?: boolean;
+      outros?: string;
+    };
+    cordao?: 'nenhum' | 'padrão' | 'colorido' | 'personalizado';
+    corCordao?: 'branco' | 'preto' | 'bege';
+  };
+  observacoes?: string;
   unitPrice: number;
 }
 

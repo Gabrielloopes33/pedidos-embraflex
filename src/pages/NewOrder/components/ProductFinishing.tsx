@@ -30,6 +30,9 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
     { value: 'bege', label: 'Bege', price: FINISHING_PRICES.corCordaoBege },
   ];
 
+  // Verificar se a quantidade é menor que 1000 para desabilitar Hot Stamp
+  const isHotStampDisabled = item.quantity < 1000;
+
   return (
     <div className="space-y-6">
       <Label className="text-base font-semibold">Acabamentos</Label>
@@ -38,31 +41,43 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
       <div className="space-y-3">
         <Label className="text-sm font-medium text-muted-foreground">Acessórios</Label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-md">
-          {acessorios.map((option) => (
-            <div key={option.key} className="flex items-center space-x-2">
-              <Checkbox
-                id={`${item.productId}-${option.key}`}
-                checked={item.finishing?.[option.key] || false}
-                onCheckedChange={(checked) => {
-                  onUpdate('finishing', {
-                    ...item.finishing,
-                    [option.key]: checked === true,
-                  });
-                }}
-              />
-              <label
-                htmlFor={`${item.productId}-${option.key}`}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-              >
-                {option.label}
-                {option.price > 0 && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    (R$ {option.price.toFixed(2).replace('.', ',')})
-                  </span>
-                )}
-              </label>
-            </div>
-          ))}
+          {acessorios.map((option) => {
+            const isDisabled = option.key === 'hotStamp' && isHotStampDisabled;
+            
+            return (
+              <div key={option.key} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`${item.productId}-${option.key}`}
+                  checked={item.finishing?.[option.key] || false}
+                  disabled={isDisabled}
+                  onCheckedChange={(checked) => {
+                    onUpdate('finishing', {
+                      ...item.finishing,
+                      [option.key]: checked === true,
+                    });
+                  }}
+                />
+                <label
+                  htmlFor={`${item.productId}-${option.key}`}
+                  className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1 ${
+                    isDisabled ? 'opacity-50' : ''
+                  }`}
+                >
+                  {option.label}
+                  {option.price > 0 && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (R$ {option.price.toFixed(2).replace('.', ',')})
+                    </span>
+                  )}
+                  {isDisabled && (
+                    <span className="text-xs text-destructive ml-2">
+                      (Disponível apenas para qtd ≥ 1000)
+                    </span>
+                  )}
+                </label>
+              </div>
+            );
+          })}
         </div>
       </div>
 

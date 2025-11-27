@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/componentes/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/componentes/ui/dialog";
 import { Button } from "@/componentes/ui/button";
 import { Separator } from "@/componentes/ui/separator";
-import { Trash2 } from "lucide-react";
+import { Save, X } from "lucide-react";
 import type { ProductItem } from "../types";
 import type { WooCommerceProduct } from "@/lib/types";
 import { ProductSearch } from "./ProductSearch";
@@ -12,11 +12,11 @@ import { calculateFinishingCosts, calculateItemTotal } from "../utils/pricing";
 import { useEffect, useState } from "react";
 import { getProductVariations } from "@/lib/woocommerce";
 
-interface ProductItemEditorProps {
-  item: ProductItem;
-  index: number;
-  onUpdate: (index: number, item: ProductItem) => void;
-  onRemove: (index: number) => void;
+interface ProductFormModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  item: ProductItem | null;
+  onSave: (item: ProductItem) => void;
 }
 
 interface ProductVariation {
@@ -30,15 +30,23 @@ interface ProductVariation {
   }>;
 }
 
-export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductItemEditorProps) {
+export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFormModalProps) {
+  const [editedItem, setEditedItem] = useState<ProductItem | null>(item);
   const [availableImpressionTypes, setAvailableImpressionTypes] = useState<string[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<number[]>([]);
   const [priceByQuantity, setPriceByQuantity] = useState<Map<number, number>>(new Map());
   const [isVariableProduct, setIsVariableProduct] = useState(false);
 
+  // Sincronizar com item prop quando mudar
+  useEffect(() => {
+    setEditedItem(item);
+  }, [item]);
+
   const handleProductSelect = async (product: WooCommerceProduct) => {
+    if (!editedItem) return;
+
     const updatedItem: ProductItem = {
-      ...item,
+      ...editedItem,
       productId: product.id,
       productName: product.name,
       unitPrice: parseFloat(product.price || '0'),
@@ -61,10 +69,9 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
         
         // Processar variações para extrair quantidades e preços
         const quantityMap = new Map<number, number>();
-        const quantitiesSet = new Set<number>(); // Usar Set para evitar duplicatas
+        const quantitiesSet = new Set<number>();
         
         variations.forEach((variation: ProductVariation) => {
-          // Procurar atributo de quantidade
           const qtyAttr = variation.attributes.find(attr => {
             const attrName = attr.name.toLowerCase();
             return attrName.includes('quantidade') || attrName.includes('qtd');
@@ -81,12 +88,10 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
           }
         });
         
-        // Converter Set para Array e ordenar
         const quantities = Array.from(quantitiesSet).sort((a, b) => a - b);
         setAvailableQuantities(quantities);
         setPriceByQuantity(quantityMap);
         
-        // Definir quantidade e preço inicial
         if (quantities.length > 0) {
           updatedItem.quantity = quantities[0];
           updatedItem.unitPrice = quantityMap.get(quantities[0]) || 0;
@@ -97,7 +102,7 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
         console.error('Erro ao buscar variações:', error);
       }
     } else {
-      // Produto simples - usar lógica anterior
+      // Produto simples
       console.log('📝 Produto simples - buscando atributos...');
       
       // Pegar "Tipo de Impressão" dos atributos
@@ -127,7 +132,6 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       });
       
       if (quantityAttr && quantityAttr.options) {
-        // Usar Set para evitar duplicatas
         const quantitiesSet = new Set<number>();
         quantityAttr.options.forEach(q => {
           const qty = parseInt(q.replace(/\D/g, ''));
@@ -142,15 +146,12 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
         }
       }
 
-      // Buscar preços por quantidade nos meta_data do produto
+      // Buscar preços por quantidade nos meta_data
       const priceMetaData = product.meta_data?.find(meta => 
         meta.key === 'precos_por_quantidade' || meta.key === '_precos_por_quantidade'
       );
       
-      console.log('🔍 Procurando preços por quantidade no meta_data...');
-      
       if (priceMetaData && typeof priceMetaData.value === 'string') {
-        console.log('✅ Meta data de preços encontrado:', priceMetaData.value);
         const priceMap = new Map<number, number>();
         const priceEntries = priceMetaData.value.split('|');
         
@@ -160,19 +161,15 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
           const priceNum = parseFloat(price);
           if (!isNaN(qtyNum) && !isNaN(priceNum)) {
             priceMap.set(qtyNum, priceNum);
-            console.log(`  📊 Adicionado: ${qtyNum} un = R$ ${priceNum}`);
           }
         });
         
         setPriceByQuantity(priceMap);
         
-        // Definir o preço inicial baseado na primeira quantidade
         if (updatedItem.quantity && priceMap.has(updatedItem.quantity)) {
           updatedItem.unitPrice = priceMap.get(updatedItem.quantity)!;
-          console.log(`💰 Preço inicial: ${updatedItem.quantity} un = R$ ${updatedItem.unitPrice}`);
         }
       } else {
-        console.log('⚠️ Meta data de preços NÃO encontrado');
         setPriceByQuantity(new Map());
       }
     }
@@ -199,7 +196,6 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
              slug.includes('comprimento') || slug.includes('length');
     });
 
-    // Tentar pegar dos attributes primeiro
     if (widthAttr?.options?.[0]) {
       const widthValue = parseFloat(widthAttr.options[0].replace(',', '.').replace(/[^0-9.]/g, ''));
       if (!isNaN(widthValue) && widthValue > 0) {
@@ -221,7 +217,7 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       }
     }
 
-    // Se não encontrou nos attributes, tentar nas dimensions do produto
+    // Se não encontrou nos attributes, tentar nas dimensions
     if (!updatedItem.larguraCm && product.dimensions?.width) {
       const widthValue = parseFloat(product.dimensions.width.replace(',', '.'));
       if (!isNaN(widthValue) && widthValue > 0) {
@@ -243,16 +239,19 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       }
     }
 
-    onUpdate(index, updatedItem);
+    setEditedItem(updatedItem);
   };
 
   const handleClearProduct = () => {
+    if (!editedItem) return;
+    
     setAvailableImpressionTypes([]);
     setAvailableQuantities([]);
     setPriceByQuantity(new Map());
     setIsVariableProduct(false);
-    onUpdate(index, {
-      ...item,
+    
+    setEditedItem({
+      ...editedItem,
       productId: 0,
       productName: '',
       unitPrice: 0,
@@ -261,23 +260,21 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
   };
 
   const handleUpdate = <K extends keyof ProductItem>(field: K, value: ProductItem[K]) => {
+    if (!editedItem) return;
+    
     const updatedItem = {
-      ...item,
+      ...editedItem,
       [field]: value,
     };
     
     // Se mudou a quantidade e temos preços tabelados, atualizar o preço unitário
     if (field === 'quantity' && priceByQuantity.size > 0) {
       const newQuantity = value as number;
-      console.log('🔄 Mudança de quantidade detectada:', newQuantity);
-      console.log('📊 Tabela de preços disponível:', Array.from(priceByQuantity.entries()));
       
       if (priceByQuantity.has(newQuantity)) {
         const newPrice = priceByQuantity.get(newQuantity)!;
-        console.log('✅ Preço encontrado para quantidade', newQuantity, ':', newPrice);
         updatedItem.unitPrice = newPrice;
       } else {
-        console.log('⚠️ Preço não encontrado para quantidade', newQuantity);
         // Tentar encontrar o preço mais próximo
         const sortedQtys = Array.from(priceByQuantity.keys()).sort((a, b) => a - b);
         const closestQty = sortedQtys.reduce((prev, curr) => {
@@ -285,139 +282,156 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
         });
         if (closestQty) {
           const closestPrice = priceByQuantity.get(closestQty)!;
-          console.log(`ℹ️ Usando preço da quantidade mais próxima (${closestQty}): R$ ${closestPrice}`);
           updatedItem.unitPrice = closestPrice;
         }
       }
     }
     
-    // Recalcular total imediatamente
+    // Recalcular total
     const total = calculateItemTotal(updatedItem);
-    console.log('💰 Total recalculado:', total, 'para item:', updatedItem);
-    onUpdate(index, { ...updatedItem, total });
+    setEditedItem({ ...updatedItem, total });
   };
 
-  // Recalcular total quando os valores mudarem (backup)
+  // Recalcular total quando os valores mudarem
   useEffect(() => {
-    const total = calculateItemTotal(item);
-    if (total !== item.total) {
-      onUpdate(index, { ...item, total });
+    if (editedItem) {
+      const total = calculateItemTotal(editedItem);
+      if (total !== editedItem.total) {
+        setEditedItem({ ...editedItem, total });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.unitPrice, item.quantity, item.finishing, item.tipoImpressao]);
+  }, [editedItem?.unitPrice, editedItem?.quantity, editedItem?.finishing, editedItem?.tipoImpressao]);
 
-  const finishingCost = calculateFinishingCosts(item.finishing);
-  const unitWithFinishing = item.unitPrice + finishingCost;
+  const handleSave = () => {
+    if (editedItem) {
+      onSave(editedItem);
+      onOpenChange(false);
+    }
+  };
+
+  if (!editedItem) return null;
+
+  const finishingCost = calculateFinishingCosts(editedItem.finishing);
+  const unitWithFinishing = editedItem.unitPrice + finishingCost;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-lg">
-          Produto {index + 1}
-          {isVariableProduct && (
-            <span className="ml-2 text-xs text-muted-foreground font-normal">
-              (Produto Variável)
-            </span>
-          )}
-        </CardTitle>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onRemove(index)}
-          className="text-destructive hover:text-destructive"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <ProductSearch
-          item={item}
-          onSelect={handleProductSelect}
-          onClear={handleClearProduct}
-        />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">
+            {editedItem.productId === 0 ? 'Adicionar Produto' : 'Editar Produto'}
+            {isVariableProduct && (
+              <span className="ml-2 text-sm text-muted-foreground font-normal">
+                (Produto Variável)
+              </span>
+            )}
+          </DialogTitle>
+          <DialogDescription>
+            Preencha as informações do produto
+          </DialogDescription>
+        </DialogHeader>
 
-        <Separator />
+        <div className="space-y-6 py-4">
+          <ProductSearch
+            item={editedItem}
+            onSelect={handleProductSelect}
+            onClear={handleClearProduct}
+          />
 
-        <ProductBasicInfo 
-          item={item} 
-          onUpdate={handleUpdate}
-          availableQuantities={availableQuantities}
-          availableImpressionTypes={availableImpressionTypes}
-        />
+          <Separator />
 
-        <Separator />
+          <ProductBasicInfo 
+            item={editedItem} 
+            onUpdate={handleUpdate}
+            availableQuantities={availableQuantities}
+            availableImpressionTypes={availableImpressionTypes}
+          />
 
-        <ProductDimensions 
-          item={item} 
-          onUpdate={handleUpdate}
-        />
+          <Separator />
 
-        <Separator />
+          <ProductDimensions 
+            item={editedItem} 
+            onUpdate={handleUpdate}
+          />
 
-        <ProductFinishing item={item} onUpdate={handleUpdate} />
+          <Separator />
 
-        <Separator />
+          <ProductFinishing item={editedItem} onUpdate={handleUpdate} />
 
-        {/* Resumo de Preços */}
-        <div className="bg-primary/5 rounded-md p-4 space-y-2">
-          {priceByQuantity.size > 0 && (
-            <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
-              <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                📊 Tabela de Preços por Quantidade:
-              </p>
-              <div className="grid grid-cols-2 gap-1 text-xs">
-                {Array.from(priceByQuantity.entries())
-                  .sort((a, b) => a[0] - b[0])
-                  .map(([qty, price]) => (
-                    <div 
-                      key={qty} 
-                      className={`flex justify-between px-2 py-1 rounded ${
-                        item.quantity === qty 
-                          ? 'bg-blue-200 dark:bg-blue-900 font-semibold' 
-                          : 'bg-blue-100 dark:bg-blue-950'
-                      }`}
-                    >
-                      <span>{qty} un:</span>
-                      <span>R$ {price.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                  ))}
+          <Separator />
+
+          {/* Resumo de Preços */}
+          <div className="bg-primary/5 rounded-md p-4 space-y-2">
+            {priceByQuantity.size > 0 && (
+              <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  📊 Tabela de Preços por Quantidade:
+                </p>
+                <div className="grid grid-cols-2 gap-1 text-xs">
+                  {Array.from(priceByQuantity.entries())
+                    .sort((a, b) => a[0] - b[0])
+                    .map(([qty, price]) => (
+                      <div 
+                        key={qty} 
+                        className={`flex justify-between px-2 py-1 rounded ${
+                          editedItem.quantity === qty 
+                            ? 'bg-blue-200 dark:bg-blue-900 font-semibold' 
+                            : 'bg-blue-100 dark:bg-blue-950'
+                        }`}
+                      >
+                        <span>{qty} un:</span>
+                        <span>R$ {price.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    ))}
+                </div>
               </div>
-            </div>
-          )}
-          
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Valor base unitário:</span>
-            <span className="font-medium">
-              R$ {item.unitPrice.toFixed(2).replace('.', ',')}
-            </span>
-          </div>
-          {finishingCost > 0 && (
+            )}
+            
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Acabamentos (unitário):</span>
-              <span className="font-medium text-primary">
-                + R$ {finishingCost.toFixed(2).replace('.', ',')}
+              <span className="text-muted-foreground">Valor base unitário:</span>
+              <span className="font-medium">
+                R$ {editedItem.unitPrice.toFixed(2).replace('.', ',')}
               </span>
             </div>
-          )}
-          <div className="flex justify-between text-sm pt-2 border-t">
-            <span className="text-muted-foreground">Valor unitário final:</span>
-            <span className="font-semibold">
-              R$ {unitWithFinishing.toFixed(2).replace('.', ',')}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Quantidade:</span>
-            <span className="font-medium">{item.quantity} un</span>
-          </div>
-          <div className="flex justify-between text-base pt-2 border-t">
-            <span className="font-semibold">Total do Item:</span>
-            <span className="font-bold text-lg text-primary">
-              R$ {item.total.toFixed(2).replace('.', ',')}
-            </span>
+            {finishingCost > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Acabamentos (unitário):</span>
+                <span className="font-medium text-primary">
+                  + R$ {finishingCost.toFixed(2).replace('.', ',')}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm pt-2 border-t">
+              <span className="text-muted-foreground">Valor unitário final:</span>
+              <span className="font-semibold">
+                R$ {unitWithFinishing.toFixed(2).replace('.', ',')}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Quantidade:</span>
+              <span className="font-medium">{editedItem.quantity} un</span>
+            </div>
+            <div className="flex justify-between text-base pt-2 border-t">
+              <span className="font-semibold">Total do Item:</span>
+              <span className="font-bold text-lg text-primary">
+                R$ {editedItem.total.toFixed(2).replace('.', ',')}
+              </span>
+            </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="flex justify-end gap-2 border-t pt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <X className="w-4 h-4 mr-2" />
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} disabled={!editedItem.productName || editedItem.quantity <= 0}>
+            <Save className="w-4 h-4 mr-2" />
+            Salvar Produto
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

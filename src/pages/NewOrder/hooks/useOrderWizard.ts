@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { OrderFormData, ProductItem, CustomerData, OrderDetails } from '../types';
 
 export type WizardStep = 1 | 2 | 3;
+
+const STORAGE_KEY = 'embraflex_order_draft';
 
 const INITIAL_PRODUCT: ProductItem = {
   productId: 0,
@@ -13,6 +15,7 @@ const INITIAL_PRODUCT: ProductItem = {
   discriminacaoProduto: "",
   larguraCm: 0,
   alturaCm: 0,
+  comprimentoCm: 0,
   tipoImpressao: "",
   coresImpressao: "",
   finishing: {
@@ -41,13 +44,68 @@ const INITIAL_ORDER_DETAILS: OrderDetails = {
   notes: '',
 };
 
+const INITIAL_FORM_DATA: OrderFormData = {
+  customer: INITIAL_CUSTOMER,
+  products: [],
+  orderDetails: INITIAL_ORDER_DETAILS,
+};
+
+// Função para carregar dados do localStorage
+const loadFromStorage = (): { formData: OrderFormData; currentStep: WizardStep } | null => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      console.log('📦 Pedido em andamento recuperado do localStorage:', parsed);
+      return parsed;
+    }
+  } catch (error) {
+    console.error('Erro ao carregar pedido do localStorage:', error);
+  }
+  return null;
+};
+
+// Função para salvar dados no localStorage
+const saveToStorage = (formData: OrderFormData, currentStep: WizardStep) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ formData, currentStep }));
+    console.log('💾 Pedido salvo no localStorage');
+  } catch (error) {
+    console.error('Erro ao salvar pedido no localStorage:', error);
+  }
+};
+
+// Função para limpar dados do localStorage
+export const clearOrderDraft = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    console.log('🗑️ Rascunho do pedido removido do localStorage');
+  } catch (error) {
+    console.error('Erro ao limpar pedido do localStorage:', error);
+  }
+};
+
 export function useOrderWizard() {
+  const [isInitialized, setIsInitialized] = useState(false);
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
-  const [formData, setFormData] = useState<OrderFormData>({
-    customer: INITIAL_CUSTOMER,
-    products: [{ ...INITIAL_PRODUCT }],
-    orderDetails: INITIAL_ORDER_DETAILS,
-  });
+  const [formData, setFormData] = useState<OrderFormData>(INITIAL_FORM_DATA);
+
+  // Carregar do localStorage ao montar
+  useEffect(() => {
+    const stored = loadFromStorage();
+    if (stored) {
+      setFormData(stored.formData);
+      setCurrentStep(stored.currentStep);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Salvar no localStorage sempre que houver mudanças
+  useEffect(() => {
+    if (isInitialized) {
+      saveToStorage(formData, currentStep);
+    }
+  }, [formData, currentStep, isInitialized]);
 
   const updateCustomer = (data: Partial<CustomerData>) => {
     setFormData(prev => ({
@@ -119,6 +177,12 @@ export function useOrderWizard() {
     return true;
   };
 
+  const resetForm = () => {
+    setFormData(INITIAL_FORM_DATA);
+    setCurrentStep(1);
+    clearOrderDraft();
+  };
+
   return {
     currentStep,
     formData,
@@ -133,5 +197,6 @@ export function useOrderWizard() {
     goToStep,
     canGoNext,
     setCurrentStep,
+    resetForm,
   };
 }

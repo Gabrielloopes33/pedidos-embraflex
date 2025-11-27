@@ -20,6 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_super_secreto';
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     const allowedOrigins = [
+      'https://darling-dolphin-a2e151.netlify.app',
       'https://extraordinary-shortbread-ca83bc.netlify.app',
       'http://localhost:5173',
       'http://localhost:3000'

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/componentes/ui/card";
 import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Badge } from "@/componentes/ui/badge";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   Select,
@@ -12,32 +12,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/componentes/ui/select";
-
-const mockOrders = [
-  { id: "PED-2024-001", customer: "Empresa ABC Ltda", status: "production", value: "R$ 3,450.00", date: "01/11/2025", items: 150 },
-  { id: "PED-2024-007", customer: "Indústria XYZ S.A.", status: "pending", value: "R$ 8,920.00", date: "02/11/2025", items: 500 },
-  { id: "PED-2024-003", customer: "Comércio 123", status: "ready", value: "R$ 1,250.00", date: "03/11/2025", items: 75 },
-  { id: "PED-2024-004", customer: "Distribuidora Novo Mundo", status: "production", value: "R$ 5,670.00", date: "04/11/2025", items: 300 },
-  { id: "PED-2024-005", customer: "Atacado Premium", status: "delivered", value: "R$ 12,340.00", date: "28/10/2025", items: 850 },
-  { id: "PED-2024-006", customer: "Varejo Express", status: "cancelled", value: "R$ 2,100.00", date: "30/10/2025", items: 120 },
-];
+import { getProductionOrders } from "@/lib/api";
+import { ProductionOrder } from "@/lib/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const statusConfig = {
-  pending: { label: "Aguardando", color: "bg-primary" },
-  production: { label: "Em Produção", color: "bg-warning" },
-  ready: { label: "Pronto", color: "bg-success" },
-  delivered: { label: "Entregue", color: "bg-muted" },
-  cancelled: { label: "Cancelado", color: "bg-destructive" },
+  "Pendente": { label: "Aguardando", color: "bg-primary" },
+  "Em Produção": { label: "Em Produção", color: "bg-warning" },
+  "Controle de Qualidade": { label: "Pronto", color: "bg-success" },
+  "Finalizado": { label: "Entregue", color: "bg-muted" },
 };
 
 const Orders = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [orders, setOrders] = useState<ProductionOrder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredOrders = mockOrders.filter(order => {
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const data = await getProductionOrders();
+        setOrders(data);
+      } catch (error) {
+        console.error('Erro ao carregar pedidos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customer.toLowerCase().includes(searchTerm.toLowerCase());
+                         order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -78,40 +88,51 @@ const Orders = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="pending">Aguardando</SelectItem>
-                <SelectItem value="production">Em Produção</SelectItem>
-                <SelectItem value="ready">Pronto</SelectItem>
-                <SelectItem value="delivered">Entregue</SelectItem>
-                <SelectItem value="cancelled">Cancelado</SelectItem>
+                <SelectItem value="Pendente">Aguardando</SelectItem>
+                <SelectItem value="Em Produção">Em Produção</SelectItem>
+                <SelectItem value="Controle de Qualidade">Pronto</SelectItem>
+                <SelectItem value="Finalizado">Entregue</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {filteredOrders.map((order) => (
-              <div
-                key={order.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-all cursor-pointer border border-transparent hover:border-primary/20"
-                onClick={() => navigate(`/orders/${order.id}`)}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <p className="font-semibold text-foreground text-lg">{order.id}</p>
-                    <Badge className={statusConfig[order.status as keyof typeof statusConfig].color}>
-                      {statusConfig[order.status as keyof typeof statusConfig].label}
-                    </Badge>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Nenhum pedido encontrado</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-all cursor-pointer border border-transparent hover:border-primary/20"
+                  onClick={() => navigate(`/production`)}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="font-semibold text-foreground text-lg">{order.id}</p>
+                      <Badge className={statusConfig[order.status as keyof typeof statusConfig].color}>
+                        {statusConfig[order.status as keyof typeof statusConfig].label}
+                      </Badge>
+                      {order.priority === 'Urgente' && (
+                        <Badge variant="destructive">Urgente</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{order.products.length} produto(s)</p>
                   </div>
-                  <p className="text-sm text-muted-foreground">{order.customer}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{order.items} itens</p>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-foreground text-lg">{order.value}</p>
-                  <p className="text-sm text-muted-foreground">{order.date}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

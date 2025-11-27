@@ -9,7 +9,7 @@ interface ProductDimensionsProps {
 
 export function ProductDimensions({ item, onUpdate }: ProductDimensionsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div className="space-y-2">
         <Label>Largura (cm)</Label>
         <Input
@@ -32,6 +32,18 @@ export function ProductDimensions({ item, onUpdate }: ProductDimensionsProps) {
           placeholder="Ex: 20.0"
           disabled={item.alturaCm > 0}
           className={item.alturaCm > 0 ? 'bg-muted' : ''}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Comprimento (cm)</Label>
+        <Input
+          type="number"
+          step="0.1"
+          value={item.comprimentoCm || ''}
+          onChange={(e) => onUpdate('comprimentoCm', parseFloat(e.target.value) || 0)}
+          placeholder="Ex: 10.0"
+          disabled={item.comprimentoCm > 0}
+          className={item.comprimentoCm > 0 ? 'bg-muted' : ''}
         />
       </div>
     </div>

@@ -23,6 +23,7 @@ export interface ProductItem {
   discriminacaoProduto: string;
   larguraCm: number;
   alturaCm: number;
+  comprimentoCm: number;
   tipoImpressao: string;
   coresImpressao: string;
   finishing: Finishing;

@@ -2,9 +2,11 @@ import { Card, CardContent } from "@/componentes/ui/card";
 import { Badge } from "@/componentes/ui/badge";
 import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/componentes/ui/alert";
 import { Package, Search, Loader2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getProducts, getCategories, type WooCommerceProduct } from "@/lib/woocommerce";
+import { getProducts } from "@/lib/woocommerce";
+import type { WooCommerceProduct } from "@/lib/types";
 import { calculatePriceByQuantity, formatPrice, getPriceTiers } from "@/lib/pricing";
 import { useState, useRef } from "react";
 import {
@@ -16,11 +18,9 @@ import {
 } from "@/componentes/ui/dialog";
 import { Label } from "@/componentes/ui/label";
 
-interface Category {
-  id: number;
+interface ProductLine {
   name: string;
-  slug: string;
-  count?: number;
+  products: WooCommerceProduct[];
 }
 
 const PRODUCT_LINE_FILTERS = [
@@ -285,7 +285,7 @@ const ProductCard = ({
           {/* Apenas Badges de Categoria - SEM badge de estoque */}
           <div className="flex flex-wrap gap-1">
             {product.categories && product.categories.length > 0 && (
-              product.categories.map((cat) => (
+              product.categories.map((cat: { id: number; name: string; slug: string }) => (
                 <Badge 
                   key={cat.id} 
                   className={`text-xs font-semibold ${categoryColor.badge}`}
@@ -307,101 +307,30 @@ interface ProductLine {
   products: WooCommerceProduct[];
 }
 
-const CategorySection = ({ 
-  category, 
-  onProductClick,
-  selectedLineFilter
+// Componente para renderizar uma linha de produtos (Premium, Comercial ou Econômica)
+const ProductLineSection = ({ 
+  line, 
+  onProductClick
 }: { 
-  category: Category;
+  line: ProductLine;
   onProductClick: (product: WooCommerceProduct) => void;
-  selectedLineFilter: string | null;
 }) => {
-  const { data: allProducts, isLoading } = useQuery({
-    queryKey: ['products-by-category', category.id],
-    queryFn: () => getProducts({
-      category: category.id.toString(),
-      per_page: 100,
-      orderby: 'menu_order',
-      order: 'asc'
-    }),
-  });
-
-  // Agrupar produtos por linha (Linha Premium, Linha Econômica, etc.)
-  const groupProductsByLine = (): ProductLine[] => {
-    if (!allProducts || allProducts.length === 0) return [];
-    
-    const lineMap = new Map<string, WooCommerceProduct[]>();
-    
-    allProducts.forEach((product: WooCommerceProduct) => {
-      if (product.categories && product.categories.length > 0) {
-        // Procurar categorias que sejam "linhas"
-        const lineCategories = product.categories.filter(cat => {
-          const catName = cat.name.toLowerCase();
-          return catName.includes('linha') || 
-                 catName.includes('premium') || 
-                 catName.includes('comercial') || 
-                 catName.includes('econômica') || 
-                 catName.includes('economica');
-        });
-        
-        // Adicionar produto a cada linha que ele pertence
-        lineCategories.forEach(lineCat => {
-          const existing = lineMap.get(lineCat.name) || [];
-          existing.push(product);
-          lineMap.set(lineCat.name, existing);
-        });
-      }
-    });
-    
-    // Converter Map para array de ProductLine
-    return Array.from(lineMap.entries()).map(([name, products]) => ({
-      name,
-      products
-    }));
-  };
-
-  const productLines = groupProductsByLine();
-  const filteredLines = selectedLineFilter
-    ? productLines.filter(line => normalizeLineName(line.name).includes(selectedLineFilter))
-    : productLines;
-
-  if (isLoading) {
-    return (
-      <div className="bg-muted/30 rounded-xl p-6">
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!allProducts || allProducts.length === 0 || filteredLines.length === 0) {
-    return null;
-  }
-
-  // Renderizar um carrossel para cada linha
+  const colors = getCategoryColor(line.name);
+  
   return (
-    <>
-      {filteredLines.map((line) => {
-        const colors = getCategoryColor(line.name);
-        
-        return (
-          <div key={line.name} className={`rounded-xl p-6 ${colors.bg} ${colors.border} border-2`}>
-            <div className="flex items-baseline gap-3 mb-4">
-              <h2 className={`text-2xl font-bold ${colors.text}`}>{line.name}</h2>
-              <span className={`text-sm ${colors.text} opacity-70`}>
-                {line.products.length} {line.products.length === 1 ? 'produto' : 'produtos'}
-              </span>
-            </div>
-            <ProductCarousel 
-              products={line.products} 
-              onProductClick={onProductClick}
-              categoryColor={colors}
-            />
-          </div>
-        );
-      })}
-    </>
+    <div className={`rounded-xl p-6 ${colors.bg} ${colors.border} border-2`}>
+      <div className="flex items-baseline gap-3 mb-4">
+        <h2 className={`text-2xl font-bold ${colors.text}`}>{line.name}</h2>
+        <span className={`text-sm ${colors.text} opacity-70`}>
+          {line.products.length} {line.products.length === 1 ? 'produto' : 'produtos'}
+        </span>
+      </div>
+      <ProductCarousel 
+        products={line.products} 
+        onProductClick={onProductClick}
+        categoryColor={colors}
+      />
+    </div>
   );
 };
 
@@ -412,9 +341,14 @@ const Products = () => {
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [selectedLineFilter, setSelectedLineFilter] = useState<string | null>(null);
 
-  const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => getCategories(),
+  // Buscar TODOS os produtos de uma vez
+  const { data: allProducts, isLoading: productsLoading, error: productsError } = useQuery({
+    queryKey: ['all-products'],
+    queryFn: () => getProducts({
+      per_page: 100,
+      orderby: 'menu_order',
+      order: 'asc'
+    }),
   });
 
   const { data: searchResults, isLoading: searchLoading } = useQuery({
@@ -425,6 +359,50 @@ const Products = () => {
     }),
     enabled: searchTerm.length > 0,
   });
+
+  // Agrupar TODOS os produtos por linha (Premium, Comercial, Econômica)
+  const groupAllProductsByLine = (): ProductLine[] => {
+    if (!allProducts || allProducts.length === 0) return [];
+    
+    const lineMap = new Map<string, WooCommerceProduct[]>();
+    const processedProducts = new Set<number>();
+    
+    allProducts.forEach((product: WooCommerceProduct) => {
+      // Evitar duplicação
+      if (processedProducts.has(product.id)) return;
+      
+      if (product.categories && product.categories.length > 0) {
+        // Procurar categoria de linha
+        const lineCategory = product.categories.find((cat: { id: number; name: string; slug: string }) => {
+          const catName = cat.name.toLowerCase();
+          return catName.includes('linha') || 
+                 catName.includes('premium') || 
+                 catName.includes('comercial') || 
+                 catName.includes('econômica') || 
+                 catName.includes('economica');
+        });
+        
+        if (lineCategory) {
+          const existing = lineMap.get(lineCategory.name) || [];
+          existing.push(product);
+          lineMap.set(lineCategory.name, existing);
+          processedProducts.add(product.id);
+        }
+      }
+    });
+    
+    return Array.from(lineMap.entries()).map(([name, products]) => ({
+      name,
+      products
+    }));
+  };
+
+  const productLines = groupAllProductsByLine();
+  
+  // Filtrar linhas se houver filtro selecionado
+  const filteredLines = selectedLineFilter
+    ? productLines.filter(line => normalizeLineName(line.name).includes(selectedLineFilter))
+    : productLines;
 
   const handleProductClick = (product: WooCommerceProduct) => {
     setSelectedProduct(product);
@@ -450,7 +428,7 @@ const Products = () => {
     return variantMap[status] || 'outline';
   };
 
-  if (categoriesError) {
+  if (productsError) {
     return (
       <div className="space-y-6">
         <div>
@@ -553,35 +531,36 @@ const Products = () => {
       )}
 
       {/* Categorias com Carrosséis */}
-      {categoriesLoading ? (
+      {productsLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : categories && categories.length > 0 ? (
-        <div className="space-y-8">
-          {categories
-            .filter((cat: Category) => cat.count && cat.count > 0)
-            .map((category: Category) => (
-              <CategorySection 
-                key={category.id} 
-                category={category}
-                onProductClick={handleProductClick}
-                selectedLineFilter={selectedLineFilter}
-              />
-            ))}
+      ) : productsError ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro ao carregar produtos</AlertTitle>
+          <AlertDescription>
+            Não foi possível carregar os produtos. Tente novamente mais tarde.
+          </AlertDescription>
+        </Alert>
+      ) : filteredLines && filteredLines.length > 0 ? (
+        <div className="space-y-12">
+          {filteredLines.map((line) => (
+            <ProductLineSection 
+              key={line.name} 
+              line={line}
+              onProductClick={handleProductClick}
+            />
+          ))}
         </div>
       ) : (
-        <Card className="p-8">
-          <div className="flex flex-col items-center justify-center text-center space-y-4">
-            <Package className="w-12 h-12 text-muted-foreground" />
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">Nenhuma categoria encontrada</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Nenhuma categoria cadastrada ainda.
-              </p>
-            </div>
-          </div>
-        </Card>
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Nenhum produto encontrado</AlertTitle>
+          <AlertDescription>
+            Não foram encontrados produtos nesta linha.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Modal de Detalhes do Produto */}

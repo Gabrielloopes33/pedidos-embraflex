@@ -36,6 +36,7 @@ export default function NewOrder() {
     goToPrevious,
     canGoNext,
     goToStep,
+    resetForm,
   } = useOrderWizard();
 
   const handleSubmit = async () => {
@@ -147,6 +148,9 @@ export default function NewOrder() {
 
       setCreatedOrder(completeOrder);
       setSuccessModalOpen(true);
+      
+      // Limpar o rascunho do pedido após sucesso
+      resetForm();
       
       toast.success("Pedido criado com sucesso!");
     } catch (error) {
