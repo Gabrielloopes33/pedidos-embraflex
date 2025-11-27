@@ -30,14 +30,19 @@ const Orders = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
+        console.log('🔄 Buscando pedidos...');
         const data = await getProductionOrders();
+        console.log('✅ Pedidos recebidos:', data);
         setOrders(data);
-      } catch (error) {
-        console.error('Erro ao carregar pedidos:', error);
+        setError(null);
+      } catch (error: any) {
+        console.error('❌ Erro ao carregar pedidos:', error);
+        setError(error?.response?.data?.message || error?.message || 'Erro ao carregar pedidos');
       } finally {
         setLoading(false);
       }
@@ -100,6 +105,18 @@ const Orders = () => {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-destructive font-semibold">Erro ao carregar pedidos</p>
+              <p className="text-sm text-muted-foreground mt-2">{error}</p>
+              <Button 
+                variant="outline" 
+                className="mt-4" 
+                onClick={() => window.location.reload()}
+              >
+                Tentar novamente
+              </Button>
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="text-center py-12">

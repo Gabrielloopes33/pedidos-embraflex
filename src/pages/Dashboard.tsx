@@ -20,14 +20,19 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
+        console.log('🔄 Dashboard: Buscando pedidos...');
         const data = await getProductionOrders();
+        console.log('✅ Dashboard: Pedidos recebidos:', data);
         setOrders(data);
-      } catch (error) {
-        console.error('Erro ao carregar pedidos:', error);
+        setError(null);
+      } catch (error: any) {
+        console.error('❌ Dashboard: Erro ao carregar pedidos:', error);
+        setError(error?.response?.data?.message || error?.message || 'Erro ao carregar pedidos');
       } finally {
         setLoading(false);
       }
