@@ -44,6 +44,7 @@ const convertToProductItem = (product: ProductionProduct): ProductItem => {
               product.finishing?.cordao === 'padrão' ? 'padrão' : '',
       corCordao: product.finishing?.corCordao || '',
     },
+    discountPercent: product.discountPercent || 0,
   };
 };
 
@@ -85,6 +86,7 @@ const convertToProductionProduct = (item: ProductItem, existingProduct?: Product
       corCordao: (item.finishing.corCordao || undefined) as 'preto' | 'branco' | 'bege' | undefined,
     },
     unitPrice: item.unitPrice,
+    discountPercent: item.discountPercent || 0,
   };
 };
 
@@ -92,6 +94,7 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
   const [editedProducts, setEditedProducts] = useState<ProductItem[]>([]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [orderDiscount, setOrderDiscount] = useState<number>(0);
 
   // Sincronizar produtos quando o pedido mudar
   useEffect(() => {
@@ -390,17 +393,58 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
 
               {/* Total Geral */}
               {editedProducts.length > 0 && (
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 mt-6">
-                  <div className="flex items-center justify-between">
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 mt-6 space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-primary/20">
                     <div>
-                      <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
+                      <p className="text-sm text-muted-foreground">Subtotal do Pedido</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {editedProducts.length} {editedProducts.length === 1 ? 'produto' : 'produtos'}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-3xl font-bold text-primary">
+                      <p className="text-2xl font-semibold text-foreground">
                         R$ {orderTotal.toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Campo de Desconto */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-muted-foreground">Desconto (máx. 11%):</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="11"
+                          step="0.1"
+                          value={orderDiscount}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0;
+                            setOrderDiscount(Math.min(Math.max(value, 0), 11));
+                          }}
+                          className="w-20 px-3 py-1.5 text-sm border rounded-md text-center font-semibold"
+                        />
+                        <span className="text-sm font-medium">%</span>
+                      </div>
+                    </div>
+                    {orderDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-destructive">
+                        <span>Desconto aplicado:</span>
+                        <span className="font-semibold">
+                          - R$ {(orderTotal * (orderDiscount / 100)).toFixed(2).replace('.', ',')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-3 border-t border-primary/20">
+                    <div>
+                      <p className="text-base font-semibold text-foreground">Valor Total do Pedido</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold text-primary">
+                        R$ {(orderTotal * (1 - orderDiscount / 100)).toFixed(2).replace('.', ',')}
                       </p>
                     </div>
                   </div>

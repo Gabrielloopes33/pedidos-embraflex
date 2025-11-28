@@ -68,14 +68,22 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
         const variations = await getProductVariations(product.id);
         console.log('✅ Variações encontradas:', variations.length);
         
-        // Processar variações para extrair quantidades e preços
+        // Processar variações para extrair quantidades, preços e cores
         const quantityMap = new Map<number, number>();
         const quantitiesSet = new Set<number>();
+        const colorsSet = new Set<string>();
         
         variations.forEach((variation: ProductVariation) => {
           const qtyAttr = variation.attributes.find(attr => {
             const attrName = attr.name.toLowerCase();
             return attrName.includes('quantidade') || attrName.includes('qtd');
+          });
+          
+          const colorAttr = variation.attributes.find(attr => {
+            const attrName = attr.name.toLowerCase();
+            return attrName.includes('cor de impressão') || 
+                   attrName.includes('cor de impressao') ||
+                   attrName.includes('cores');
           });
           
           if (qtyAttr) {
@@ -87,11 +95,24 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
               console.log(`  📊 Variação: ${qty} un = R$ ${price}`);
             }
           }
+          
+          if (colorAttr && colorAttr.option) {
+            colorsSet.add(colorAttr.option);
+          }
         });
         
         const quantities = Array.from(quantitiesSet).sort((a, b) => a - b);
+        const colors = Array.from(colorsSet);
+        
         setAvailableQuantities(quantities);
         setPriceByQuantity(quantityMap);
+        
+        // Definir cores disponíveis das variações
+        if (colors.length > 0) {
+          setAvailableColors(colors);
+          updatedItem.coresImpressao = colors[0];
+          console.log('🎨 Cores de impressão disponíveis (variações):', colors);
+        }
         
         if (quantities.length > 0) {
           updatedItem.quantity = quantities[0];
@@ -439,6 +460,43 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
               <span className="text-muted-foreground">Quantidade:</span>
               <span className="font-medium">{editedItem.quantity} un</span>
             </div>
+            <div className="flex justify-between text-sm pt-2 border-t">
+              <span className="text-muted-foreground">Subtotal:</span>
+              <span className="font-semibold">
+                R$ {(unitWithFinishing * editedItem.quantity).toFixed(2).replace('.', ',')}
+              </span>
+            </div>
+            
+            {/* Campo de Desconto */}
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground flex-1">Desconto (máx. 11%):</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="11"
+                    step="0.1"
+                    value={editedItem.discountPercent || 0}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      handleUpdate('discountPercent', Math.min(Math.max(value, 0), 11));
+                    }}
+                    className="w-20 px-2 py-1 text-sm border rounded-md text-center"
+                  />
+                  <span className="text-sm font-medium">%</span>
+                </div>
+              </div>
+              {editedItem.discountPercent && editedItem.discountPercent > 0 && (
+                <div className="flex justify-between text-sm text-destructive">
+                  <span>Desconto aplicado:</span>
+                  <span className="font-medium">
+                    - R$ {((unitWithFinishing * editedItem.quantity) * (editedItem.discountPercent / 100)).toFixed(2).replace('.', ',')}
+                  </span>
+                </div>
+              )}
+            </div>
+            
             <div className="flex justify-between text-base pt-2 border-t">
               <span className="font-semibold">Total do Item:</span>
               <span className="font-bold text-lg text-primary">

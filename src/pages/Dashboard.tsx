@@ -28,7 +28,10 @@ const Dashboard = () => {
         console.log('🔄 Dashboard: Buscando pedidos...');
         const data = await getProductionOrders();
         console.log('✅ Dashboard: Pedidos recebidos:', data);
-        setOrders(data);
+        // Filtrar apenas pedidos com status "Pendente" (Aguardando Aprovação)
+        const pendingOrders = data.filter(order => order.status === 'Pendente');
+        console.log('📋 Dashboard: Pedidos pendentes filtrados:', pendingOrders.length);
+        setOrders(pendingOrders);
         setError(null);
       } catch (error: any) {
         console.error('❌ Dashboard: Erro ao carregar pedidos:', error);
@@ -123,7 +126,7 @@ const Dashboard = () => {
 
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle>Pedidos Recentes</CardTitle>
+          <CardTitle>Pedidos Aguardando Aprovação</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -132,7 +135,7 @@ const Dashboard = () => {
             </div>
           ) : recentOrders.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Nenhum pedido encontrado</p>
+              <p className="text-muted-foreground">Nenhum pedido aguardando aprovação</p>
             </div>
           ) : (
             <div className="space-y-4">

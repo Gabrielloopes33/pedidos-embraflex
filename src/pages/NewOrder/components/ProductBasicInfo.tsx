@@ -19,26 +19,13 @@ export function ProductBasicInfo({ item, onUpdate, availableQuantities, availabl
     ? availableImpressionTypes 
     : ['Digital', 'Serigrafia', 'Offset'];
 
-  // Cores padrão caso não venham do produto
-  const defaultColors = [
-    '1x0 (1 cor frente)',
-    '1x1 (1 cor frente e verso)',
-    '2x0 (2 cores frente)',
-    '2x2 (2 cores frente e verso)',
-    '4x0 (4 cores frente)',
-    '4x4 (4 cores frente e verso)',
-  ];
-
-  // Usar cores do produto se disponíveis, senão usar padrão
+  // Usar cores do produto se disponíveis, senão mostrar mensagem
   const colors = availableColors && availableColors.length > 0 
     ? availableColors 
-    : defaultColors;
+    : ['Sem cores disponíveis'];
 
-  // Mostrar campo de cores se:
-  // 1. Houver cores disponíveis no produto (independente do tipo de impressão)
-  // 2. OU se o tipo for serigrafia
-  const shouldShowColors = (availableColors && availableColors.length > 0) || 
-                          item.tipoImpressao?.toLowerCase() === 'serigrafia';
+  // Sempre mostrar o campo de cores
+  const shouldShowColors = true;
 
   return (
     <>
@@ -72,17 +59,6 @@ export function ProductBasicInfo({ item, onUpdate, availableQuantities, availabl
           )}
         </div>
         <div className="space-y-2">
-          <Label>Valor Unitário (R$)</Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={item.unitPrice}
-            onChange={(e) => onUpdate('unitPrice', parseFloat(e.target.value) || 0)}
-            placeholder="0,00"
-            className="font-semibold"
-          />
-        </div>
-        <div className="space-y-2">
           <Label>Tipo de Impressão</Label>
           <Select
             value={item.tipoImpressao}
@@ -99,6 +75,18 @@ export function ProductBasicInfo({ item, onUpdate, availableQuantities, availabl
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Valor Unitário (R$)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={item.unitPrice}
+            onChange={(e) => onUpdate('unitPrice', parseFloat(e.target.value) || 0)}
+            placeholder="0,00"
+            className="font-semibold"
+            disabled
+          />
         </div>
       </div>
 

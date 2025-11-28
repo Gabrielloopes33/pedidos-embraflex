@@ -82,6 +82,7 @@ export interface ProductionProduct {
   };
   observacoes?: string;
   unitPrice: number;
+  discountPercent?: number; // Desconto em porcentagem (máximo 11%)
 }
 
 // Ordem de produção completa

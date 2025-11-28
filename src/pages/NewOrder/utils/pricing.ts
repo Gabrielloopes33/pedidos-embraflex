@@ -48,12 +48,18 @@ export function calculateFinishingCosts(finishing: Finishing): number {
 }
 
 /**
- * Calcula o valor total de um item (preço unitário + acabamentos) * quantidade
+ * Calcula o valor total de um item (preço unitário + acabamentos) * quantidade, com desconto aplicado
  */
 export function calculateItemTotal(product: ProductItem): number {
   const finishingCost = calculateFinishingCosts(product.finishing);
   const unitWithFinishing = product.unitPrice + finishingCost;
-  return unitWithFinishing * product.quantity;
+  const subtotal = unitWithFinishing * product.quantity;
+  
+  // Aplicar desconto se houver (máximo 11%)
+  const discount = product.discountPercent ? Math.min(product.discountPercent, 11) : 0;
+  const discountAmount = subtotal * (discount / 100);
+  
+  return subtotal - discountAmount;
 }
 
 /**
