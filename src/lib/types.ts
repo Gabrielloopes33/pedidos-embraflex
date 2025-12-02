@@ -1,3 +1,14 @@
+// User Types
+export type UserRole = 'admin' | 'vendedor';
+
+export interface User {
+  id: string;
+  username: string;
+  name: string;
+  role: UserRole;
+  email?: string;
+}
+
 // WooCommerce Product Type
 export interface WooCommerceProduct {
   id: number;
@@ -94,6 +105,8 @@ export interface ProductionOrder {
   priority: 'Normal' | 'Urgente';
   notes?: string;
   createdAt: string;
+  vendedorId?: string; // ID do vendedor que criou o pedido
+  vendedorName?: string; // Nome do vendedor que criou o pedido
   history: { event: string; timestamp: string; user: string }[];
   comments: { text: string; timestamp: string; user: string }[];
 }

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/componentes/ui/card";
 import { Button } from "@/componentes/ui/button";
 import { ArrowLeft, ArrowRight, Save } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useOrderWizard } from "./NewOrder/hooks/useOrderWizard";
 import { WizardProgress } from "./NewOrder/components/WizardProgress";
@@ -13,6 +13,7 @@ import { OrderSuccessModal } from "@/componentes/OrderSuccessModal";
 import { createProductionOrder, createWooCommerceOrder } from "@/lib/api";
 import { downloadOrderPDF } from "@/lib/pdf-generator";
 import type { NewProductionOrder, ProductionOrder } from "@/lib/types";
+import type { ProductItem } from "./NewOrder/types";
 
 const STEPS = [
   { id: 1, title: "Cliente", description: "Informações do cliente" },
@@ -22,6 +23,7 @@ const STEPS = [
 
 export default function NewOrder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<ProductionOrder | null>(null);
@@ -38,6 +40,20 @@ export default function NewOrder() {
     goToStep,
     resetForm,
   } = useOrderWizard();
+
+  // Verificar se há um produto pré-preenchido vindo da página de Produtos
+  useEffect(() => {
+    const state = location.state as { prefilledProduct?: ProductItem } | null;
+    if (state?.prefilledProduct) {
+      // Adicionar o produto pré-preenchido
+      updateProducts([state.prefilledProduct]);
+      // Ir para o step de produtos
+      goToStep(2);
+      // Limpar o state para evitar adicionar novamente
+      window.history.replaceState({}, document.title);
+      toast.success("Produto adicionado! Complete as informações do pedido.");
+    }
+  }, [location.state]);
 
   const handleSubmit = async () => {
     // Validações finais

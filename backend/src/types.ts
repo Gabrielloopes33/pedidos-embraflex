@@ -42,4 +42,6 @@ export interface ProductionOrder {
   history: { event: string; timestamp: string; user: string }[];
   comments: { text: string; timestamp:string; user: string }[];
   userId?: string; // Adicionado para associar a um usuário
+  vendedorId?: string; // ID do vendedor que criou o pedido
+  vendedorName?: string; // Nome do vendedor que criou o pedido
 }

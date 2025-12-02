@@ -26,7 +26,7 @@ import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 import { ScrollArea } from '@/componentes/ui/scroll-area';
 import { toast } from 'sonner';
-import { User, Package } from 'lucide-react';
+import { User, Package, Edit } from 'lucide-react';
 import {
   getProductionOrders,
   updateProductionOrderStatus,
@@ -36,6 +36,8 @@ import { downloadOrderPDF } from '@/lib/pdf-generator';
 import { ProductionOrder } from '@/lib/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { OrderEditModal } from '@/componentes/OrderEditModal';
+import { isAdmin } from '@/lib/auth';
 
 type ColumnId = ProductionOrder['status'];
 
@@ -58,6 +60,10 @@ const ProductionPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<ProductionOrder | null>(null);
   const [newComment, setNewComment] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [orderToEdit, setOrderToEdit] = useState<ProductionOrder | null>(null);
+
+  console.log('🚀 ProductionPage montado');
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -65,10 +71,11 @@ const ProductionPage: React.FC = () => {
     try {
       const fetchedOrders = await getProductionOrders();
       setOrders(fetchedOrders);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch orders:', err);
-      setError('Erro ao carregar ordens de produção.');
-      toast.error('Erro ao carregar ordens de produção.');
+      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar ordens de produção.';
+      setError(errorMessage);
+      toast.error('Erro ao carregar ordens de produção: ' + errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -148,13 +155,43 @@ const ProductionPage: React.FC = () => {
     return orders.filter((order) => order.status === status);
   };
 
+  const handleEditOrder = () => {
+    if (selectedOrder) {
+      setOrderToEdit(selectedOrder); // Guardar o pedido para edição
+      setSelectedOrder(null); // Fechar o modal de detalhes
+      setIsEditModalOpen(true); // Abrir o modal de edição
+    }
+  };
+
+  const handleSaveEditedOrder = (updatedOrder: ProductionOrder) => {
+    // Atualizar na lista local
+    setOrders(orders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+    setOrderToEdit(null);
+    // Re-buscar para garantir consistência
+    fetchOrders();
+    toast.success('Pedido atualizado com sucesso!');
+  };
+
+  console.log('🔍 Production Page - Loading:', isLoading, 'Error:', error, 'Orders:', orders.length);
+
   if (isLoading) {
+    console.log('⏳ Exibindo tela de carregamento');
     return <div className="p-6 text-center text-lg">Carregando ordens de produção...</div>;
   }
 
   if (error) {
-    return <div className="p-6 text-center text-destructive text-lg">{error}</div>;
+    console.log('❌ Exibindo tela de erro:', error);
+    return (
+      <div className="p-6">
+        <div className="text-center text-destructive text-lg mb-4">{error}</div>
+        <div className="text-center">
+          <Button onClick={fetchOrders}>Tentar Novamente</Button>
+        </div>
+      </div>
+    );
   }
+
+  console.log('✅ Renderizando painel de produção');
 
   return (
     <div className="p-6">
@@ -194,6 +231,12 @@ const ProductionPage: React.FC = () => {
                               <CardDescription className="text-xs">
                                 Criado em: {format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                               </CardDescription>
+                              {isAdmin() && order.vendedorName && (
+                                <CardDescription className="text-xs flex items-center gap-1 mt-1">
+                                  <User className="w-3 h-3" />
+                                  Vendedor: {order.vendedorName}
+                                </CardDescription>
+                              )}
                             </CardHeader>
                             <CardContent className="p-3 pt-0">
                               <div className="flex justify-between items-center text-sm">
@@ -485,6 +528,15 @@ const ProductionPage: React.FC = () => {
             </ScrollArea>
           )}
           <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+            {selectedOrder && selectedOrder.status === 'Pendente' && (
+              <Button
+                variant="default"
+                onClick={handleEditOrder}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Editar Pedido
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => {
@@ -542,6 +594,19 @@ const ProductionPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Modal de Edição (apenas para pedidos Pendentes) */}
+      {orderToEdit && (
+        <OrderEditModal
+          open={isEditModalOpen}
+          onOpenChange={(open) => {
+            setIsEditModalOpen(open);
+            if (!open) setOrderToEdit(null);
+          }}
+          order={orderToEdit}
+          onSave={handleSaveEditedOrder}
+        />
+      )}
     </div>
   );
 };

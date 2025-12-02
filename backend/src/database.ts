@@ -93,7 +93,9 @@ function parseOrder(row: any): ProductionOrder {
     createdAt: row.createdAt,
     history: typeof row.history === 'string' ? JSON.parse(row.history) : row.history,
     comments: typeof row.comments === 'string' ? JSON.parse(row.comments) : row.comments,
-    userId: row.userId
+    userId: row.userId,
+    vendedorId: row.vendedorId,
+    vendedorName: row.vendedorName
   };
 }
 

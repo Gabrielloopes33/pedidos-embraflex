@@ -3,7 +3,7 @@ import { Badge } from "@/componentes/ui/badge";
 import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/componentes/ui/alert";
-import { Package, Search, Loader2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Package, Search, Loader2, AlertCircle, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getProducts } from "@/lib/woocommerce";
 import type { WooCommerceProduct } from "@/lib/types";
@@ -17,6 +17,9 @@ import {
   DialogTitle,
 } from "@/componentes/ui/dialog";
 import { Label } from "@/componentes/ui/label";
+import { ProductFormModal } from "@/pages/NewOrder/components/ProductFormModal";
+import type { ProductItem } from "@/pages/NewOrder/types";
+import { useNavigate } from "react-router-dom";
 
 interface ProductLine {
   name: string;
@@ -335,11 +338,14 @@ const ProductLineSection = ({
 };
 
 const Products = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<WooCommerceProduct | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [selectedLineFilter, setSelectedLineFilter] = useState<string | null>(null);
+  const [isAddToOrderOpen, setIsAddToOrderOpen] = useState(false);
+  const [productToAdd, setProductToAdd] = useState<ProductItem | null>(null);
 
   // Buscar TODOS os produtos de uma vez
   const { data: allProducts, isLoading: productsLoading, error: productsError } = useQuery({
@@ -408,6 +414,46 @@ const Products = () => {
     setSelectedProduct(product);
     setSelectedQuantity(1);
     setIsDetailsOpen(true);
+  };
+
+  const handleAddToOrder = () => {
+    if (!selectedProduct) return;
+    
+    // Criar item base para o modal
+    const emptyProduct: ProductItem = {
+      productId: selectedProduct.id,
+      productName: selectedProduct.name,
+      quantity: selectedQuantity,
+      unitPrice: parseFloat(selectedProduct.price || '0'),
+      total: 0,
+      codigo: selectedProduct.sku || '',
+      discriminacaoProduto: selectedProduct.name,
+      larguraCm: 0,
+      alturaCm: 0,
+      comprimentoCm: 0,
+      tipoImpressao: '',
+      coresImpressao: '',
+      finishing: {
+        hotStamp: false,
+        ilhos: false,
+        furoPresente: false,
+        cordao: '',
+        corCordao: '',
+      },
+    };
+    
+    setProductToAdd(emptyProduct);
+    setIsDetailsOpen(false);
+    setIsAddToOrderOpen(true);
+  };
+
+  const handleSaveProductToOrder = (product: ProductItem) => {
+    // Navegar para novo pedido com o produto pré-preenchido
+    navigate('/orders/new', { 
+      state: { 
+        prefilledProduct: product 
+      } 
+    });
   };
 
   const getStockStatusText = (status: string) => {
@@ -670,6 +716,17 @@ const Products = () => {
                       );
                     })()}
                   </div>
+                  
+                  {/* Botão para abrir formulário completo */}
+                  <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Para adicionar este produto ao pedido com todas as especificações (dimensões, acabamentos, etc.), clique no botão abaixo:
+                    </p>
+                    <Button onClick={handleAddToOrder} className="w-full gap-2" size="lg">
+                      <ShoppingCart className="w-5 h-5" />
+                      Adicionar ao Pedido com Especificações Completas
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Estoque */}
@@ -697,6 +754,25 @@ const Products = () => {
                     />
                   </div>
                 )}
+                
+                {/* Atributos do Produto */}
+                {selectedProduct.attributes && selectedProduct.attributes.length > 0 && (
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-lg mb-3">Especificações Técnicas</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedProduct.attributes.map((attr, index) => (
+                        <div key={index} className="text-sm">
+                          <span className="text-muted-foreground font-medium">{attr.name}:</span>
+                          <p className="mt-1">
+                            {attr.options && attr.options.length > 0 
+                              ? attr.options.join(', ') 
+                              : 'N/A'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 border-t pt-4">
@@ -708,6 +784,16 @@ const Products = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Adicionar ao Pedido */}
+      {productToAdd && (
+        <ProductFormModal
+          open={isAddToOrderOpen}
+          onOpenChange={setIsAddToOrderOpen}
+          item={productToAdd}
+          onSave={handleSaveProductToOrder}
+        />
+      )}
 
       <style>{`
         .scrollbar-hide::-webkit-scrollbar {

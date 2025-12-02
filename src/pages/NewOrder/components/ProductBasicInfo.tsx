@@ -14,18 +14,18 @@ interface ProductBasicInfoProps {
 export function ProductBasicInfo({ item, onUpdate, availableQuantities, availableImpressionTypes, availableColors }: ProductBasicInfoProps) {
   const hasAvailableQuantities = availableQuantities && availableQuantities.length > 0;
   
-  // Se o produto tiver tipos de impressão específicos, usar eles
+  // Usar apenas tipos de impressão vindos do WooCommerce
   const impressionTypes = availableImpressionTypes && availableImpressionTypes.length > 0 
     ? availableImpressionTypes 
-    : ['Digital', 'Serigrafia', 'Offset'];
+    : [];
 
-  // Usar cores do produto se disponíveis, senão mostrar mensagem
+  // Usar cores do produto se disponíveis
   const colors = availableColors && availableColors.length > 0 
     ? availableColors 
-    : ['Sem cores disponíveis'];
+    : [];
 
-  // Sempre mostrar o campo de cores
-  const shouldShowColors = true;
+  // Mostrar o campo de cores apenas se houver cores disponíveis
+  const shouldShowColors = colors.length > 0;
 
   return (
     <>
@@ -59,22 +59,35 @@ export function ProductBasicInfo({ item, onUpdate, availableQuantities, availabl
           )}
         </div>
         <div className="space-y-2">
-          <Label>Tipo de Impressão</Label>
-          <Select
-            value={item.tipoImpressao}
-            onValueChange={(value) => onUpdate('tipoImpressao', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione" />
-            </SelectTrigger>
-            <SelectContent>
-              {impressionTypes.map((type) => (
-                <SelectItem key={type} value={type.toLowerCase()}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>
+            Tipo de Impressão
+            {impressionTypes.length > 0 && (
+              <span className="ml-2 text-xs text-muted-foreground">(do produto)</span>
+            )}
+          </Label>
+          {impressionTypes.length > 0 ? (
+            <Select
+              value={item.tipoImpressao}
+              onValueChange={(value) => onUpdate('tipoImpressao', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de impressão" />
+              </SelectTrigger>
+              <SelectContent>
+                {impressionTypes.map((type) => (
+                  <SelectItem key={type} value={type.toLowerCase()}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              value="Selecione um produto primeiro"
+              disabled
+              className="bg-muted"
+            />
+          )}
         </div>
         <div className="space-y-2">
           <Label>Valor Unitário (R$)</Label>

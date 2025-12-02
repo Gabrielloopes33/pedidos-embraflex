@@ -72,6 +72,7 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
         const quantityMap = new Map<number, number>();
         const quantitiesSet = new Set<number>();
         const colorsSet = new Set<string>();
+        const impressionTypesSet = new Set<string>();
         
         variations.forEach((variation: ProductVariation) => {
           const qtyAttr = variation.attributes.find(attr => {
@@ -84,6 +85,14 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
             return attrName.includes('cor de impressão') || 
                    attrName.includes('cor de impressao') ||
                    attrName.includes('cores');
+          });
+          
+          const impressionAttr = variation.attributes.find(attr => {
+            const attrName = attr.name.toLowerCase();
+            return attrName.includes('tipo de impressão') || 
+                   attrName.includes('tipo de impressao') ||
+                   attrName.includes('impressão') ||
+                   attrName.includes('impressao');
           });
           
           if (qtyAttr) {
@@ -99,13 +108,25 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
           if (colorAttr && colorAttr.option) {
             colorsSet.add(colorAttr.option);
           }
+          
+          if (impressionAttr && impressionAttr.option) {
+            impressionTypesSet.add(impressionAttr.option);
+          }
         });
         
         const quantities = Array.from(quantitiesSet).sort((a, b) => a - b);
         const colors = Array.from(colorsSet);
+        const impressionTypes = Array.from(impressionTypesSet);
         
         setAvailableQuantities(quantities);
         setPriceByQuantity(quantityMap);
+        
+        // Definir tipos de impressão disponíveis das variações
+        if (impressionTypes.length > 0) {
+          setAvailableImpressionTypes(impressionTypes);
+          updatedItem.tipoImpressao = impressionTypes[0].toLowerCase();
+          console.log('🖨️ Tipos de impressão disponíveis (variações):', impressionTypes);
+        }
         
         // Definir cores disponíveis das variações
         if (colors.length > 0) {

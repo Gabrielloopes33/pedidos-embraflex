@@ -151,7 +151,14 @@ initializeDb().then(() => {
       
       if (error) throw error;
       
+      // Log para debug
+      console.log('📦 Pedidos do Supabase (primeiro):', data?.[0]);
+      
       const orders = (data || []).map(parseOrder);
+      
+      // Log do pedido parseado
+      console.log('📦 Pedido parseado (primeiro):', orders?.[0]);
+      
       res.json(orders);
     } catch (error) {
       console.error('Erro ao buscar ordens:', error);
@@ -209,6 +216,8 @@ initializeDb().then(() => {
       history: [{ event: 'Ordem criada', timestamp: new Date().toISOString(), user: req.user?.username || 'Vendedor' }],
       comments: [],
       userId: userId,
+      vendedorId: req.user?.id,
+      vendedorName: req.user?.username,
     };
 
     try {
@@ -222,7 +231,9 @@ initializeDb().then(() => {
         createdAt: newOrder.createdAt,
         history: JSON.stringify(newOrder.history),
         comments: JSON.stringify(newOrder.comments),
-        userId: newOrder.userId
+        userId: newOrder.userId,
+        vendedorId: newOrder.vendedorId,
+        vendedorName: newOrder.vendedorName
       };
 
       console.log('💾 Inserindo no Supabase:', dataToInsert);

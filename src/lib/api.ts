@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { NewProductionOrder, ProductionOrder } from './types';
+import { authenticateUser, getCurrentUser } from './auth';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
@@ -31,19 +32,59 @@ apiClient.interceptors.request.use(
 
 // --- Autenticação ---
 export const login = async (credentials: { username: string; password: string; }) => {
-  const response = await apiClient.post('/auth/login', credentials);
-  return response.data;
+  console.log('🔐 Tentando autenticar:', credentials.username);
+  
+  try {
+    // Tentar autenticar no backend
+    console.log('📡 Autenticando no backend:', `${API_BASE_URL}/auth/login`);
+    const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
+    console.log('✅ Autenticação no backend bem-sucedida!', response.data);
+    return response.data;
+  } catch (error) {
+    // Se o backend falhar, usar autenticação local como fallback
+    console.warn('⚠️ Backend auth failed, using local auth:', error);
+    const user = authenticateUser(credentials.username, credentials.password);
+    
+    if (!user) {
+      throw new Error('Credenciais inválidas');
+    }
+    
+    // Gerar um token simulado
+    const accessToken = `local-token-${user.id}-${Date.now()}`;
+    
+    console.log('✅ Usando autenticação local:', { accessToken, user });
+    return {
+      accessToken,
+      user
+    };
+  }
 };
 
 
 // --- Ordens de Produção ---
 export const getProductionOrders = async (): Promise<ProductionOrder[]> => {
   const response = await apiClient.get('/orders');
-  return response.data;
+  const orders = response.data as ProductionOrder[];
+  
+  // Filtrar pedidos por vendedor se não for admin
+  const user = getCurrentUser();
+  if (user && user.role === 'vendedor') {
+    return orders.filter(order => order.vendedorId === user.id);
+  }
+  
+  return orders;
 };
 
 export const createProductionOrder = async (order: NewProductionOrder): Promise<ProductionOrder> => {
-  const response = await apiClient.post('/orders', order);
+  // Adicionar informações do vendedor ao pedido
+  const user = getCurrentUser();
+  const orderWithVendedor = {
+    ...order,
+    vendedorId: user?.id,
+    vendedorName: user?.name
+  };
+  
+  const response = await apiClient.post('/orders', orderWithVendedor);
   return response.data;
 };
 

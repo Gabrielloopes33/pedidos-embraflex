@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/componentes/ui/card"
 import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Badge } from "@/componentes/ui/badge";
-import { Plus, Search, Filter, Loader2 } from "lucide-react";
+import { Plus, Search, Filter, Loader2, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   Select,
@@ -17,6 +17,7 @@ import { ProductionOrder } from "@/lib/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { OrderEditModal } from "@/componentes/OrderEditModal";
+import { isAdmin } from "@/lib/auth";
 
 const statusConfig = {
   "Pendente": { label: "Aguardando", color: "bg-primary" },
@@ -153,6 +154,16 @@ const Orders = () => {
                       {order.priority === 'Urgente' && (
                         <Badge variant="destructive">Urgente</Badge>
                       )}
+                      {(() => {
+                        const admin = isAdmin();
+                        console.log('🔍 Order:', order.id, '| isAdmin:', admin, '| vendedorName:', order.vendedorName, '| vendedorId:', order.vendedorId);
+                        return admin && order.vendedorName ? (
+                          <Badge variant="outline" className="gap-1">
+                            <User className="w-3 h-3" />
+                            {order.vendedorName}
+                          </Badge>
+                        ) : null;
+                      })()}
                     </div>
                     <p className="text-xs text-muted-foreground opacity-70">ID: {order.id}</p>
                     <p className="text-xs text-muted-foreground mt-1">{order.products.length} produto(s)</p>

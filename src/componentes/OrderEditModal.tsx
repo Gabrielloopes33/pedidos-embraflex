@@ -106,6 +106,12 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
 
   if (!order) return null;
 
+  // Verificar se o pedido pode ser editado (apenas se status for "Pendente")
+  const isEditable = order.status === 'Pendente';
+  
+  // Log para debug
+  console.log('📝 OrderEditModal - Status do pedido:', order.status, '- Editável:', isEditable);
+
   const emptyProduct: ProductItem = {
     productId: 0,
     productName: '',
@@ -240,13 +246,18 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-3">
-              Editar Pedido
+              {isEditable ? 'Editar Pedido' : 'Visualizar Pedido'}
               <Badge variant="outline" className="text-sm font-normal">
                 ID: {order.id}
               </Badge>
             </DialogTitle>
             <DialogDescription>
               Cliente: {order.customerName}
+              {!isEditable && (
+                <span className="block mt-1 text-amber-600 dark:text-amber-400 font-semibold">
+                  ⚠️ Este pedido não pode ser editado pois está em {order.status}
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -276,10 +287,12 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
                     {editedProducts.length} {editedProducts.length === 1 ? 'produto' : 'produtos'}
                   </p>
                 </div>
-                <Button type="button" onClick={handleAddProduct} size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Produto
-                </Button>
+                {isEditable && (
+                  <Button type="button" onClick={handleAddProduct} size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Produto
+                  </Button>
+                )}
               </div>
 
               {editedProducts.length === 0 ? (
@@ -287,10 +300,12 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
                   <p className="text-muted-foreground mb-4">
                     Nenhum produto no pedido
                   </p>
-                  <Button type="button" onClick={handleAddProduct} variant="outline">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Produto
-                  </Button>
+                  {isEditable && (
+                    <Button type="button" onClick={handleAddProduct} variant="outline">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Produto
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -364,26 +379,28 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
                           </div>
 
                           {/* Ações */}
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditProduct(index)}
-                              className="hover:bg-primary/10"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveProduct(index)}
-                              className="hover:bg-destructive/10 text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          {isEditable && (
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditProduct(index)}
+                                className="hover:bg-primary/10"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveProduct(index)}
+                                className="hover:bg-destructive/10 text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -423,7 +440,8 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
                             const value = parseFloat(e.target.value) || 0;
                             setOrderDiscount(Math.min(Math.max(value, 0), 11));
                           }}
-                          className="w-20 px-3 py-1.5 text-sm border rounded-md text-center font-semibold"
+                          disabled={!isEditable}
+                          className="w-20 px-3 py-1.5 text-sm border rounded-md text-center font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <span className="text-sm font-medium">%</span>
                       </div>
@@ -467,12 +485,14 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 <X className="w-4 h-4 mr-2" />
-                Cancelar
+                Fechar
               </Button>
-              <Button onClick={handleSaveOrder} disabled={editedProducts.length === 0}>
-                <Save className="w-4 h-4 mr-2" />
-                Salvar Alterações
-              </Button>
+              {isEditable && (
+                <Button onClick={handleSaveOrder} disabled={editedProducts.length === 0}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar Alterações
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
