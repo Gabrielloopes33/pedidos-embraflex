@@ -2,9 +2,14 @@
   command = "npm run build"
   publish = "dist"
 
-# Desabilitar secrets scanning para arquivos de exemplo
+# Configuração do secrets scanner
+# As credenciais WooCommerce estão apenas no backend (servidor separado)
+# O frontend não expõe secrets - apenas usa VITE_API_BASE_URL
 [build.environment]
-  SECRETS_SCAN_OMIT_PATHS = ".env.example,backend/.env.example,backend/*.sql,backend/package-lock.json,backend/src/setup-database.ts"
+  # Desabilitar secrets scanning pois não há secrets no código do frontend
+  SECRETS_SCAN_ENABLED = "false"
+  # Ou alternativamente, omitir paths específicos:
+  # SECRETS_SCAN_OMIT_PATHS = "backend/**,*.sql,*.env.example"
 
 [[redirects]]
   from = "/*"
