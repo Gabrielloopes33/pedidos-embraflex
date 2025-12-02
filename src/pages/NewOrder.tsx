@@ -121,7 +121,6 @@ export default function NewOrder() {
           largura: item.larguraCm.toString(),
           altura: item.alturaCm.toString(),
           lateral: '',
-          cores: item.coresImpressao,
           laminadoBrilho: false,
           laminadoFosco: false,
           vernizIE: false,

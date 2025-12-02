@@ -8,24 +8,15 @@ interface ProductBasicInfoProps {
   onUpdate: <K extends keyof ProductItem>(field: K, value: ProductItem[K]) => void;
   availableQuantities?: number[]; // Quantidades disponíveis vindas do produto
   availableImpressionTypes?: string[]; // Tipos de impressão vindos do produto
-  availableColors?: string[]; // Cores disponíveis vindas do produto
 }
 
-export function ProductBasicInfo({ item, onUpdate, availableQuantities, availableImpressionTypes, availableColors }: ProductBasicInfoProps) {
+export function ProductBasicInfo({ item, onUpdate, availableQuantities, availableImpressionTypes }: ProductBasicInfoProps) {
   const hasAvailableQuantities = availableQuantities && availableQuantities.length > 0;
   
   // Usar apenas tipos de impressão vindos do WooCommerce
   const impressionTypes = availableImpressionTypes && availableImpressionTypes.length > 0 
     ? availableImpressionTypes 
     : [];
-
-  // Usar cores do produto se disponíveis
-  const colors = availableColors && availableColors.length > 0 
-    ? availableColors 
-    : [];
-
-  // Mostrar o campo de cores apenas se houver cores disponíveis
-  const shouldShowColors = colors.length > 0;
 
   return (
     <>
@@ -111,33 +102,6 @@ export function ProductBasicInfo({ item, onUpdate, availableQuantities, availabl
           placeholder="Descrição do produto"
         />
       </div>
-
-      {/* Mostrar cores de impressão se disponível no produto ou se for serigrafia */}
-      {shouldShowColors && (
-        <div className="space-y-2">
-          <Label>
-            Cores de Impressão
-            {availableColors && availableColors.length > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground">(do produto)</span>
-            )}
-          </Label>
-          <Select
-            value={item.coresImpressao}
-            onValueChange={(value) => onUpdate('coresImpressao', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione as cores" />
-            </SelectTrigger>
-            <SelectContent>
-              {colors.map((color) => (
-                <SelectItem key={color} value={color}>
-                  {color}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
     </>
   );
 }

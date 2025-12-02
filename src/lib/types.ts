@@ -71,7 +71,6 @@ export interface ProductionProduct {
   lateral?: string;
   comprimentoCm?: string;
   tipoImpressao?: string;
-  coresImpressao?: string;
   laminadoBrilho?: boolean;
   laminadoFosco?: boolean;
   vernizIE?: boolean;

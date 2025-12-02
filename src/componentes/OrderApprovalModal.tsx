@@ -20,7 +20,6 @@ interface ProductItem {
   altura: string;
   lateral: string;
   tipoImpressao: string;
-  coresImpressao?: string;
   laminadoBrilho: boolean;
   laminadoFosco: boolean;
   vernizIE: boolean;
@@ -253,12 +252,6 @@ export const OrderApprovalModal = ({
                       {produto.altura && <div><span className="font-medium">Altura:</span> {produto.altura}</div>}
                       {produto.lateral && <div><span className="font-medium">Lateral:</span> {produto.lateral}</div>}
                       {produto.tipoImpressao && <div><span className="font-medium">Impressão:</span> {produto.tipoImpressao}</div>}
-                    </div>
-                  )}
-
-                  {produto.tipoImpressao === 'serigrafia' && produto.coresImpressao && (
-                    <div className="text-sm">
-                      <span className="font-medium">Cores de Impressão:</span> {produto.coresImpressao}
                     </div>
                   )}
 

@@ -34,8 +34,8 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
   const [editedItem, setEditedItem] = useState<ProductItem | null>(item);
   const [availableImpressionTypes, setAvailableImpressionTypes] = useState<string[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<number[]>([]);
-  const [availableColors, setAvailableColors] = useState<string[]>([]);
   const [priceByQuantity, setPriceByQuantity] = useState<Map<number, number>>(new Map());
+  const [priceByQtyAndType, setPriceByQtyAndType] = useState<Map<string, number>>(new Map());
   const [isVariableProduct, setIsVariableProduct] = useState(false);
 
   // Sincronizar com item prop quando mudar
@@ -68,23 +68,16 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
         const variations = await getProductVariations(product.id);
         console.log('✅ Variações encontradas:', variations.length);
         
-        // Processar variações para extrair quantidades, preços e cores
+        // Processar variações para extrair quantidades, tipos de impressão, cores e preços
         const quantityMap = new Map<number, number>();
         const quantitiesSet = new Set<number>();
-        const colorsSet = new Set<string>();
         const impressionTypesSet = new Set<string>();
+        const qtyAndTypePriceMap = new Map<string, number>(); // "1000_policromia" => preço
         
         variations.forEach((variation: ProductVariation) => {
           const qtyAttr = variation.attributes.find(attr => {
             const attrName = attr.name.toLowerCase();
             return attrName.includes('quantidade') || attrName.includes('qtd');
-          });
-          
-          const colorAttr = variation.attributes.find(attr => {
-            const attrName = attr.name.toLowerCase();
-            return attrName.includes('cor de impressão') || 
-                   attrName.includes('cor de impressao') ||
-                   attrName.includes('cores');
           });
           
           const impressionAttr = variation.attributes.find(attr => {
@@ -97,29 +90,33 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
           
           if (qtyAttr) {
             const qty = parseInt(qtyAttr.option.replace(/\D/g, ''));
-            if (!isNaN(qty) && qty > 0 && !quantitiesSet.has(qty)) {
+            const price = parseFloat(variation.price || variation.regular_price || '0');
+            
+            if (!isNaN(qty) && qty > 0) {
               quantitiesSet.add(qty);
-              const price = parseFloat(variation.price || variation.regular_price || '0');
-              quantityMap.set(qty, price);
-              console.log(`  📊 Variação: ${qty} un = R$ ${price}`);
+              
+              if (impressionAttr) {
+                // Tem tipo de impressão - usar chave composta
+                const impressionType = impressionAttr.option.toLowerCase().trim();
+                impressionTypesSet.add(impressionType);
+                const key = `${qty}_${impressionType}`;
+                qtyAndTypePriceMap.set(key, price);
+                console.log(`  📊 Variação: ${qty} un + ${impressionType} = R$ ${price}`);
+              } else {
+                // Sem tipo de impressão - usar só quantidade
+                quantityMap.set(qty, price);
+                console.log(`  📊 Variação: ${qty} un = R$ ${price}`);
+              }
             }
-          }
-          
-          if (colorAttr && colorAttr.option) {
-            colorsSet.add(colorAttr.option);
-          }
-          
-          if (impressionAttr && impressionAttr.option) {
-            impressionTypesSet.add(impressionAttr.option);
           }
         });
         
         const quantities = Array.from(quantitiesSet).sort((a, b) => a - b);
-        const colors = Array.from(colorsSet);
         const impressionTypes = Array.from(impressionTypesSet);
         
         setAvailableQuantities(quantities);
         setPriceByQuantity(quantityMap);
+        setPriceByQtyAndType(qtyAndTypePriceMap);
         
         // Definir tipos de impressão disponíveis das variações
         if (impressionTypes.length > 0) {
@@ -128,17 +125,18 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
           console.log('🖨️ Tipos de impressão disponíveis (variações):', impressionTypes);
         }
         
-        // Definir cores disponíveis das variações
-        if (colors.length > 0) {
-          setAvailableColors(colors);
-          updatedItem.coresImpressao = colors[0];
-          console.log('🎨 Cores de impressão disponíveis (variações):', colors);
-        }
-        
         if (quantities.length > 0) {
           updatedItem.quantity = quantities[0];
-          updatedItem.unitPrice = quantityMap.get(quantities[0]) || 0;
-          console.log(`💰 Preço inicial (variável): ${quantities[0]} un = R$ ${updatedItem.unitPrice}`);
+          
+          // Buscar preço considerando tipo de impressão se disponível
+          if (updatedItem.tipoImpressao && qtyAndTypePriceMap.size > 0) {
+            const key = `${quantities[0]}_${updatedItem.tipoImpressao}`;
+            updatedItem.unitPrice = qtyAndTypePriceMap.get(key) || quantityMap.get(quantities[0]) || 0;
+            console.log(`💰 Preço inicial (variável com tipo): ${quantities[0]} un + ${updatedItem.tipoImpressao} = R$ ${updatedItem.unitPrice}`);
+          } else {
+            updatedItem.unitPrice = quantityMap.get(quantities[0]) || 0;
+            console.log(`💰 Preço inicial (variável): ${quantities[0]} un = R$ ${updatedItem.unitPrice}`);
+          }
         }
         
       } catch (error) {
@@ -166,30 +164,6 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
         setAvailableImpressionTypes(impressionAttr.options);
         updatedItem.tipoImpressao = impressionAttr.options[0]?.toLowerCase() || '';
         console.log('✅ Tipos de impressão disponíveis:', impressionAttr.options);
-      }
-
-      // Pegar "Cores de Impressão" dos atributos
-      const colorsAttr = product.attributes?.find(attr => {
-        const attrName = attr.name.toLowerCase();
-        const attrSlug = attr.slug?.toLowerCase() || '';
-        return attrName.includes('cor de impressão') || 
-               attrName.includes('cor de impressao') ||
-               attrName.includes('cores de impressão') ||
-               attrName.includes('cores de impressao') ||
-               attrName.includes('cores') ||
-               attrSlug.includes('cor-de-impressao') ||
-               attrSlug.includes('cores-de-impressao') ||
-               attrSlug.includes('cores');
-      });
-      
-      console.log('🌈 Atributo de cores encontrado:', colorsAttr);
-      
-      if (colorsAttr && colorsAttr.options) {
-        setAvailableColors(colorsAttr.options);
-        updatedItem.coresImpressao = colorsAttr.options[0] || '';
-        console.log('✅ Cores de impressão disponíveis:', colorsAttr.options);
-      } else {
-        setAvailableColors([]);
       }
 
       // Pegar quantidade disponível do atributo
@@ -314,7 +288,6 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
     
     setAvailableImpressionTypes([]);
     setAvailableQuantities([]);
-    setAvailableColors([]);
     setPriceByQuantity(new Map());
     setIsVariableProduct(false);
     
@@ -335,23 +308,35 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
       [field]: value,
     };
     
-    // Se mudou a quantidade e temos preços tabelados, atualizar o preço unitário
-    if (field === 'quantity' && priceByQuantity.size > 0) {
-      const newQuantity = value as number;
+    // Se mudou a quantidade OU tipo de impressão, recalcular o preço
+    if ((field === 'quantity' || field === 'tipoImpressao') && (priceByQtyAndType.size > 0 || priceByQuantity.size > 0)) {
+      const newQuantity = field === 'quantity' ? (value as number) : editedItem.quantity;
+      const newImpressionType = field === 'tipoImpressao' ? (value as string) : editedItem.tipoImpressao;
       
-      if (priceByQuantity.has(newQuantity)) {
+      console.log('🔄 Mudança detectada:', field, '=', value);
+      console.log('📊 Buscando preço para: quantidade =', newQuantity, '+ tipo =', newImpressionType);
+      
+      // Primeiro, tentar buscar preço com quantidade + tipo de impressão
+      if (newImpressionType && priceByQtyAndType.size > 0) {
+        const key = `${newQuantity}_${newImpressionType.toLowerCase()}`;
+        console.log('🔍 Buscando chave:', key);
+        console.log('📋 Chaves disponíveis:', Array.from(priceByQtyAndType.keys()));
+        
+        if (priceByQtyAndType.has(key)) {
+          const newPrice = priceByQtyAndType.get(key)!;
+          console.log('✅ Preço encontrado (quantidade + tipo):', newPrice);
+          updatedItem.unitPrice = newPrice;
+        } else {
+          console.log('⚠️ Preço não encontrado para', key);
+        }
+      }
+      // Se não encontrou com tipo de impressão, tentar só com quantidade
+      else if (priceByQuantity.has(newQuantity)) {
         const newPrice = priceByQuantity.get(newQuantity)!;
+        console.log('✅ Preço encontrado (só quantidade):', newPrice);
         updatedItem.unitPrice = newPrice;
       } else {
-        // Tentar encontrar o preço mais próximo
-        const sortedQtys = Array.from(priceByQuantity.keys()).sort((a, b) => a - b);
-        const closestQty = sortedQtys.reduce((prev, curr) => {
-          return Math.abs(curr - newQuantity) < Math.abs(prev - newQuantity) ? curr : prev;
-        });
-        if (closestQty) {
-          const closestPrice = priceByQuantity.get(closestQty)!;
-          updatedItem.unitPrice = closestPrice;
-        }
+        console.log('⚠️ Preço não encontrado para quantidade', newQuantity);
       }
     }
     
@@ -414,7 +399,6 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
             onUpdate={handleUpdate}
             availableQuantities={availableQuantities}
             availableImpressionTypes={availableImpressionTypes}
-            availableColors={availableColors}
           />
 
           <Separator />

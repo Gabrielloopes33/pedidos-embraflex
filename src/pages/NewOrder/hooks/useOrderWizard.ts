@@ -17,7 +17,6 @@ const INITIAL_PRODUCT: ProductItem = {
   alturaCm: 0,
   comprimentoCm: 0,
   tipoImpressao: "",
-  coresImpressao: "",
   finishing: {
     hotStamp: false,
     ilhos: false,

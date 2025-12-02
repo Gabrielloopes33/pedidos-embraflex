@@ -32,7 +32,6 @@ const convertToProductItem = (product: ProductionProduct): ProductItem => {
     alturaCm: parseFloat(product.altura || '0'),
     comprimentoCm: parseFloat(product.comprimentoCm || '0'),
     tipoImpressao: product.tipoImpressao || '',
-    coresImpressao: product.coresImpressao || '',
     finishing: {
       hotStamp: product.finishing?.acessorios?.hotStampSacola || false,
       ilhos: product.finishing?.acessorios?.ilhos || false,
@@ -64,7 +63,6 @@ const convertToProductionProduct = (item: ProductItem, existingProduct?: Product
     lateral: existingProduct?.lateral || '',
     comprimentoCm: item.comprimentoCm.toString(),
     tipoImpressao: item.tipoImpressao,
-    coresImpressao: item.coresImpressao,
     laminadoBrilho: existingProduct?.laminadoBrilho || false,
     laminadoFosco: existingProduct?.laminadoFosco || false,
     vernizIE: existingProduct?.vernizIE || false,
@@ -124,7 +122,6 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
     alturaCm: 0,
     comprimentoCm: 0,
     tipoImpressao: '',
-    coresImpressao: '',
     finishing: {
       hotStamp: false,
       ilhos: false,
@@ -197,7 +194,6 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
         altura: item.alturaCm.toString(),
         lateral: '0',
         tipoImpressao: item.tipoImpressao,
-        coresImpressao: item.coresImpressao,
         laminadoBrilho: false,
         laminadoFosco: false,
         vernizIE: false,

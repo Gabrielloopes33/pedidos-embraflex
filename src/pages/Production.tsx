@@ -371,18 +371,11 @@ const ProductionPage: React.FC = () => {
                               </div>
                             )}
 
-                            {/* Tipo de Impressão e Cores */}
+                            {/* Tipo de Impressão */}
                             {product.tipoImpressao && (
                               <div>
                                 <span className="text-muted-foreground">Tipo de Impressão:</span>
                                 <p className="font-medium capitalize">{product.tipoImpressao}</p>
-                              </div>
-                            )}
-
-                            {product.tipoImpressao === 'serigrafia' && product.coresImpressao && (
-                              <div>
-                                <span className="text-muted-foreground">Cores de Impressão:</span>
-                                <p className="font-medium">{product.coresImpressao}</p>
                               </div>
                             )}
 
@@ -555,7 +548,6 @@ const ProductionPage: React.FC = () => {
                       altura: p.altura || '',
                       lateral: p.lateral || '',
                       tipoImpressao: p.tipoImpressao || '',
-                      coresImpressao: p.coresImpressao,
                       laminadoBrilho: p.laminadoBrilho || false,
                       laminadoFosco: p.laminadoFosco || false,
                       vernizIE: p.vernizIE || false,

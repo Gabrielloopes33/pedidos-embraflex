@@ -25,7 +25,6 @@ export interface ProductItem {
   alturaCm: number;
   comprimentoCm: number;
   tipoImpressao: string;
-  coresImpressao: string;
   finishing: Finishing;
   discountPercent?: number; // Desconto em porcentagem (máximo 11%)
 }

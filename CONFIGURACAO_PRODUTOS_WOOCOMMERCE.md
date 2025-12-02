@@ -7,23 +7,35 @@
 - Se a categoria não existir, uma lista vazia será retornada
 - Backend modificado para forçar o filtro sempre
 
-### 2. **Preço Variável por Quantidade** ✅
+### 2. **Preço Variável por Quantidade E Tipo de Impressão** ✅
 - Sistema agora suporta **Produtos Variáveis** do WooCommerce
-- O preço unitário muda automaticamente quando a quantidade é alterada
-- Funciona com dois métodos:
+- O preço unitário muda automaticamente quando a quantidade OU tipo de impressão é alterado
+- Funciona com múltiplos atributos de variação
 
-#### **Método 1: Produtos Variáveis (RECOMENDADO)**
+#### **Como Funciona:**
 
-Este é o método nativo do WooCommerce e funciona automaticamente:
+O sistema procura nas variações do produto por dois atributos principais:
+1. **Quantidade** (ex: 1000, 1500, 3000 unidades)
+2. **Tipo de Impressão** (ex: Policromia, Pantone, Preto)
+
+Quando AMBOS os atributos existem, o sistema busca o preço pela combinação:
+- Exemplo: `1000 unidades + Policromia = R$ 3,92`
+- Exemplo: `1000 unidades + Pantone = R$ 3,16`
+- Exemplo: `1000 unidades + Preto = R$ 3,14`
+
+#### **Método: Produtos Variáveis com Múltiplos Atributos (RECOMENDADO)**
+
+Este é o método mais completo e funciona automaticamente:
 
 1. **Criar Produto Variável no WooCommerce:**
    - Tipo de Produto: **Variable product**
    - Adicionar atributo "Quantidade" nas variações
-   - Cada variação representa uma quantidade diferente com seu preço
+   - Adicionar atributo "Tipo de Impressão" nas variações
+   - Cada variação representa uma combinação única de quantidade + tipo de impressão com seu preço
 
-2. **Exemplo de Configuração:**
+2. **Exemplo de Configuração (com Tipo de Impressão):**
    ```
-   Produto: Sacola Extra Alvura 150gr - Natural - Linha Econômica
+   Produto: k-034 - Duplex Klabim - Laminado - Linha Premium
    Tipo: Variable product
    
    Atributos:
@@ -32,60 +44,89 @@ Este é o método nativo do WooCommerce e funciona automaticamente:
      • 1500
      • 3000
    
-   Variações:
-   1. Quantidade: 1000 | Preço: R$ 2,27
-   2. Quantidade: 1500 | Preço: R$ 2,10  
-   3. Quantidade: 3000 | Preço: R$ 2,01
+   - Tipo de Impressão (usado para variações)
+     • Policromia
+     • Pantone
+     • Preto
+   
+   Variações (9 combinações):
+   1. Quantidade: 1000 | Tipo: Policromia | Preço: R$ 3,92
+   2. Quantidade: 1000 | Tipo: Pantone    | Preço: R$ 3,16
+   3. Quantidade: 1000 | Tipo: Preto      | Preço: R$ 3,14
+   4. Quantidade: 1500 | Tipo: Policromia | Preço: R$ 3,80
+   5. Quantidade: 1500 | Tipo: Pantone    | Preço: R$ 3,00
+   6. Quantidade: 1500 | Tipo: Preto      | Preço: R$ 2,98
+   7. Quantidade: 3000 | Tipo: Policromia | Preço: R$ 3,60
+   8. Quantidade: 3000 | Tipo: Pantone    | Preço: R$ 2,85
+   9. Quantidade: 3000 | Tipo: Preto      | Preço: R$ 2,82
    ```
 
 3. **Como o sistema detecta:**
    - Busca automaticamente as variações do produto
-   - Extrai quantidade e preço de cada variação
+   - Extrai quantidade, tipo de impressão e preço de cada variação
    - Popula o dropdown de quantidade
-   - Atualiza o preço quando a quantidade é selecionada
-
-#### **Método 2: Meta Data (Alternativo)**
-
-Para produtos simples, você pode adicionar preços manualmente:
-
-1. Adicionar campo customizado `precos_por_quantidade` no produto
-2. Formato: `quantidade:preco|quantidade:preco|...`
-3. Exemplo: `1000:2.27|1500:2.10|3000:2.01`
-
-**Nota:** Este método é menos robusto e não é recomendado para novos produtos.
+   - Popula o dropdown de tipo de impressão
+   - Atualiza o preço quando QUALQUER um dos dois é alterado
 
 ---
 
-## 🏷️ Como Criar Produtos Variáveis no WooCommerce
+## 🏷️ Como Criar Produtos Variáveis com Múltiplos Atributos
 
-### Passo a Passo:
+### Passo a Passo Completo:
 
 1. **Criar Novo Produto:**
    - Produtos > Adicionar novo
-   - Dar nome ao produto
+   - Dar nome ao produto (ex: "k-034 - Duplex Klabim - Laminado - Linha Premium")
 
 2. **Configurar como Variável:**
    - Dados do produto > Tipo de produto: **Variable product**
 
 3. **Adicionar Atributos:**
+   
+   **a) Atributo de Quantidade:**
    - Aba "Atributos"
    - Adicionar atributo "Quantidade" (ou "Qtd")
-   - Marcar "Usado para variações"
+   - Marcar ✅ "Usado para variações"
    - Adicionar valores: `1000 | 1500 | 3000` (separados por |)
+   - Salvar atributos
+   
+   **b) Atributo de Tipo de Impressão:**
+   - Adicionar atributo "Tipo de Impressão"
+   - Marcar ✅ "Usado para variações"
+   - Adicionar valores: `Policromia | Pantone | Preto` (separados por |)
    - Salvar atributos
 
 4. **Criar Variações:**
    - Aba "Variações"
    - Selecionar "Criar variações de todos os atributos"
-   - Isso criará uma variação para cada quantidade
+   - ⚠️ Isso criará TODAS as combinações possíveis (3 quantidades × 3 tipos = 9 variações)
+   - Confirmar criação
 
 5. **Definir Preços das Variações:**
-   - Expandir cada variação
-   - Definir:
-     - Preço regular: `2.27` (para 1000 un)
-     - Preço regular: `2.10` (para 1500 un)
-     - Preço regular: `2.01` (para 3000 un)
-   - SKU (opcional): `K-034-1000`, `K-034-1500`, etc.
+   
+   Expandir cada variação e definir o preço:
+   
+   ```
+   Variação 1:
+   - Quantidade: 1000
+   - Tipo de Impressão: Policromia
+   - Preço regular: 3.92
+   - SKU (opcional): k-034-1000-policromia
+   
+   Variação 2:
+   - Quantidade: 1000
+   - Tipo de Impressão: Pantone
+   - Preço regular: 3.16
+   - SKU (opcional): k-034-1000-pantone
+   
+   Variação 3:
+   - Quantidade: 1000
+   - Tipo de Impressão: Preto
+   - Preço regular: 3.14
+   - SKU (opcional): k-034-1000-preto
+   
+   ... (repetir para 1500 e 3000 unidades)
+   ```
 
 6. **Configurar Categoria:**
    - **IMPORTANTE:** Adicionar à categoria "Interno" ou "Interna"
@@ -97,30 +138,41 @@ Para produtos simples, você pode adicionar preços manualmente:
 
 ## 📊 Exemplo Completo
 
-**Produto: k-034 - Extra Alvura 150gr - Natural - Linha Econômica**
+**Produto: k-034 - Duplex Klabim - Laminado - Linha Premium**
 
 ```
 Tipo: Variable product
 Categoria: Interno ✅
 
 Atributos:
-└─ Quantidade (usado para variações)
-   ├─ 1000
-   ├─ 1500
-   └─ 3000
+├─ Quantidade (usado para variações)
+│  ├─ 1000
+│  ├─ 1500
+│  └─ 3000
+│
+└─ Tipo de Impressão (usado para variações)
+   ├─ Policromia
+   ├─ Pantone
+   └─ Preto
 
-Variações:
-├─ Quantidade: 1000
-│  ├─ Preço regular: 2.27
-│  └─ SKU: k-034-1000
+Variações (9 total):
+├─ Quantidade: 1000 | Tipo: Policromia
+│  ├─ Preço regular: 3.92
+│  └─ SKU: k-034-1000-policromia
 │
-├─ Quantidade: 1500
-│  ├─ Preço regular: 2.10
-│  └─ SKU: k-034-1500
+├─ Quantidade: 1000 | Tipo: Pantone
+│  ├─ Preço regular: 3.16
+│  └─ SKU: k-034-1000-pantone
 │
-└─ Quantidade: 3000
-   ├─ Preço regular: 2.01
-   └─ SKU: k-034-3000
+├─ Quantidade: 1000 | Tipo: Preto
+│  ├─ Preço regular: 3.14
+│  └─ SKU: k-034-1000-preto
+│
+├─ Quantidade: 1500 | Tipo: Policromia
+│  ├─ Preço regular: 3.80
+│  └─ SKU: k-034-1500-policromia
+│
+... (e assim por diante)
 ```
 
 ---
@@ -131,35 +183,54 @@ Variações:
 
 1. **Sistema detecta tipo:**
    - Se `type === 'variable'` → busca variações
-   - Se `type === 'simple'` → busca meta_data
+   - Extrai TODOS os atributos de variação (quantidade, tipo de impressão, etc.)
 
 2. **Carrega tabela de preços:**
-   - Extrai todas as variações
-   - Mapeia quantidade → preço
+   - Mapeia todas as variações
+   - Cria chave composta: `quantidade_tipodeimpressao` → preço
+   - Exemplo: `1000_policromia` → R$ 3,92
    - Exibe tabela visual no formulário
 
-3. **Ao mudar quantidade:**
-   - Busca o preço correspondente na tabela
+3. **Ao mudar quantidade OU tipo de impressão:**
+   - Busca o preço correspondente à combinação
    - Atualiza campo "Valor Unitário (R$)" automaticamente
    - Recalcula total do item
 
 4. **Indicadores visuais:**
    - Título mostra "(Produto Variável)" 
-   - Tabela de preços destacada em azul
-   - Quantidade selecionada aparece destacada
+   - Tabela de preços mostra: `1000 un + policromia: R$ 3,92`
+   - Combinação selecionada aparece destacada
 
 ---
 
 ## ⚠️ Checklist de Verificação
 
-Antes de publicar um produto, verifique:
+Antes de publicar um produto com múltiplos atributos:
 
 - [ ] Produto está na categoria **"Interno"** ou **"Interna"**
 - [ ] Tipo do produto é **Variable product**
 - [ ] Atributo "Quantidade" criado e marcado como "usado para variações"
-- [ ] Todas as variações têm preços definidos
-- [ ] Preços estão corretos (use ponto para decimal: `2.27` não `2,27`)
-- [ ] SKUs são únicos (opcional mas recomendado)
+- [ ] Atributo "Tipo de Impressão" criado e marcado como "usado para variações"
+- [ ] Todas as variações (combinações) têm preços definidos
+- [ ] Preços estão corretos (use ponto para decimal: `3.92` não `3,92`)
+- [ ] SKUs são únicos e descritivos (opcional mas recomendado)
+- [ ] Testado no sistema: trocar quantidade E tipo de impressão altera o preço
+
+---
+
+## 🎯 Casos de Uso
+
+### Caso 1: Produto com Quantidade + Tipo de Impressão
+```
+✅ Recomendado para: Produtos com preço que varia por quantidade E tipo
+Exemplo: Sacolas, Etiquetas, Adesivos com múltiplas opções de impressão
+```
+
+### Caso 2: Produto apenas com Quantidade
+```
+✅ Recomendado para: Produtos simples com preço que varia apenas por volume
+Exemplo: Produtos com um único tipo de impressão padrão
+```
 
 ---
 
@@ -169,32 +240,58 @@ Antes de publicar um produto, verifique:
 - Verifique se está na categoria "Interno" ou "Interna"
 - Verifique se o produto está publicado (não rascunho)
 
-### Preço não muda ao alterar quantidade:
+### Preço não muda ao alterar quantidade ou tipo de impressão:
 - Verifique se o produto é do tipo "Variable product"
 - Verifique se as variações têm preços definidos
 - Abra o console do navegador (F12) para ver logs detalhados
+- Verifique se os nomes dos atributos estão corretos:
+  - "Quantidade" ou "Qtd"
+  - "Tipo de Impressão" ou "Tipo de impressao"
 
-### Categorias não aparecem:
-- Verifique se a categoria se chama exatamente "Interno" ou "Interna"
-- Backend filtra apenas categorias com esses nomes
+### Tabela de preços não aparece:
+- Verifique se o produto tem variações criadas
+- Verifique se os atributos estão marcados como "usado para variações"
+- Veja os logs do console para identificar o problema
+
+### Preço errado ao selecionar combinação:
+- Verifique se todas as combinações de quantidade + tipo têm preços definidos
+- Use logs do console para ver qual chave está sendo buscada
+- Formato da chave: `1000_policromia`, `1500_pantone`, etc.
+- Certifique-se que os nomes estão em minúsculas e sem espaços extras
 
 ---
 
 ## 📝 Logs do Console
 
-O sistema gera logs detalhados no console do navegador:
+O sistema gera logs detalhados no console do navegador (F12):
 
+**Para produtos com Quantidade + Tipo de Impressão:**
 ```
-🔍 Produto selecionado: k-034 - Extra Alvura 150gr - Tipo: variable
+🔍 Produto selecionado: k-034 - Duplex Klabim - Tipo: variable
+📦 Buscando variações do produto...
+✅ Variações encontradas: 9
+  📊 Variação: 1000 un + policromia = R$ 3.92
+  📊 Variação: 1000 un + pantone = R$ 3.16
+  📊 Variação: 1000 un + preto = R$ 3.14
+  ... (mais variações)
+💰 Preço inicial (variável com tipo): 1000 un + policromia = R$ 3.92
+🔄 Mudança detectada: tipoImpressao = pantone
+📊 Buscando preço para: quantidade = 1000 + tipo = pantone
+🔍 Buscando chave: 1000_pantone
+📋 Chaves disponíveis: ["1000_policromia", "1000_pantone", "1000_preto", ...]
+✅ Preço encontrado (quantidade + tipo): 3.16
+💰 Total recalculado: 3160 para item: {...}
+```
+
+**Para produtos apenas com Quantidade:**
+```
+🔍 Produto selecionado: k-034 - Extra Alvura - Tipo: variable
 📦 Buscando variações do produto...
 ✅ Variações encontradas: 3
   📊 Variação: 1000 un = R$ 2.27
-  📊 Variação: 1500 un = R$ 2.1
+  📊 Variação: 1500 un = R$ 2.10
   📊 Variação: 3000 un = R$ 2.01
 💰 Preço inicial (variável): 1000 un = R$ 2.27
-🔄 Mudança de quantidade detectada: 3000
-✅ Preço encontrado para quantidade 3000 : 2.01
-💰 Total recalculado: 6030 para item: {...}
 ```
 
 Use esses logs para diagnosticar problemas!
@@ -205,7 +302,17 @@ Use esses logs para diagnosticar problemas!
 
 - **Use Produtos Variáveis** para melhor integração
 - **Sempre adicione à categoria INTERNO**
-- **Configure variações com quantidade e preço**
+- **Configure variações com quantidade e/ou tipo de impressão**
+- **Defina preços para TODAS as combinações**
 - **O sistema detecta e aplica preços automaticamente**
+- **Mudança em QUALQUER atributo recalcula o preço**
+
+### Vantagens do Sistema:
+
+✅ **Flexível**: Suporta produtos simples (só quantidade) ou complexos (quantidade + tipo)  
+✅ **Automático**: Preços são atualizados em tempo real  
+✅ **Visual**: Tabela de preços mostra todas as opções disponíveis  
+✅ **Inteligente**: Destaca a combinação selecionada  
+✅ **Robusto**: Logs detalhados para debug
 
 O sistema foi projetado para funcionar de forma intuitiva com a estrutura nativa do WooCommerce! 🚀

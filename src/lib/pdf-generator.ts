@@ -15,7 +15,6 @@ interface ProductItem {
   altura: string;
   lateral: string;
   tipoImpressao: string;
-  coresImpressao?: string;
   laminadoBrilho: boolean;
   laminadoFosco: boolean;
   vernizIE: boolean;
@@ -184,12 +183,6 @@ export const generateOrderPDF = (orderData: OrderData): jsPDF => {
       if (produto.tipoImpressao) dimensoes.push(`Impressão: ${produto.tipoImpressao}`);
       
       doc.text(`Dimensões: ${dimensoes.join(' | ')}`, 25, yPosition);
-      yPosition += 5;
-    }
-
-    // Cores de impressão (apenas para serigrafia)
-    if (produto.tipoImpressao === 'serigrafia' && produto.coresImpressao) {
-      doc.text(`Cores de Impressão: ${produto.coresImpressao}`, 25, yPosition);
       yPosition += 5;
     }
 

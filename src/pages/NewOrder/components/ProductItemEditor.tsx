@@ -34,6 +34,8 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
   const [availableImpressionTypes, setAvailableImpressionTypes] = useState<string[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<number[]>([]);
   const [priceByQuantity, setPriceByQuantity] = useState<Map<number, number>>(new Map());
+  // Novo mapa que considera quantidade + tipo de impressão: "1000_policromia" => preço
+  const [priceByQtyAndType, setPriceByQtyAndType] = useState<Map<string, number>>(new Map());
   const [isVariableProduct, setIsVariableProduct] = useState(false);
 
   const handleProductSelect = async (product: WooCommerceProduct) => {
@@ -59,9 +61,11 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
         const variations = await getProductVariations(product.id);
         console.log('✅ Variações encontradas:', variations.length);
         
-        // Processar variações para extrair quantidades e preços
+        // Processar variações para extrair quantidades, tipos de impressão e preços
         const quantityMap = new Map<number, number>();
         const quantitiesSet = new Set<number>(); // Usar Set para evitar duplicatas
+        const impressionTypesSet = new Set<string>();
+        const qtyAndTypePriceMap = new Map<string, number>(); // "1000_policromia" => preço
         
         variations.forEach((variation: ProductVariation) => {
           // Procurar atributo de quantidade
@@ -70,27 +74,66 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
             return attrName.includes('quantidade') || attrName.includes('qtd');
           });
           
+          // Procurar atributo de tipo de impressão
+          const impressionAttr = variation.attributes.find(attr => {
+            const attrName = attr.name.toLowerCase();
+            const attrSlug = attr.name?.toLowerCase() || '';
+            return attrName.includes('tipo de impressão') || 
+                   attrName.includes('tipo de impressao') ||
+                   attrName.includes('impressão') ||
+                   attrName.includes('impressao') ||
+                   attrSlug.includes('tipo-de-impressao');
+          });
+          
           if (qtyAttr) {
             const qty = parseInt(qtyAttr.option.replace(/\D/g, ''));
-            if (!isNaN(qty) && qty > 0 && !quantitiesSet.has(qty)) {
+            const price = parseFloat(variation.price || variation.regular_price || '0');
+            
+            if (!isNaN(qty) && qty > 0) {
               quantitiesSet.add(qty);
-              const price = parseFloat(variation.price || variation.regular_price || '0');
-              quantityMap.set(qty, price);
-              console.log(`  📊 Variação: ${qty} un = R$ ${price}`);
+              
+              if (impressionAttr) {
+                // Tem tipo de impressão - usar chave composta
+                const impressionType = impressionAttr.option.toLowerCase().trim();
+                impressionTypesSet.add(impressionType);
+                const key = `${qty}_${impressionType}`;
+                qtyAndTypePriceMap.set(key, price);
+                console.log(`  📊 Variação: ${qty} un + ${impressionType} = R$ ${price}`);
+              } else {
+                // Sem tipo de impressão - usar só quantidade
+                quantityMap.set(qty, price);
+                console.log(`  📊 Variação: ${qty} un = R$ ${price}`);
+              }
             }
           }
         });
         
-        // Converter Set para Array e ordenar
+        // Converter Sets para Arrays e ordenar
         const quantities = Array.from(quantitiesSet).sort((a, b) => a - b);
+        const impressionTypes = Array.from(impressionTypesSet);
+        
         setAvailableQuantities(quantities);
         setPriceByQuantity(quantityMap);
+        setPriceByQtyAndType(qtyAndTypePriceMap);
+        
+        if (impressionTypes.length > 0) {
+          setAvailableImpressionTypes(impressionTypes);
+          updatedItem.tipoImpressao = impressionTypes[0];
+        }
         
         // Definir quantidade e preço inicial
         if (quantities.length > 0) {
           updatedItem.quantity = quantities[0];
-          updatedItem.unitPrice = quantityMap.get(quantities[0]) || 0;
-          console.log(`💰 Preço inicial (variável): ${quantities[0]} un = R$ ${updatedItem.unitPrice}`);
+          
+          // Buscar preço considerando tipo de impressão se disponível
+          if (updatedItem.tipoImpressao && qtyAndTypePriceMap.size > 0) {
+            const key = `${quantities[0]}_${updatedItem.tipoImpressao}`;
+            updatedItem.unitPrice = qtyAndTypePriceMap.get(key) || quantityMap.get(quantities[0]) || 0;
+            console.log(`💰 Preço inicial (variável com tipo): ${quantities[0]} un + ${updatedItem.tipoImpressao} = R$ ${updatedItem.unitPrice}`);
+          } else {
+            updatedItem.unitPrice = quantityMap.get(quantities[0]) || 0;
+            console.log(`💰 Preço inicial (variável): ${quantities[0]} un = R$ ${updatedItem.unitPrice}`);
+          }
         }
         
       } catch (error) {
@@ -250,6 +293,7 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
     setAvailableImpressionTypes([]);
     setAvailableQuantities([]);
     setPriceByQuantity(new Map());
+    setPriceByQtyAndType(new Map());
     setIsVariableProduct(false);
     onUpdate(index, {
       ...item,
@@ -266,28 +310,35 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       [field]: value,
     };
     
-    // Se mudou a quantidade e temos preços tabelados, atualizar o preço unitário
-    if (field === 'quantity' && priceByQuantity.size > 0) {
-      const newQuantity = value as number;
-      console.log('🔄 Mudança de quantidade detectada:', newQuantity);
-      console.log('📊 Tabela de preços disponível:', Array.from(priceByQuantity.entries()));
+    // Se mudou a quantidade OU tipo de impressão, recalcular o preço
+    if ((field === 'quantity' || field === 'tipoImpressao') && (priceByQtyAndType.size > 0 || priceByQuantity.size > 0)) {
+      const newQuantity = field === 'quantity' ? (value as number) : item.quantity;
+      const newImpressionType = field === 'tipoImpressao' ? (value as string) : item.tipoImpressao;
       
-      if (priceByQuantity.has(newQuantity)) {
+      console.log('🔄 Mudança detectada:', field, '=', value);
+      console.log('📊 Buscando preço para: quantidade =', newQuantity, '+ tipo =', newImpressionType);
+      
+      // Primeiro, tentar buscar preço com quantidade + tipo de impressão
+      if (newImpressionType && priceByQtyAndType.size > 0) {
+        const key = `${newQuantity}_${newImpressionType.toLowerCase()}`;
+        console.log('🔍 Buscando chave:', key);
+        console.log('📋 Chaves disponíveis:', Array.from(priceByQtyAndType.keys()));
+        
+        if (priceByQtyAndType.has(key)) {
+          const newPrice = priceByQtyAndType.get(key)!;
+          console.log('✅ Preço encontrado (quantidade + tipo):', newPrice);
+          updatedItem.unitPrice = newPrice;
+        } else {
+          console.log('⚠️ Preço não encontrado para', key);
+        }
+      }
+      // Se não encontrou com tipo de impressão, tentar só com quantidade
+      else if (priceByQuantity.has(newQuantity)) {
         const newPrice = priceByQuantity.get(newQuantity)!;
-        console.log('✅ Preço encontrado para quantidade', newQuantity, ':', newPrice);
+        console.log('✅ Preço encontrado (só quantidade):', newPrice);
         updatedItem.unitPrice = newPrice;
       } else {
         console.log('⚠️ Preço não encontrado para quantidade', newQuantity);
-        // Tentar encontrar o preço mais próximo
-        const sortedQtys = Array.from(priceByQuantity.keys()).sort((a, b) => a - b);
-        const closestQty = sortedQtys.reduce((prev, curr) => {
-          return Math.abs(curr - newQuantity) < Math.abs(prev - newQuantity) ? curr : prev;
-        });
-        if (closestQty) {
-          const closestPrice = priceByQuantity.get(closestQty)!;
-          console.log(`ℹ️ Usando preço da quantidade mais próxima (${closestQty}): R$ ${closestPrice}`);
-          updatedItem.unitPrice = closestPrice;
-        }
       }
     }
     
@@ -361,13 +412,39 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
 
         {/* Resumo de Preços */}
         <div className="bg-primary/5 rounded-md p-4 space-y-2">
-          {priceByQuantity.size > 0 && (
+          {(priceByQtyAndType.size > 0 || priceByQuantity.size > 0) && (
             <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
               <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                📊 Tabela de Preços por Quantidade:
+                📊 Tabela de Preços:
               </p>
-              <div className="grid grid-cols-2 gap-1 text-xs">
-                {Array.from(priceByQuantity.entries())
+              <div className="grid grid-cols-1 gap-1 text-xs">
+                {/* Mostrar preços com quantidade + tipo de impressão */}
+                {priceByQtyAndType.size > 0 && Array.from(priceByQtyAndType.entries())
+                  .sort((a, b) => {
+                    const [qtyA] = a[0].split('_');
+                    const [qtyB] = b[0].split('_');
+                    return parseInt(qtyA) - parseInt(qtyB);
+                  })
+                  .map(([key, price]) => {
+                    const [qty, type] = key.split('_');
+                    const isSelected = item.quantity === parseInt(qty) && item.tipoImpressao === type;
+                    return (
+                      <div 
+                        key={key} 
+                        className={`flex justify-between px-2 py-1 rounded ${
+                          isSelected
+                            ? 'bg-blue-200 dark:bg-blue-900 font-semibold' 
+                            : 'bg-blue-100 dark:bg-blue-950'
+                        }`}
+                      >
+                        <span>{qty} un + {type}:</span>
+                        <span>R$ {price.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    );
+                  })}
+                
+                {/* Mostrar preços só com quantidade (se não houver tipo de impressão) */}
+                {priceByQtyAndType.size === 0 && Array.from(priceByQuantity.entries())
                   .sort((a, b) => a[0] - b[0])
                   .map(([qty, price]) => (
                     <div 
