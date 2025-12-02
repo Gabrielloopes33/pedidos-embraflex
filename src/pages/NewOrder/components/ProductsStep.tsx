@@ -28,7 +28,6 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
     alturaCm: 0,
     comprimentoCm: 0,
     tipoImpressao: '',
-    coresImpressao: '',
     finishing: {
       hotStamp: false,
       ilhos: false,
