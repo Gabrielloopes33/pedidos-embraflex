@@ -104,14 +104,42 @@ export function CustomerFormDialog({ open, onOpenChange, onSuccess }: CustomerFo
       console.error("Erro ao criar cliente:", error);
 
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
-        const errorMessage = axiosError.response?.data?.message || axiosError.response?.data?.error;
+        const axiosError = error as { 
+          response?: { 
+            data?: { 
+              message?: string; 
+              error?: any;
+              details?: any;
+            } 
+          } 
+        };
         
-        if (errorMessage) {
-          toast.error(errorMessage);
-        } else {
-          toast.error("Erro ao criar cliente. Verifique os dados e tente novamente.");
+        // Tentar extrair a mensagem de erro mais detalhada possível
+        const errorData = axiosError.response?.data;
+        let errorMessage = errorData?.message || "Erro ao criar cliente.";
+        
+        // Se houver detalhes adicionais, mostrar também
+        if (errorData?.details) {
+          console.log('📋 Detalhes do erro:', errorData.details);
+          
+          // Se for um objeto de erro do WooCommerce
+          if (errorData.details.message) {
+            errorMessage = errorData.details.message;
+          }
+          
+          // Se houver parâmetros inválidos
+          if (errorData.details.data?.params) {
+            const params = errorData.details.data.params;
+            const paramErrors = Object.entries(params)
+              .map(([key, value]) => `${key}: ${value}`)
+              .join(', ');
+            errorMessage += ` (${paramErrors})`;
+          }
         }
+        
+        toast.error(errorMessage, {
+          duration: 5000,
+        });
       } else {
         toast.error("Erro ao criar cliente. Verifique os dados e tente novamente.");
       }

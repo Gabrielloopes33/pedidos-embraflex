@@ -618,30 +618,136 @@ initializeDb().then(() => {
     }
   });
 
-  // Proxy para buscar clientes
-  app.get('/api/wc/customers', async (req, res) => {
+  // Proxy para buscar clientes (com filtro por vendedor)
+  app.get('/api/wc/customers', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const { data } = await wooCommerceApi.get('customers', req.query);
-      res.json(data);
+      const user = req.user;
+      const { data } = await wooCommerceApi.get('customers', {
+        ...req.query,
+        per_page: 100 // Aumentar limite para garantir que pegamos todos os clientes
+      });
+      
+      // Se o usuário for vendedor, filtrar apenas seus clientes
+      if (user?.role === 'vendedor') {
+        const vendedorName = user.username;
+        const filteredData = data.filter((customer: any) => {
+          const vendedorMeta = customer.meta_data?.find((meta: any) => meta.key === 'vendedor_name');
+          return vendedorMeta?.value === vendedorName;
+        });
+        console.log(`🔍 Clientes filtrados para vendedor ${vendedorName}:`, filteredData.length);
+        res.json(filteredData);
+      } else {
+        // Admin vê todos os clientes
+        res.json(data);
+      }
     } catch (error: any) {
       console.error('Erro ao buscar clientes do WooCommerce:', error.response?.data);
       res.status(500).json({ message: 'Falha ao buscar clientes do WooCommerce.' });
     }
   });
 
-  app.post('/api/wc/customers', async (req, res) => {
+  app.post('/api/wc/customers', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
+      const user = req.user;
       console.log('📝 Recebendo requisição para criar cliente:', JSON.stringify(req.body, null, 2));
-      const { data } = await wooCommerceApi.post('customers', req.body);
-      console.log('✅ Cliente criado com sucesso:', data);
+      console.log('👤 Usuário autenticado:', { username: user?.username, id: user?.id, role: user?.role });
+      
+      // Filtrar meta_data existente para evitar duplicatas
+      const existingMetaData = (req.body.meta_data || []).filter((meta: any) => 
+        meta.key !== 'vendedor_name' && meta.key !== 'vendedor_id'
+      );
+      
+      // Limpar campos vazios do billing para evitar problemas no WooCommerce
+      const cleanBilling: any = {};
+      if (req.body.billing) {
+        Object.keys(req.body.billing).forEach(key => {
+          const value = req.body.billing[key];
+          // Só adiciona se não for string vazia
+          if (value !== '' && value !== null && value !== undefined) {
+            cleanBilling[key] = value;
+          }
+        });
+      }
+      
+      // Criar objeto sem billing e meta_data originais
+      const { billing, meta_data, ...restBody } = req.body;
+      
+      // Adicionar meta_data com o nome do vendedor
+      const customerData: any = {
+        ...restBody,
+        meta_data: [
+          ...existingMetaData,
+          {
+            key: 'vendedor_name',
+            value: user?.username || 'admin'
+          },
+          {
+            key: 'vendedor_id',
+            value: user?.id || 'unknown'
+          }
+        ]
+      };
+      
+      // Só adiciona billing se tiver campos válidos
+      if (Object.keys(cleanBilling).length > 0) {
+        customerData.billing = cleanBilling;
+      }
+      
+      console.log('📤 Enviando para WooCommerce:', JSON.stringify(customerData, null, 2));
+      
+      const { data } = await wooCommerceApi.post('customers', customerData);
+      console.log('✅ Cliente criado com sucesso para vendedor:', user?.username, data);
       res.status(201).json(data);
     } catch (error: any) {
+      const user = req.user; // Redeclarar user no escopo do catch
+      
       console.error('❌ Erro ao criar cliente no WooCommerce:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
-        body: req.body
+        statusText: error.response?.statusText,
+        headers: error.response?.headers,
+        requestBody: req.body
       });
+      
+      // Se o email já existe, tentar buscar o cliente existente
+      if (error.response?.data?.code === 'registration-error-email-exists') {
+        try {
+          console.log('🔍 Email já existe, buscando cliente existente...');
+          const { data: customers } = await wooCommerceApi.get('customers', {
+            search: req.body.email,
+            per_page: 1
+          });
+          
+          if (customers && customers.length > 0) {
+            const existingCustomer = customers[0];
+            console.log('✅ Cliente existente encontrado:', existingCustomer.id);
+            
+            // Adicionar ou atualizar meta_data do vendedor no cliente existente
+            const existingMeta = existingCustomer.meta_data || [];
+            const hasVendedorName = existingMeta.some((m: any) => m.key === 'vendedor_name');
+            
+            if (!hasVendedorName) {
+              // Atualizar cliente existente com meta do vendedor
+              const updatedMeta = [
+                ...existingMeta,
+                { key: 'vendedor_name', value: user?.username || 'admin' },
+                { key: 'vendedor_id', value: user?.id || 'unknown' }
+              ];
+              
+              await wooCommerceApi.put(`customers/${existingCustomer.id}`, {
+                meta_data: updatedMeta
+              });
+              
+              console.log('✅ Meta do vendedor adicionada ao cliente existente');
+            }
+            
+            return res.status(200).json(existingCustomer);
+          }
+        } catch (searchError) {
+          console.error('❌ Erro ao buscar cliente existente:', searchError);
+        }
+      }
       
       // Extrair mensagem de erro específica do WooCommerce
       let errorMessage = 'Falha ao criar cliente no WooCommerce.';
