@@ -19,6 +19,7 @@ const INITIAL_PRODUCT: ProductItem = {
   tipoImpressao: "",
   finishing: {
     hotStamp: false,
+    hotStampCor: '',
     ilhos: false,
     furoPresente: false,
     cordao: '',
@@ -41,6 +42,9 @@ const INITIAL_CUSTOMER: CustomerData = {
 const INITIAL_ORDER_DETAILS: OrderDetails = {
   priority: 'Normal',
   notes: '',
+  vendedorNome: '',
+  vendedorTelefone: '',
+  condicoesPagamento: '',
 };
 
 const INITIAL_FORM_DATA: OrderFormData = {
@@ -165,9 +169,22 @@ export function useOrderWizard() {
 
   const canGoNext = () => {
     if (currentStep === 1) {
-      return formData.customer.customerId !== null && 
-             formData.customer.firstName && 
-             formData.customer.lastName;
+      // Debug: mostrar estado do cliente
+      console.log('🔍 Validação Step 1:', {
+        customerId: formData.customer.customerId,
+        firstName: formData.customer.firstName,
+        lastName: formData.customer.lastName,
+        email: formData.customer.email,
+      });
+      
+      // Validação mais flexível - apenas customerId e firstName são obrigatórios
+      // lastName e email são opcionais
+      const canProceed = formData.customer.customerId !== null && 
+                        formData.customer.firstName && 
+                        formData.customer.firstName.trim() !== '';
+      
+      console.log('✅ Pode avançar?', canProceed);
+      return canProceed;
     }
     if (currentStep === 2) {
       return formData.products.length > 0 && 

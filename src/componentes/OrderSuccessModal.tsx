@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/componentes/ui/dialog";
 import { Button } from "@/componentes/ui/button";
-import { CheckCircle2, Download, Eye } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileSignature } from "lucide-react";
 import type { ProductionOrder } from "@/lib/types";
 
 interface OrderSuccessModalProps {
@@ -9,6 +9,7 @@ interface OrderSuccessModalProps {
   order: ProductionOrder | null;
   onGeneratePDF?: () => void;
   onViewOrder?: () => void;
+  onRequestSignature?: () => void;
 }
 
 export function OrderSuccessModal({ 
@@ -16,7 +17,8 @@ export function OrderSuccessModal({
   onOpenChange, 
   order,
   onGeneratePDF,
-  onViewOrder 
+  onViewOrder,
+  onRequestSignature
 }: OrderSuccessModalProps) {
   if (!order) return null;
 
@@ -102,6 +104,20 @@ export function OrderSuccessModal({
             >
               <Download className="w-4 h-4 mr-2" />
               Gerar PDF
+            </Button>
+          )}
+
+          {onRequestSignature && (
+            <Button 
+              type="button"
+              variant="default"
+              onClick={() => {
+                onRequestSignature();
+              }}
+              className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+            >
+              <FileSignature className="w-4 h-4 mr-2" />
+              Solicitar Assinatura
             </Button>
           )}
         </DialogFooter>

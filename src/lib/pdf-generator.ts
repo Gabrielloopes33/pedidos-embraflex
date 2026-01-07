@@ -43,6 +43,10 @@ export interface OrderData {
   razaoSocial: string;
   cpfCnpj: string;
   representante: string;
+  vendedor?: string; // Nome do vendedor responsável
+  vendedorNome?: string; // Nome do vendedor (campo manual)
+  vendedorTelefone?: string; // Telefone do vendedor
+  condicoesPagamento?: string; // Condições de pagamento
   produtos: ProductItem[];
   total: number;
 }
@@ -127,6 +131,30 @@ export const generateOrderPDF = (orderData: OrderData): jsPDF => {
   if (orderData.representante) {
     doc.text(`Representante: ${orderData.representante}`, 20, yPosition);
     yPosition += 6;
+  }
+  
+  // Informações do vendedor (prioriza dados manuais)
+  if (orderData.vendedorNome || orderData.vendedorTelefone) {
+    const vendedorInfo = [];
+    if (orderData.vendedorNome) vendedorInfo.push(orderData.vendedorNome);
+    if (orderData.vendedorTelefone) vendedorInfo.push(`Tel: ${orderData.vendedorTelefone}`);
+    doc.text(`Vendedor: ${vendedorInfo.join(' - ')}`, 20, yPosition);
+    yPosition += 6;
+  } else if (orderData.vendedor) {
+    // Fallback para vendedor do sistema se não houver dados manuais
+    doc.text(`Vendedor: ${orderData.vendedor}`, 20, yPosition);
+    yPosition += 6;
+  }
+  
+  // Condições de pagamento
+  if (orderData.condicoesPagamento) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Condições de Pagamento:', 20, yPosition);
+    yPosition += 5;
+    doc.setFont('helvetica', 'normal');
+    const condicoesPagamento = doc.splitTextToSize(orderData.condicoesPagamento, pageWidth - 40);
+    doc.text(condicoesPagamento, 20, yPosition);
+    yPosition += (condicoesPagamento.length * 5) + 3;
   }
   
   yPosition += 5;
@@ -273,6 +301,110 @@ export const generateOrderPDF = (orderData: OrderData): jsPDF => {
   doc.setFontSize(16);
   doc.setTextColor(40, 116, 166);
   doc.text(`TOTAL GERAL: R$ ${orderData.total.toFixed(2).replace('.', ',')}`, pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 15;
+
+  // Seção: Resumo das Fases do Pedido
+  checkNewPage(60);
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.setFillColor(100, 100, 100);
+  doc.roundedRect(20, yPosition, pageWidth - 40, 10, 2, 2, 'F');
+  doc.text('SEGUE ABAIXO UM RESUMO SOBRE AS FASES DO PEDIDO ATÉ O SEU DESPACHO:', pageWidth / 2, yPosition + 7, { align: 'center' });
+  yPosition += 18;
+
+  doc.setFontSize(9);
+  doc.setTextColor(0, 0, 0);
+
+  // Fase 1
+  checkNewPage(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text('1. Aprovação do orçamento pelo comprador.', 20, yPosition);
+  yPosition += 5;
+  doc.setFont('helvetica', 'normal');
+  addMultilineText('Após o orçamento ser aprovado, será gerado um pedido formal com todas as informações da negociação e os detalhes da compra.', 20, pageWidth - 40);
+  yPosition += 5;
+
+  // Fase 2
+  checkNewPage(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text('2. Verificação de Cadastro e Modalidades de Pagamento', 20, yPosition);
+  yPosition += 5;
+  doc.setFont('helvetica', 'normal');
+  addMultilineText('Realizaremos a checagem do CNPJ do comprador e confirmaremos as condições de pagamento previamente combinadas.', 20, pageWidth - 40);
+  yPosition += 5;
+
+  // Fase 3
+  checkNewPage(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('3. Criação das Artes.', 20, yPosition);
+  yPosition += 5;
+  doc.setFont('helvetica', 'normal');
+  addMultilineText('Com base no material enviado, nas referências do cliente e nas informações como WhatsApp, endereço e redes sociais, iniciaremos a criação das artes para revisão e aprovação.', 20, pageWidth - 40);
+  yPosition += 3;
+  addMultilineText('Fique atento aos nossos canais de contato para facilitar essa etapa.', 20, pageWidth - 40);
+  yPosition += 5;
+
+  // Fase 4
+  checkNewPage(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text('4. Fabricação e Envio', 20, yPosition);
+  yPosition += 5;
+  doc.setFont('helvetica', 'normal');
+  addMultilineText('Assim que a arte for aprovada, daremos início ao processo de produção. O prazo estimado varia entre 30 a 40 dias, podendo se estender em caso de acabamentos personalizados.', 20, pageWidth - 40);
+  yPosition += 5;
+
+  // Fase 5
+  checkNewPage(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text('5. Fechamento Financeiro.', 20, yPosition);
+  yPosition += 5;
+  doc.setFont('helvetica', 'normal');
+  addMultilineText('Enviaremos um resumo completo do pedido com todos os dados e valores para conferência e finalização da compra.', 20, pageWidth - 40);
+  yPosition += 15;
+
+  // Seção: Condições Gerais de Venda
+  checkNewPage(50);
+  doc.setFontSize(12);
+  doc.setTextColor(40, 116, 166);
+  doc.text('CONDIÇÕES GERAIS DE VENDA', 20, yPosition);
+  yPosition += 8;
+
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  const clausulas = [
+    'O CLIENTE deverá proceder com a análise minuciosa do layout, conferindo dados como endereço, proporção dos elementos gráficos, tamanhos e redes sociais.',
+    'NÃO SERÁ ACEITA a devolução de mercadoria devido à natureza personalizada e industrializada do produto. A responsabilidade pela análise e validação do layout e informações fornecidas é integralmente do CLIENTE, cujo consentimento caracteriza autorização para a fabricação.',
+    'A impressão poderá apresentar variações de cor de até 20% na tonalidade final.',
+    'Em relação às sacolas plásticas, as dimensões e espessuras poderão variar até 5% em conformidade com as tolerâncias industriais.',
+    'Alterações no material solicitado, após a autorização para produção, implicarão em novo pedido, sendo o CLIENTE responsável pelo pagamento de ambos os pedidos, considerando a modificação posterior.',
+    'A quantidade das mercadorias poderá apresentar variação  de até ___________ (maior ou menor), porém o CLIENTE pagará pelo quantitativo exato entregue.',
+    'A EMPRESA se compromete a produzir as mercadorias conforme as especificações do pedido, com pleno conhecimento do CLIENTE.',
+    'Todas as criações e artes desenvolvidas pela EMPRESA são de propriedade exclusiva, sendo vedada sua utilização sem autorização prévia, conforme a legislação de direitos autorais e propriedade intelectual.',
+    'Ao assinar o presente contrato, o CLIENTE declara ciência e concordância integral com as condições comerciais estabelecidas.',
+    'O pagamento deverá ser realizado n oato do pedido, conforme as condições acordadas. O CLIENTE será responsável por eventuais custos decorrentes de inadimplemento, incluindo taxas judiciais, conforme a legislação vigente. A primeira compra será efetuada à Vista.',
+    'A EMPRESA reserva-se o direito de cancelar o pedido caso sejam identificadas restrições de crédito no cadastro do CLIENTE, desde a data da venda até a entrega.',
+    'O Pedido será cancelado caso o CLIENTE não forneça o retorno sobre a aprovação do layout dentro de 30 dias  corridos após o envio.',
+    'A EMPRESA se reserva o direito de imprimir sua logomarca nas embalagens e materiais impressos, de forma discreta, para fins de identificação.',
+    'Em caso de inadimplência quanto à forma de pagamento acordada, a EMPRESA poderá registrar o CLIENTE nos cadastros de inadimplentes (SPC, SERASA) ou protestar o título.',
+    'Caso o pagamento não seja realizado no ato do pedido ou da entrega, a venda será automaticamente considerada à vista, sendo enviado um BOLETO com vencimento em 7 dias.'
+  ];
+
+  clausulas.forEach((clausula, index) => {
+    checkNewPage(10);
+    addMultilineText(`${index + 1}. ${clausula}`, 20, pageWidth - 40);
+    yPosition += 3;
+  });
+
+  yPosition += 15;
+
+  // Seção de Assinatura
+  checkNewPage(35);
+  doc.setDrawColor(0, 0, 0);
+  doc.line(pageWidth / 2 - 60, yPosition, pageWidth / 2 + 60, yPosition);
+  yPosition += 5;
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.text('Assinatura do responsável pelo pedido', pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 15;
 
   // Rodapé

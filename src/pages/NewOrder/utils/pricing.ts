@@ -7,42 +7,44 @@ import { FINISHING_PRICES } from '../types';
 export function calculateFinishingCosts(finishing: Finishing): number {
   let total = 0;
 
-  // Acessórios
+  // Hot Stamp - verifica a cor
   if (finishing.hotStamp) {
-    total += FINISHING_PRICES.hotStamp;
+    if (finishing.hotStampCor === 'dourado' || finishing.hotStampCor === 'prata') {
+      total += FINISHING_PRICES.hotStampDouradoPrata;
+    } else if (finishing.hotStampCor === 'colorido') {
+      total += FINISHING_PRICES.hotStampColorido;
+    } else {
+      // Fallback: se não especificou cor, usar dourado/prata
+      total += FINISHING_PRICES.hotStampDouradoPrata;
+    }
   }
 
+  // Ilhós
   if (finishing.ilhos) {
     total += FINISHING_PRICES.ilhos;
   }
 
+  // Furo de Presente
   if (finishing.furoPresente) {
     total += FINISHING_PRICES.furoPresente;
   }
 
   // Cordão
   if (finishing.cordao) {
-    switch (finishing.cordao) {
-      case 'padrão':
-        total += FINISHING_PRICES.cordaoPadrao;
-        break;
-      case 'colorido':
-        total += FINISHING_PRICES.cordaoColorido;
-        break;
-      case 'gorgurinho':
-        total += FINISHING_PRICES.gorgurinho;
-        break;
-      case 'gorgurão':
-        total += FINISHING_PRICES.gorgurao;
-        break;
-      case 'são francisco':
-        total += FINISHING_PRICES.saoFrancisco;
-        break;
+    if (finishing.cordao === 'colorido') {
+      // Cordão simples colorido
+      total += FINISHING_PRICES.cordaoColorido;
+    } else if (finishing.cordao === 'gorgurinho' || finishing.cordao === 'gorgurão' || finishing.cordao === 'são francisco') {
+      // Cordões especiais (Gorgurinho, Gorgurão, São Francisco)
+      if (finishing.corCordao === 'colorido') {
+        total += FINISHING_PRICES.cordaoEspecialColorido;
+      } else {
+        // Preto ou Branco (ou não especificado)
+        total += FINISHING_PRICES.cordaoEspecialPretoBranco;
+      }
     }
+    // Cordão padrão não tem custo adicional
   }
-
-  // Cor do cordão (apenas se for padrão, mas não tem custo adicional)
-  // As cores preto, branco e bege não têm custo adicional
 
   return total;
 }

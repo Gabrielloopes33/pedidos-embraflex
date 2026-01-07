@@ -3,14 +3,15 @@
 export interface Finishing {
   // Acessórios
   hotStamp: boolean;
+  hotStampCor: 'dourado' | 'prata' | 'colorido' | ''; // Cor do hot stamp
   ilhos: boolean;
   furoPresente: boolean;
   
   // Cordão (apenas 1 selecionável)
   cordao: 'padrão' | 'colorido' | 'gorgurinho' | 'gorgurão' | 'são francisco' | '';
   
-  // Cor do Cordão (apenas se padrão selecionado)
-  corCordao: 'preto' | 'branco' | 'bege' | '';
+  // Cor do Cordão (se padrão, gorgurinho, gorgurão ou são francisco)
+  corCordao: 'preto' | 'branco' | 'bege' | 'colorido' | '';
 }
 
 export interface ProductItem {
@@ -44,6 +45,9 @@ export interface CustomerData {
 export interface OrderDetails {
   priority: 'Normal' | 'Urgente';
   notes: string;
+  vendedorNome: string;
+  vendedorTelefone: string;
+  condicoesPagamento: string;
 }
 
 export interface OrderFormData {
@@ -54,20 +58,18 @@ export interface OrderFormData {
 
 // Preços dos acabamentos (conforme especificação)
 export const FINISHING_PRICES = {
-  // Acessórios
-  hotStamp: 0.20, // R$ 0,20
-  ilhos: 0.30, // R$ 0,30
+  // Acessórios - Hot Stamp
+  hotStampDouradoPrata: 0.80, // R$ 0,80 (dourado ou prata)
+  hotStampColorido: 0.90, // R$ 0,90 (colorido)
+  ilhos: 0.35, // R$ 0,35
   furoPresente: 0.00, // Grátis
   
-  // Cordões
-  cordaoPadrao: 0.00, // Grátis (mas cobra pela cor)
-  cordaoColorido: 0.35, // R$ 0,35
-  gorgurinho: 0.55, // R$ 0,55
-  gorgurao: 0.45, // R$ 0,45 (Gorgurão)
-  saoFrancisco: 0.50, // R$ 0,50 estimado
+  // Cordão simples colorido
+  cordaoColorido: 0.10, // R$ 0,10
   
-  // Cores do cordão padrão
-  corCordaoPreto: 0.00, // Grátis
-  corCordaoBranco: 0.00, // Grátis  
-  corCordaoBege: 0.00, // Grátis
+  // Cordões especiais (Gorgurão, São Francisco, Gorgurinho)
+  // Preto ou Branco
+  cordaoEspecialPretoBranco: 0.50, // R$ 0,50
+  // Colorido
+  cordaoEspecialColorido: 0.55, // R$ 0,55
 } as const;

@@ -29,7 +29,7 @@ export function CustomerStep({ customer, onUpdate }: CustomerStepProps) {
   });
 
   const selectCustomer = (wooCustomer: WooCommerceCustomer) => {
-    onUpdate({
+    const customerData = {
       customerId: wooCustomer.id,
       firstName: wooCustomer.first_name,
       lastName: wooCustomer.last_name,
@@ -39,7 +39,10 @@ export function CustomerStep({ customer, onUpdate }: CustomerStepProps) {
       city: wooCustomer.billing?.city || "",
       state: wooCustomer.billing?.state || "",
       postcode: wooCustomer.billing?.postcode || "",
-    });
+    };
+    
+    console.log('👤 Cliente selecionado:', customerData);
+    onUpdate(customerData);
 
     setCustomerSearchTerm("");
     toast.success(`Cliente ${wooCustomer.first_name} ${wooCustomer.last_name} selecionado`);

@@ -11,27 +11,44 @@ interface ProductFinishingProps {
 
 export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
   const acessorios = [
-    { key: 'hotStamp' as const, label: 'Hot Stamp', price: FINISHING_PRICES.hotStamp },
+    { key: 'hotStamp' as const, label: 'Hot Stamp', showPrice: false }, // Preço depende da cor
     { key: 'ilhos' as const, label: 'Ilhós', price: FINISHING_PRICES.ilhos },
     { key: 'furoPresente' as const, label: 'Furo de Presente', price: FINISHING_PRICES.furoPresente },
   ];
 
   const cordoes = [
-    { value: 'padrão', label: 'Padrão', price: FINISHING_PRICES.cordaoPadrao },
+    { value: 'padrão', label: 'Padrão (Grátis)', price: 0 },
     { value: 'colorido', label: 'Colorido', price: FINISHING_PRICES.cordaoColorido },
-    { value: 'gorgurinho', label: 'Gorgurinho', price: FINISHING_PRICES.gorgurinho },
-    { value: 'gorgurão', label: 'Gorgurão', price: FINISHING_PRICES.gorgurao },
-    { value: 'são francisco', label: 'São Francisco', price: FINISHING_PRICES.saoFrancisco },
+    { value: 'gorgurinho', label: 'Gorgurinho', showPrice: false }, // Preço depende da cor
+    { value: 'gorgurão', label: 'Gorgurão', showPrice: false },
+    { value: 'são francisco', label: 'São Francisco', showPrice: false },
   ];
 
   const coresCordao = [
-    { value: 'preto', label: 'Preto', price: FINISHING_PRICES.corCordaoPreto },
-    { value: 'branco', label: 'Branco', price: FINISHING_PRICES.corCordaoBranco },
-    { value: 'bege', label: 'Bege', price: FINISHING_PRICES.corCordaoBege },
+    { value: 'preto', label: 'Preto', price: 0 },
+    { value: 'branco', label: 'Branco', price: 0 },
+    { value: 'bege', label: 'Bege', price: 0 },
+  ];
+
+  const coresHotStamp = [
+    { value: 'dourado', label: 'Dourado', price: FINISHING_PRICES.hotStampDouradoPrata },
+    { value: 'prata', label: 'Prata', price: FINISHING_PRICES.hotStampDouradoPrata },
+    { value: 'colorido', label: 'Colorido', price: FINISHING_PRICES.hotStampColorido },
+  ];
+
+  const coresCordaoEspecial = [
+    { value: 'preto', label: 'Preto', price: FINISHING_PRICES.cordaoEspecialPretoBranco },
+    { value: 'branco', label: 'Branco', price: FINISHING_PRICES.cordaoEspecialPretoBranco },
+    { value: 'colorido', label: 'Colorido', price: FINISHING_PRICES.cordaoEspecialColorido },
   ];
 
   // Verificar se a quantidade é menor que 1000 para desabilitar Hot Stamp
   const isHotStampDisabled = item.quantity < 1000;
+
+  // Verificar se é cordão especial (gorgurinho, gorgurão ou são francisco)
+  const isCordaoEspecial = item.finishing?.cordao === 'gorgurinho' || 
+                           item.finishing?.cordao === 'gorgurão' || 
+                           item.finishing?.cordao === 'são francisco';
 
   return (
     <div className="space-y-6">
@@ -54,6 +71,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                     onUpdate('finishing', {
                       ...item.finishing,
                       [option.key]: checked === true,
+                      // Se desmarcou hot stamp, limpar cor
+                      ...(option.key === 'hotStamp' && !checked ? { hotStampCor: '' } : {}),
                     });
                   }}
                 />
@@ -64,7 +83,7 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                   }`}
                 >
                   {option.label}
-                  {option.price > 0 && (
+                  {option.showPrice !== false && option.price && option.price > 0 && (
                     <span className="text-xs text-muted-foreground ml-2">
                       (R$ {option.price.toFixed(2).replace('.', ',')})
                     </span>
@@ -81,6 +100,44 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
         </div>
       </div>
 
+      {/* Cor do Hot Stamp (apenas se Hot Stamp marcado) */}
+      {item.finishing?.hotStamp && (
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-muted-foreground">
+            Cor do Hot Stamp <span className="text-xs">(selecione apenas 1)</span>
+          </Label>
+          <RadioGroup
+            value={item.finishing?.hotStampCor || ''}
+            onValueChange={(value) => {
+              onUpdate('finishing', {
+                ...item.finishing,
+                hotStampCor: value as any,
+              });
+            }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-md">
+              {coresHotStamp.map((option) => (
+                <div key={option.value} className="flex items-center space-x-2">
+                  <RadioGroupItem 
+                    value={option.value} 
+                    id={`${item.productId}-hotstamp-${option.value}`}
+                  />
+                  <label
+                    htmlFor={`${item.productId}-hotstamp-${option.value}`}
+                    className="text-sm font-medium leading-none cursor-pointer flex-1"
+                  >
+                    {option.label}
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (R$ {option.price.toFixed(2).replace('.', ',')})
+                    </span>
+                  </label>
+                </div>
+              ))}
+            </div>
+          </RadioGroup>
+        </div>
+      )}
+
       {/* Cordão */}
       <div className="space-y-3">
         <Label className="text-sm font-medium text-muted-foreground">
@@ -89,11 +146,12 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
         <RadioGroup
           value={item.finishing?.cordao || ''}
           onValueChange={(value) => {
+            const isCordaoEspecial = ['gorgurinho', 'gorgurão', 'são francisco'].includes(value);
             onUpdate('finishing', {
               ...item.finishing,
               cordao: value as any,
-              // Limpar cor do cordão se não for padrão
-              corCordao: value === 'padrão' ? item.finishing.corCordao : '',
+              // Limpar cor do cordão ao trocar tipo
+              corCordao: '',
             });
           }}
         >
@@ -109,7 +167,7 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                   className="text-sm font-medium leading-none cursor-pointer flex-1"
                 >
                   {option.label}
-                  {option.price > 0 && (
+                  {option.showPrice !== false && option.price && option.price > 0 && (
                     <span className="text-xs text-muted-foreground ml-2">
                       (R$ {option.price.toFixed(2).replace('.', ',')})
                     </span>
@@ -121,7 +179,7 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
         </RadioGroup>
       </div>
 
-      {/* Cor do Cordão (apenas se Padrão selecionado) */}
+      {/* Cor do Cordão Padrão (apenas se Padrão selecionado) */}
       {item.finishing?.cordao === 'padrão' && (
         <div className="space-y-3">
           <Label className="text-sm font-medium text-muted-foreground">
@@ -148,6 +206,49 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                     className="text-sm font-medium leading-none cursor-pointer flex-1"
                   >
                     {option.label}
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (R$ {option.price.toFixed(2).replace('.', ',')})
+                    </span>
+                  </label>
+                </div>
+              ))}
+            </div>
+          </RadioGroup>
+        </div>
+      )}
+
+      {/* Cor do Cordão Especial (para Gorgurinho, Gorgurão ou São Francisco) */}
+      {(item.finishing?.cordao === 'gorgurinho' || 
+        item.finishing?.cordao === 'gorgurão' || 
+        item.finishing?.cordao === 'são francisco') && (
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-muted-foreground">
+            Cor do Cordão <span className="text-xs">(selecione apenas 1)</span>
+          </Label>
+          <RadioGroup
+            value={item.finishing?.corCordao || ''}
+            onValueChange={(value) => {
+              onUpdate('finishing', {
+                ...item.finishing,
+                corCordao: value as any,
+              });
+            }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-md">
+              {coresCordaoEspecial.map((option) => (
+                <div key={option.value} className="flex items-center space-x-2">
+                  <RadioGroupItem 
+                    value={option.value} 
+                    id={`${item.productId}-cor-especial-${option.value}`}
+                  />
+                  <label
+                    htmlFor={`${item.productId}-cor-especial-${option.value}`}
+                    className="text-sm font-medium leading-none cursor-pointer flex-1"
+                  >
+                    {option.label}
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (R$ {option.price.toFixed(2).replace('.', ',')})
+                    </span>
                   </label>
                 </div>
               ))}

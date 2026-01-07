@@ -10,6 +10,7 @@ import { CustomerStep } from "./NewOrder/components/CustomerStep";
 import { ProductsStep } from "./NewOrder/components/ProductsStep";
 import { OrderDetailsStep } from "./NewOrder/components/OrderDetailsStep";
 import { OrderSuccessModal } from "@/componentes/OrderSuccessModal";
+import { OrderSignatureModal, SignatureData } from "@/componentes/OrderSignatureModal";
 import { createProductionOrder, createWooCommerceOrder } from "@/lib/api";
 import { downloadOrderPDF } from "@/lib/pdf-generator";
 import type { NewProductionOrder, ProductionOrder } from "@/lib/types";
@@ -26,7 +27,9 @@ export default function NewOrder() {
   const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<ProductionOrder | null>(null);
+  const [savedOrderDetails, setSavedOrderDetails] = useState<any>(null);
 
   const {
     currentStep,
@@ -83,9 +86,14 @@ export default function NewOrder() {
   const handleApprovalConfirm = async () => {
     setLoading(true);
     try {
+      // Montar nome completo do cliente (pode ter só firstName)
+      const customerFullName = formData.customer.lastName 
+        ? `${formData.customer.firstName} ${formData.customer.lastName}`
+        : formData.customer.firstName;
+      
       // 1. Criar pedido no WooCommerce
       const wooCommerceOrderData = {
-        customerName: `${formData.customer.firstName} ${formData.customer.lastName}`,
+        customerName: customerFullName,
         customerEmail: formData.customer.email,
         products: formData.products.map(item => ({
           productId: item.productId,
@@ -95,7 +103,7 @@ export default function NewOrder() {
         })),
         billing: {
           firstName: formData.customer.firstName,
-          lastName: formData.customer.lastName,
+          lastName: formData.customer.lastName || '',
           email: formData.customer.email,
           phone: formData.customer.phone,
           address: formData.customer.address,
@@ -109,7 +117,7 @@ export default function NewOrder() {
 
       // 2. Criar ordem de produção
       const productionOrder: NewProductionOrder = {
-        customerName: `${formData.customer.firstName} ${formData.customer.lastName}`,
+        customerName: customerFullName,
         products: formData.products.map(item => ({
           id: crypto.randomUUID(),
           productId: item.productId,
@@ -151,7 +159,7 @@ export default function NewOrder() {
       // Criar objeto de ordem completo para exibir no modal
       const completeOrder: ProductionOrder = {
         id: crypto.randomUUID(),
-        customerName: `${formData.customer.firstName} ${formData.customer.lastName}`,
+        customerName: customerFullName,
         products: productionOrder.products,
         priority: productionOrder.priority,
         notes: productionOrder.notes,
@@ -162,6 +170,14 @@ export default function NewOrder() {
       };
 
       setCreatedOrder(completeOrder);
+      
+      // Salvar detalhes do pedido antes de limpar
+      setSavedOrderDetails({
+        vendedorNome: formData.orderDetails.vendedorNome,
+        vendedorTelefone: formData.orderDetails.vendedorTelefone,
+        condicoesPagamento: formData.orderDetails.condicoesPagamento,
+      });
+      
       setSuccessModalOpen(true);
       
       // Limpar o rascunho do pedido após sucesso
@@ -179,13 +195,22 @@ export default function NewOrder() {
   const handleGeneratePDF = () => {
     try {
       console.log('Gerando PDF...', createdOrder);
+      console.log('Detalhes salvos:', savedOrderDetails);
       if (createdOrder) {
+        // Obter informações do usuário logado (vendedor)
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const vendedorName = user?.username || 'Não informado';
+        
         // Converter ProductionOrder para OrderData
         const orderPDF: any = {
           nomeFantasia: createdOrder.customerName,
           razaoSocial: createdOrder.customerName,
           cpfCnpj: '',
           representante: '',
+          vendedor: vendedorName, // Adicionar vendedor do sistema
+          vendedorNome: savedOrderDetails?.vendedorNome || '',
+          vendedorTelefone: savedOrderDetails?.vendedorTelefone || '',
+          condicoesPagamento: savedOrderDetails?.condicoesPagamento || '',
           produtos: createdOrder.products,
           total: createdOrder.products.reduce((sum, p) => sum + (p.unitPrice * p.quantity), 0)
         };
@@ -202,6 +227,17 @@ export default function NewOrder() {
 
   const handleViewOrder = () => {
     navigate("/orders");
+  };
+
+  const handleRequestSignature = () => {
+    setSuccessModalOpen(false);
+    setSignatureModalOpen(true);
+  };
+
+  const handleSignatureComplete = (signatureData: SignatureData) => {
+    console.log('Assinatura completa:', signatureData);
+    toast.success("Pedido assinado! Seguindo para produção.");
+    // Aqui você pode atualizar o status do pedido, enviar para o backend, etc.
   };
 
   const renderStep = () => {
@@ -300,6 +336,15 @@ export default function NewOrder() {
         order={createdOrder}
         onGeneratePDF={handleGeneratePDF}
         onViewOrder={handleViewOrder}
+        onRequestSignature={handleRequestSignature}
+      />
+
+      {/* Signature Modal */}
+      <OrderSignatureModal
+        open={signatureModalOpen}
+        onOpenChange={setSignatureModalOpen}
+        onSignatureComplete={handleSignatureComplete}
+        orderData={createdOrder}
       />
     </div>
   );
