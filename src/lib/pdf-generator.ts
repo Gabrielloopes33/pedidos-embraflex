@@ -360,6 +360,15 @@ export const generateOrderPDF = (orderData: OrderData): jsPDF => {
   yPosition += 5;
   doc.setFont('helvetica', 'normal');
   addMultilineText('Enviaremos um resumo completo do pedido com todos os dados e valores para conferência e finalização da compra.', 20, pageWidth - 40);
+  yPosition += 5;
+
+  // Fase 6
+  checkNewPage(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('6. Tolerância Quantitativa na Produção', 20, yPosition);
+  yPosition += 5;
+  doc.setFont('helvetica', 'normal');
+  addMultilineText('As partes acordam que será admitida variação quantitativa na entrega dos produtos em razão das particularidades do processo produtivo: para pedidos iguais ou superiores a 1.000 (mil) unidades, tolerância de até 10% (dez por cento) para mais ou para menos; para pedidos inferiores a 1.000 (mil) unidades, tolerância de 25% (vinte e cinco por cento) a 30% (trinta por cento) para mais ou para menos. O valor total será ajustado proporcionalmente à quantidade efetivamente entregue, aplicando-se o preço unitário estabelecido no Fechamento Financeiro.', 20, pageWidth - 40);
   yPosition += 15;
 
   // Seção: Condições Gerais de Venda

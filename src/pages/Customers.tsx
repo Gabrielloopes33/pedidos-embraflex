@@ -47,6 +47,13 @@ const Customers = () => {
   };
 
   if (error) {
+    // Verificar se é erro de autenticação
+    const errorMessage = (error as any)?.message || '';
+    const isAuthError = errorMessage.includes('autenticado') || errorMessage.includes('sessão expirou');
+    const status = (error as any)?.response?.status;
+    
+    console.error('❌ [Customers Page] Erro detectado:', { errorMessage, status, isAuthError });
+    
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -63,12 +70,29 @@ const Customers = () => {
           <div className="flex flex-col items-center justify-center text-center space-y-4">
             <AlertCircle className="w-12 h-12 text-destructive" />
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Erro ao carregar clientes</h3>
+              <h3 className="text-lg font-semibold text-foreground">
+                {isAuthError ? 'Erro de Autenticação' : 'Erro ao carregar clientes'}
+              </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Não foi possível conectar à API do WooCommerce.
+                {isAuthError 
+                  ? errorMessage
+                  : 'Não foi possível conectar à API do WooCommerce.'}
               </p>
+              {status === 401 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Código de erro: 401 (Não autorizado)
+                </p>
+              )}
             </div>
-            <Button onClick={() => refetch()}>Tentar Novamente</Button>
+            <div className="flex gap-2">
+              {isAuthError ? (
+                <Button onClick={() => window.location.href = '/login'}>
+                  Fazer Login
+                </Button>
+              ) : (
+                <Button onClick={() => refetch()}>Tentar Novamente</Button>
+              )}
+            </div>
           </div>
         </Card>
         <CustomerFormDialog

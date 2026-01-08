@@ -4,7 +4,7 @@ import { Badge } from "@/componentes/ui/badge";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { ProductItem } from "../types";
 import { ProductFormModal } from "./ProductFormModal";
-import { calculateOrderTotal } from "../utils/pricing";
+import { calculateOrderTotal, calculateFinishingCosts } from "../utils/pricing";
 import { useState } from "react";
 
 interface ProductsStepProps {
@@ -96,7 +96,12 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
         <>
           {/* Lista de Produtos */}
           <div className="space-y-3">
-            {products.map((product, index) => (
+            {products.map((product, index) => {
+              // Calcular custo dos acabamentos para exibição correta
+              const finishingCost = calculateFinishingCosts(product.finishing);
+              const unitPriceWithFinishing = product.unitPrice + finishingCost;
+              
+              return (
               <Card key={index} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
@@ -125,7 +130,7 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                         <div>
                           <span className="text-muted-foreground">Valor Unit.:</span>
                           <p className="font-medium">
-                            R$ {product.unitPrice.toFixed(2).replace('.', ',')}
+                            R$ {unitPriceWithFinishing.toFixed(2).replace('.', ',')}
                           </p>
                         </div>
                         <div>
@@ -189,7 +194,8 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
           </div>
 
           {/* Total Geral */}

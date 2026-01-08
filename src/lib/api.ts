@@ -30,6 +30,33 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Interceptor para detectar token expirado e redirecionar para login
+apiClient.interceptors.response.use(
+  (response) => {
+    // Se a resposta for bem-sucedida, apenas retorna
+    return response;
+  },
+  (error) => {
+    // Se receber erro 401 (Unauthorized), significa que o token expirou ou é inválido
+    if (error.response?.status === 401) {
+      console.error('🔒 Token expirado ou inválido. Redirecionando para login...');
+      
+      // Limpar dados de autenticação do localStorage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      
+      // Redirecionar para a página de login
+      window.location.href = '/login';
+      
+      // Retornar um erro customizado
+      return Promise.reject(new Error('Sua sessão expirou. Por favor, faça login novamente.'));
+    }
+    
+    // Para outros erros, apenas repassa
+    return Promise.reject(error);
+  }
+);
+
 // --- Autenticação ---
 export const login = async (credentials: { username: string; password: string; }) => {
   console.log('🔐 Tentando autenticar:', credentials.username);
