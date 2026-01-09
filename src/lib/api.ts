@@ -113,6 +113,8 @@ export const createProductionOrder = async (order: NewProductionOrder): Promise<
   // Adicionar informações do vendedor ao pedido
   const user = getCurrentUser();
   
+  console.log('🔥🔥🔥 USANDO SUPABASE DIRETO - SEM BACKEND! 🔥🔥🔥');
+  
   // Gerar UUID simples
   const uuid = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
