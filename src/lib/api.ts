@@ -14,7 +14,7 @@ console.log('🔧 API Configuration:', {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000, // 15 segundos de timeout (Render pode estar em cold start)
+  timeout: 30000, // 30 segundos de timeout (Render cold start + operações pesadas)
 });
 
 // Interceptor para adicionar o token de autenticação a cada requisição
