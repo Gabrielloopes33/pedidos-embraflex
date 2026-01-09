@@ -619,66 +619,29 @@ initializeDb().then(() => {
     }
   });
 
-  // Proxy para buscar clientes (com filtro por vendedor)
-  app.get('/api/wc/customers', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  // Proxy para buscar clientes (SEM autenticação - uso interno)
+  app.get('/api/wc/customers', async (req: Request, res: Response) => {
     try {
-      const user = req.user;
-      console.log(`🔍 Buscando clientes - Usuário: ${user?.username} (${user?.role})`);
+      console.log('🔍 Buscando todos os clientes do WooCommerce');
       
       const { data } = await wooCommerceApi.get('customers', {
         ...req.query,
         per_page: 100 // Aumentar limite para garantir que pegamos todos os clientes
       });
       
-      console.log(`📊 Total de clientes retornados do WooCommerce: ${data.length}`);
+      console.log(`📊 Total de clientes retornados: ${data.length}`);
       
-      // Se o usuário for vendedor, filtrar apenas seus clientes
-      if (user?.role === 'vendedor') {
-        const vendedorName = user.username;
-        
-        // Log detalhado dos meta_data de cada cliente
-        console.log('🔎 Analisando meta_data dos clientes:');
-        data.forEach((customer: any, index: number) => {
-          const vendedorMeta = customer.meta_data?.find((meta: any) => meta.key === 'vendedor_name');
-          console.log(`  Cliente ${index + 1} (ID: ${customer.id}): ${customer.first_name} ${customer.last_name}`);
-          console.log(`    - vendedor_name: "${vendedorMeta?.value || 'NÃO DEFINIDO'}"`);
-          console.log(`    - Comparando com: "${vendedorName}"`);
-          console.log(`    - Match: ${vendedorMeta?.value === vendedorName}`);
-        });
-        
-        const filteredData = data.filter((customer: any) => {
-          const vendedorMeta = customer.meta_data?.find((meta: any) => meta.key === 'vendedor_name');
-          return vendedorMeta?.value === vendedorName;
-        });
-        
-        console.log(`✅ Clientes filtrados para vendedor "${vendedorName}": ${filteredData.length} de ${data.length}`);
-        
-        // Se não houver clientes com meta_data, retornar todos (modo fallback temporário)
-        if (filteredData.length === 0 && data.length > 0) {
-          console.warn(`⚠️ ATENÇÃO: Nenhum cliente tem meta_data 'vendedor_name'. Retornando todos os clientes para debug.`);
-          console.warn(`⚠️ SOLUÇÃO: Certifique-se de que os clientes foram criados pelo sistema ou adicione manualmente o campo 'vendedor_name' nos clientes existentes.`);
-          // Comentar a linha abaixo quando quiser ativar o filtro estrito
-          res.json(data); // TEMPORÁRIO: retorna todos
-          // res.json(filteredData); // DESCOMENTAR para filtro estrito
-        } else {
-          res.json(filteredData);
-        }
-      } else {
-        // Admin vê todos os clientes
-        console.log(`✅ Admin vê todos os clientes: ${data.length}`);
-        res.json(data);
-      }
+      // Retornar todos os clientes (sem filtro)
+      res.json(data);
     } catch (error: any) {
-      console.error('❌ Erro ao buscar clientes do WooCommerce:', error.response?.data);
+      console.error('❌ Erro ao buscar clientes do WooCommerce:', error.response?.data || error.message);
       res.status(500).json({ message: 'Falha ao buscar clientes do WooCommerce.' });
     }
   });
 
-  app.post('/api/wc/customers', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/wc/customers', async (req: Request, res: Response) => {
     try {
-      const user = req.user;
       console.log('📝 Recebendo requisição para criar cliente:', JSON.stringify(req.body, null, 2));
-      console.log('👤 Usuário autenticado:', { username: user?.username, id: user?.id, role: user?.role });
       
       // Filtrar meta_data existente para evitar duplicatas
       const existingMetaData = (req.body.meta_data || []).filter((meta: any) => 
@@ -700,20 +663,10 @@ initializeDb().then(() => {
       // Criar objeto sem billing e meta_data originais
       const { billing, meta_data, ...restBody } = req.body;
       
-      // Adicionar meta_data com o nome do vendedor
+      // Adicionar meta_data (sem vendedor já que não há autenticação)
       const customerData: any = {
         ...restBody,
-        meta_data: [
-          ...existingMetaData,
-          {
-            key: 'vendedor_name',
-            value: user?.username || 'admin'
-          },
-          {
-            key: 'vendedor_id',
-            value: user?.id || 'unknown'
-          }
-        ]
+        meta_data: existingMetaData
       };
       
       // Só adiciona billing se tiver campos válidos
@@ -724,10 +677,9 @@ initializeDb().then(() => {
       console.log('📤 Enviando para WooCommerce:', JSON.stringify(customerData, null, 2));
       
       const { data } = await wooCommerceApi.post('customers', customerData);
-      console.log('✅ Cliente criado com sucesso para vendedor:', user?.username, data);
+      console.log('✅ Cliente criado com sucesso:', data);
       res.status(201).json(data);
     } catch (error: any) {
-      const user = req.user; // Redeclarar user no escopo do catch
       
       console.error('❌ Erro ao criar cliente no WooCommerce:', {
         message: error.message,
@@ -750,26 +702,6 @@ initializeDb().then(() => {
           if (customers && customers.length > 0) {
             const existingCustomer = customers[0];
             console.log('✅ Cliente existente encontrado:', existingCustomer.id);
-            
-            // Adicionar ou atualizar meta_data do vendedor no cliente existente
-            const existingMeta = existingCustomer.meta_data || [];
-            const hasVendedorName = existingMeta.some((m: any) => m.key === 'vendedor_name');
-            
-            if (!hasVendedorName) {
-              // Atualizar cliente existente com meta do vendedor
-              const updatedMeta = [
-                ...existingMeta,
-                { key: 'vendedor_name', value: user?.username || 'admin' },
-                { key: 'vendedor_id', value: user?.id || 'unknown' }
-              ];
-              
-              await wooCommerceApi.put(`customers/${existingCustomer.id}`, {
-                meta_data: updatedMeta
-              });
-              
-              console.log('✅ Meta do vendedor adicionada ao cliente existente');
-            }
-            
             return res.status(200).json(existingCustomer);
           }
         } catch (searchError) {
