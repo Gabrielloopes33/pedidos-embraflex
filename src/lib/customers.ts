@@ -8,7 +8,7 @@ export const getCustomers = async (params?: CustomersParams): Promise<WooCommerc
     
     const response = await apiClient.get(`/wc/customers`, { 
       params,
-      timeout: 8000 // 8 segundos
+      timeout: 20000 // 20 segundos (Render pode estar em cold start)
     });
     console.log('✅ [Customers] Clientes recebidos:', response.data?.length || 0);
     return response.data;

@@ -15,6 +15,10 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import ProductionPage from "./pages/Production";
+import { warmupBackend } from "./lib/warmup";
+
+// Aquecer o backend assim que o app carrega
+warmupBackend();
 
 const queryClient = new QueryClient({
   defaultOptions: {

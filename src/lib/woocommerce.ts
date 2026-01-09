@@ -7,7 +7,7 @@ export const getProducts = async (params?: ProductsParams): Promise<WooCommerceP
     console.log('🔍 Buscando produtos via proxy com params:', params);
     const response = await apiClient.get(`/wc/products`, { 
       params,
-      timeout: 8000 // 8 segundos para produtos (podem ser muitos)
+      timeout: 20000 // 20 segundos para produtos (Render pode estar em cold start)
     });
     console.log('✅ Produtos recebidos:', response.data?.length || 0);
     return response.data;

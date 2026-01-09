@@ -14,7 +14,7 @@ console.log('🔧 API Configuration:', {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 5000, // 5 segundos de timeout
+  timeout: 15000, // 15 segundos de timeout (Render pode estar em cold start)
 });
 
 // Interceptor para adicionar o token de autenticação a cada requisição
@@ -62,35 +62,35 @@ apiClient.interceptors.response.use(
 export const login = async (credentials: { username: string; password: string; }) => {
   console.log('🔐 Tentando autenticar:', credentials.username);
   
-  // Primeiro validar localmente
-  const user = authenticateUser(credentials.username, credentials.password);
+  // Primeiro validar localmente para feedback imediato
+  const localUser = authenticateUser(credentials.username, credentials.password);
   
-  if (!user) {
+  if (!localUser) {
     throw new Error('Credenciais inválidas');
   }
   
-  // Gerar um token simulado
-  const accessToken = `local-token-${user.id}-${Date.now()}`;
-  
-  console.log('✅ Login bem-sucedido:', { accessToken, user });
-  
-  // Tentar sincronizar com backend em background (sem bloquear)
-  axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 3000 })
-    .then(response => {
-      console.log('✅ Backend sync bem-sucedida:', response.data);
-      // Atualizar token se o backend retornar um diferente
-      if (response.data.accessToken && response.data.accessToken !== accessToken) {
-        localStorage.setItem('authToken', response.data.accessToken);
-      }
-    })
-    .catch(error => {
-      console.warn('⚠️ Backend sync falhou (continuando com auth local):', error.message);
-    });
-  
-  return {
-    accessToken,
-    user
-  };
+  // Tentar autenticar no backend com timeout rápido (8s)
+  try {
+    console.log('📡 Tentando autenticação no backend...');
+    const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 8000 });
+    console.log('✅ Backend auth bem-sucedida! Usando token real.');
+    return {
+      accessToken: response.data.accessToken,
+      user: response.data.user
+    };
+  } catch (error: any) {
+    // Se falhar (timeout, offline, erro), usar modo local
+    console.warn('⚠️ Backend indisponível, usando autenticação local:', error.message);
+    
+    // Gerar um token local válido (formato JWT-like para compatibilidade)
+    const accessToken = `local-token-${localUser.id}-${Date.now()}`;
+    
+    console.log('✅ Login local bem-sucedido');
+    return {
+      accessToken,
+      user: localUser
+    };
+  }
 };
 
 
