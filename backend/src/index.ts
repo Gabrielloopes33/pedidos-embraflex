@@ -23,8 +23,6 @@ const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     const allowedOrigins = [
       'https://embraflex1.netlify.app',
-      'https://darling-dolphin-a2e151.netlify.app',
-      'https://extraordinary-shortbread-ca83bc.netlify.app',
       'http://localhost:5173',
       'http://localhost:3000'
     ];
