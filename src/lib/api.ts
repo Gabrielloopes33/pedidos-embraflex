@@ -141,9 +141,10 @@ export const createProductionOrder = async (order: NewProductionOrder): Promise<
     vendedorName: user?.name || user?.username || 'Sistema',
   };
   
-  console.log('📤 Inserindo pedido direto no Supabase:', { 
+  console.log('📤 [v2] Inserindo pedido DIRETO no Supabase (sem backend):', { 
     customerName: newOrder.customerName, 
-    productsCount: newOrder.products?.length 
+    productsCount: newOrder.products?.length,
+    orderId: newOrder.id
   });
   
   try {
