@@ -14,7 +14,7 @@ console.log('🔧 API Configuration:', {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 90000, // 90 segundos de timeout (Render pode ser muito lento em cold start)
+  timeout: 45000, // 45 segundos (otimizado após melhorias no backend)
 });
 
 // Interceptor para adicionar o token de autenticação a cada requisição
@@ -122,9 +122,7 @@ export const createProductionOrder = async (order: NewProductionOrder): Promise<
     productsCount: orderWithVendedor.products?.length 
   });
   
-  const response = await apiClient.post('/orders', orderWithVendedor, {
-    timeout: 60000 // 60 segundos para criar pedido (Render pode ser lento)
-  });
+  const response = await apiClient.post('/orders', orderWithVendedor);
   
   console.log('✅ Pedido criado com sucesso:', response.data);
   return response.data;

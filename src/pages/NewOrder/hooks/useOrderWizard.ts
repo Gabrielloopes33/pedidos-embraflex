@@ -103,11 +103,15 @@ export function useOrderWizard() {
     setIsInitialized(true);
   }, []);
 
-  // Salvar no localStorage sempre que houver mudanças
+  // Salvar no localStorage com debounce (500ms) para evitar saves excessivos
   useEffect(() => {
-    if (isInitialized) {
+    if (!isInitialized) return;
+    
+    const timeoutId = setTimeout(() => {
       saveToStorage(formData, currentStep);
-    }
+    }, 500); // Aguarda 500ms sem mudanças antes de salvar
+
+    return () => clearTimeout(timeoutId);
   }, [formData, currentStep, isInitialized]);
 
   const updateCustomer = (data: Partial<CustomerData>) => {
