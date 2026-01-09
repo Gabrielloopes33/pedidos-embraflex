@@ -16,6 +16,8 @@ const port = process.env.PORT || 3001;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_super_secreto';
 
+console.log('🚀 Embraflex Backend API v2.0 - Autenticação simplificada');
+
 // Configuração do CORS para permitir o frontend
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
