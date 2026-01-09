@@ -113,11 +113,13 @@ export const createProductionOrder = async (order: NewProductionOrder): Promise<
   const user = getCurrentUser();
   const orderWithVendedor = {
     ...order,
-    vendedorId: user?.id,
-    vendedorName: user?.name
+    vendedorId: user?.id || 'unknown',
+    vendedorName: user?.name || user?.username || 'Sistema'
   };
   
-  const response = await apiClient.post('/orders', orderWithVendedor);
+  const response = await apiClient.post('/orders', orderWithVendedor, {
+    timeout: 30000 // 30 segundos para criar pedido (pode ser demorado)
+  });
   return response.data;
 };
 
