@@ -11,6 +11,7 @@ import { ProductFormModal } from "@/pages/NewOrder/components/ProductFormModal";
 import { calculateFinishingCosts } from "@/pages/NewOrder/utils/pricing";
 import { downloadOrderPDF } from "@/lib/pdf-generator";
 import { toast } from "sonner";
+import { generateUUID } from "@/lib/utils";
 
 interface OrderEditModalProps {
   open: boolean;
@@ -51,7 +52,7 @@ const convertToProductItem = (product: ProductionProduct): ProductItem => {
 // Função para converter ProductItem para ProductionProduct
 const convertToProductionProduct = (item: ProductItem, existingProduct?: ProductionProduct): ProductionProduct => {
   return {
-    id: existingProduct?.id || crypto.randomUUID(),
+    id: existingProduct?.id || generateUUID(),
     productId: item.productId,
     name: item.productName,
     productName: item.productName,
@@ -184,7 +185,7 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
     try {
       // Convert NewOrder ProductItems to PDF-generator ProductItems
       const pdfProducts = editedProducts.map((item): import('@/lib/pdf-generator').OrderData['produtos'][number] => ({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         productId: item.productId,
         productName: item.productName,
         quantity: item.quantity,

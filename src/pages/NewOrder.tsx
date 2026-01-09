@@ -221,9 +221,11 @@ export default function NewOrder() {
       resetForm();
       
       toast.success("Pedido criado com sucesso!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar pedido:", error);
-      toast.error("Erro ao criar pedido. Tente novamente.");
+      // Mostrar mensagem detalhada do erro para debug em mobile
+      const errorMessage = error?.message || error?.error_description || JSON.stringify(error) || "Erro desconhecido";
+      toast.error(`Erro ao criar pedido: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
