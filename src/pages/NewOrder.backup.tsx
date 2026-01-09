@@ -12,7 +12,7 @@ import { getProducts, getProductById } from "@/lib/woocommerce";
 import type { WooCommerceProduct, WooCommerceCustomer } from "@/lib/types";
 import { getCustomers } from "@/lib/customers";
 import { CustomerFormDialog } from "@/componentes/CustomerFormDialog";
-import { createProductionOrder, createWooCommerceOrder } from "@/lib/api";
+import { createProductionOrderV2, createWooCommerceOrder } from "@/lib/api";
 import { NewProductionOrder } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/componentes/ui/select";
 import { OrderApprovalModal } from "@/componentes/OrderApprovalModal";
@@ -390,7 +390,7 @@ const NewOrder = () => {
         notes: generalNotes,
       };
 
-      const createdOrder = await createProductionOrder(newProductionOrder);
+      const createdOrder = await createProductionOrderV2(newProductionOrder);
       console.log('Ordem criada no banco:', createdOrder);
 
       // 2. Criar pedido no WooCommerce

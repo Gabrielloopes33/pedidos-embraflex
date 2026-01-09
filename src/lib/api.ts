@@ -122,8 +122,16 @@ export const getProductionOrders = async (): Promise<ProductionOrder[]> => {
     
     // Filtrar pedidos por vendedor se não for admin
     const user = getCurrentUser();
+    console.log('👤 Usuário atual:', user ? `${user.id} (${user.role})` : 'Nenhum');
+    
     if (user && user.role === 'vendedor') {
-      const filtered = orders.filter(order => order.vendedorId === user.id);
+      const filtered = orders.filter(order => {
+        const match = String(order.vendedorId) === String(user.id);
+        if (!match && orders.indexOf(order) < 5) { // Debugar os primeiros
+             console.log(`⚠️ Pedido ${order.id} ignorado. Vendedor: ${order.vendedorId} vs User: ${user.id}`);
+        }
+        return match;
+      });
       console.log(`🔍 Filtrados para vendedor ${user.id}:`, filtered.length, 'de', orders.length);
       return filtered;
     }
@@ -135,11 +143,11 @@ export const getProductionOrders = async (): Promise<ProductionOrder[]> => {
   }
 };
 
-export const createProductionOrder = async (order: NewProductionOrder): Promise<ProductionOrder> => {
+export const createProductionOrderV2 = async (order: NewProductionOrder): Promise<ProductionOrder> => {
   // Adicionar informações do vendedor ao pedido
   const user = getCurrentUser();
   
-  console.log('🔥🔥🔥 USANDO SUPABASE DIRETO - SEM BACKEND! 🔥🔥🔥');
+  console.log('🔥🔥🔥 USANDO SUPABASE DIRETO V2 - SEM BACKEND! 🔥🔥🔥');
   
   // Gerar UUID simples
   const uuid = () => {

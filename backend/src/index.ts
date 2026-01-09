@@ -137,18 +137,12 @@ initializeDb().then(() => {
   });
 
 
-  // --- ROTAS PROTEGIDAS DA API ---
+  // --- ROTAS DA API (SEM AUTENTICAÇÃO - USO INTERNO) ---
 
-  // Listar todas as ordens (com lógica de permissão)
-  app.get('/api/orders', authenticateToken, async (req: AuthenticatedRequest, res) => {
-    const user = req.user;
+  // Listar todas as ordens
+  app.get('/api/orders', async (req: Request, res: Response) => {
     try {
-      let query = supabase.from('orders').select('*').order('createdAt', { ascending: false });
-      
-      if (user?.role !== 'admin') {
-        // Vendedor vê apenas as suas ordens
-        query = query.eq('userId', user?.id);
-      }
+      const query = supabase.from('orders').select('*').order('createdAt', { ascending: false });
       
       const { data, error } = await query;
       
@@ -169,10 +163,9 @@ initializeDb().then(() => {
     }
   });
 
-  // Buscar uma ordem específica (com lógica de permissão)
-  app.get('/api/orders/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  // Buscar uma ordem específica
+  app.get('/api/orders/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
-    const user = req.user;
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -184,11 +177,6 @@ initializeDb().then(() => {
         return res.status(404).json({ message: 'Ordem não encontrada.' });
       }
 
-      // Admin pode ver qualquer ordem, vendedor só pode ver a sua
-      if (user?.role !== 'admin' && data.userId !== user?.id) {
-        return res.status(403).json({ message: 'Você não tem permissão para ver esta ordem.' });
-      }
-
       const order = parseOrder(data);
       res.json(order);
     } catch (error) {
@@ -197,12 +185,12 @@ initializeDb().then(() => {
     }
   });
 
-  // Criar uma nova ordem (associada ao usuário logado)
-  app.post('/api/orders', authenticateToken, async (req: AuthenticatedRequest, res) => {
-    const { customerName, products, priority, notes } = req.body;
-    const userId = req.user?.id;
+  // Criar uma nova ordem
+  app.post('/api/orders', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { customerName, products, priority, notes, vendedorId, vendedorName } = req.body;
 
-    console.log('📝 Criando ordem de produção:', { customerName, productsCount: products?.length, priority, userId });
+    console.log(`⏱️ [${new Date().toISOString()}] Iniciando criação de pedido`);
 
     if (!customerName || !products) {
       return res.status(400).json({ message: 'Cliente e produtos são obrigatórios.' });
@@ -216,67 +204,59 @@ initializeDb().then(() => {
       notes,
       status: 'Pendente',
       createdAt: new Date().toISOString(),
-      history: [{ event: 'Ordem criada', timestamp: new Date().toISOString(), user: req.user?.username || 'Vendedor' }],
+      history: [{ event: 'Ordem criada', timestamp: new Date().toISOString(), user: vendedorName || 'Sistema' }],
       comments: [],
-      userId: userId,
-      vendedorId: req.user?.id,
-      vendedorName: req.user?.username,
+      userId: vendedorId || 'unknown',
+      vendedorId: vendedorId || 'unknown',
+      vendedorName: vendedorName || 'Sistema',
     };
 
     try {
-      const dataToInsert = {
-        id: newOrder.id,
-        customerName: newOrder.customerName,
-        products: JSON.stringify(newOrder.products),
-        status: newOrder.status,
-        priority: newOrder.priority,
-        notes: newOrder.notes,
-        createdAt: newOrder.createdAt,
-        history: JSON.stringify(newOrder.history),
-        comments: JSON.stringify(newOrder.comments),
-        userId: newOrder.userId,
-        vendedorId: newOrder.vendedorId,
-        vendedorName: newOrder.vendedorName
-      };
-
-      console.log('💾 Inserindo no Supabase:', dataToInsert);
-
-      // Tentar inserir com .select() para forçar retorno
-      const insertResult = await supabase
-        .from('orders')
-        .insert([dataToInsert])
-        .select();
-
-      console.log('📤 Resultado do insert:', insertResult);
-
-      if (insertResult.error) {
-        console.error('❌ Erro do Supabase:', JSON.stringify(insertResult.error, null, 2));
-        console.error('❌ Erro code:', insertResult.error.code);
-        console.error('❌ Erro message:', insertResult.error.message);
-        console.error('❌ Erro details:', insertResult.error.details);
-        console.error('❌ Erro hint:', insertResult.error.hint);
-        
-        // Tentar verificar se é problema de RLS
-        const { data: rlsCheck, error: rlsError } = await supabase
-          .from('orders')
-          .select('*')
-          .limit(1);
-        
-        console.log('🔍 Teste de leitura (RLS check):', { hasData: !!rlsCheck, error: rlsError });
-        
-        throw insertResult.error;
-      }
+      console.log('📝 Preparando inserção no Supabase...');
       
-      console.log('✅ Ordem criada com sucesso:', newOrder.id);
+      // Criar timeout manual de 30s
+      const insertPromise = supabase
+        .from('orders')
+        .insert([{
+          id: newOrder.id,
+          customerName: newOrder.customerName,
+          products: JSON.stringify(newOrder.products),
+          status: newOrder.status,
+          priority: newOrder.priority,
+          createdAt: newOrder.createdAt,
+          notes: newOrder.notes || null,
+          history: JSON.stringify(newOrder.history),
+          comments: JSON.stringify(newOrder.comments),
+          userId: newOrder.userId,
+          vendedorId: newOrder.vendedorId,
+          vendedorName: newOrder.vendedorName,
+        }]);
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout ao inserir no Supabase')), 30000)
+      );
+
+      console.log('💾 Inserindo no Supabase...');
+      const { error } = await Promise.race([insertPromise, timeoutPromise]) as any;
+
+      if (error) throw error;
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Pedido criado com sucesso em ${elapsed}ms`);
       res.status(201).json(newOrder);
-    } catch (error) {
-      console.error('❌ Erro ao criar ordem:', error);
-      res.status(500).json({ message: 'Erro interno do servidor.', error: String(error) });
+    } catch (error: any) {
+      const elapsed = Date.now() - startTime;
+      console.error(`❌ Erro ao criar ordem após ${elapsed}ms:`, error.message);
+      res.status(500).json({ 
+        message: 'Erro interno do servidor.', 
+        error: error.message || String(error),
+        elapsed: `${elapsed}ms`
+      });
     }
   });
 
   // Criar pedido no WooCommerce (protegido)
-  app.post('/api/orders/woocommerce', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/orders/woocommerce', async (req: Request, res: Response) => {
     const { customerName, customerEmail, products, billing } = req.body;
 
     console.log('📦 Dados recebidos para WooCommerce:', JSON.stringify(req.body, null, 2));
@@ -355,7 +335,7 @@ initializeDb().then(() => {
 
 
   // Atualizar status da ordem (protegido)
-  app.put('/api/orders/:id/status', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.put('/api/orders/:id/status', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status } = req.body;
 
@@ -375,16 +355,12 @@ initializeDb().then(() => {
       }
 
       // Apenas admins podem alterar o status (exemplo de regra de negócio)
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ message: 'Apenas administradores podem alterar o status.' });
-      }
-
       const order = parseOrder(data);
       order.status = status;
       order.history.push({
         event: `Status alterado para ${status}`,
         timestamp: new Date().toISOString(),
-        user: req.user?.username || 'Sistema',
+        user: 'Sistema',
       });
 
       const { error: updateError } = await supabase
@@ -404,11 +380,10 @@ initializeDb().then(() => {
     }
   });
 
-  // Adicionar um comentário (protegido)
-  app.post('/api/orders/:id/comments', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  // Adicionar um comentário
+  app.post('/api/orders/:id/comments', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { text } = req.body;
-    const user = req.user;
 
     if (!text) {
       return res.status(400).json({ message: 'Texto do comentário é obrigatório.' });
@@ -425,14 +400,10 @@ initializeDb().then(() => {
         return res.status(404).json({ message: 'Ordem não encontrada.' });
       }
 
-      if (user?.role !== 'admin' && data.userId !== user?.id) {
-        return res.status(403).json({ message: 'Você não tem permissão para comentar nesta ordem.' });
-      }
-
       const order = parseOrder(data);
       order.comments.push({
         text,
-        user: user?.username || 'Sistema',
+        user: 'Sistema',
         timestamp: new Date().toISOString(),
       });
 
@@ -450,8 +421,8 @@ initializeDb().then(() => {
     }
   });
 
-  // --- ROTAS PROXY PARA WOOCOMMERCE (protegidas) ---
-  app.use('/api/wc', authenticateToken); // Aplica o middleware a todas as rotas /api/wc
+  // --- ROTAS PROXY PARA WOOCOMMERCE (SEM AUTENTICAÇÃO) ---
+  // REMOVIDO: app.use('/api/wc', authenticateToken); - Uso interno, não precisa auth
 
   app.get('/api/wc/products', async (req, res) => {
     try {
@@ -621,10 +592,14 @@ initializeDb().then(() => {
     }
   });
 
-  // Proxy para buscar clientes (SEM autenticação - uso interno)
+  // ========================================
+  // ROTAS WOOCOMMERCE - SEM AUTENTICAÇÃO
+  // ========================================
+  
+  // Proxy para buscar clientes (SEM autenticação - uso interno v2)
   app.get('/api/wc/customers', async (req: Request, res: Response) => {
     try {
-      console.log('🔍 Buscando todos os clientes do WooCommerce');
+      console.log('🔍 [V2-SEM-AUTH] Buscando todos os clientes do WooCommerce');
       
       const { data } = await wooCommerceApi.get('customers', {
         ...req.query,

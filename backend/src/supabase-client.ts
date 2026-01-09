@@ -17,6 +17,15 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
+  },
+  global: {
+    fetch: (url, options = {}) => {
+      return fetch(url, {
+        ...options,
+        // @ts-ignore - signal é suportado mas não está nos types
+        signal: options.signal || AbortSignal.timeout(60000) // 60s timeout para operações do Supabase
+      });
+    }
   }
 });
 

@@ -11,7 +11,7 @@ import { ProductsStep } from "./NewOrder/components/ProductsStep";
 import { OrderDetailsStep } from "./NewOrder/components/OrderDetailsStep";
 import { OrderSuccessModal } from "@/componentes/OrderSuccessModal";
 import { OrderSignatureModal, SignatureData } from "@/componentes/OrderSignatureModal";
-import { createProductionOrder, createWooCommerceOrder } from "@/lib/api";
+import { createProductionOrderV2, createWooCommerceOrder } from "@/lib/api";
 import { downloadOrderPDF } from "@/lib/pdf-generator";
 import type { NewProductionOrder, ProductionOrder } from "@/lib/types";
 import type { ProductItem } from "./NewOrder/types";
@@ -154,7 +154,8 @@ export default function NewOrder() {
         notes: formData.orderDetails.notes,
       };
 
-      await createProductionOrder(productionOrder);
+      console.log('🚀 Iniciando criação de pedido V2...');
+      await createProductionOrderV2(productionOrder);
 
       // Criar objeto de ordem completo para exibir no modal
       const completeOrder: ProductionOrder = {
