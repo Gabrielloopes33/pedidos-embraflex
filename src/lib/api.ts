@@ -117,9 +117,16 @@ export const createProductionOrder = async (order: NewProductionOrder): Promise<
     vendedorName: user?.name || user?.username || 'Sistema'
   };
   
-  const response = await apiClient.post('/orders', orderWithVendedor, {
-    timeout: 30000 // 30 segundos para criar pedido (pode ser demorado)
+  console.log('📤 Enviando pedido para backend:', { 
+    customerName: orderWithVendedor.customerName, 
+    productsCount: orderWithVendedor.products?.length 
   });
+  
+  const response = await apiClient.post('/orders', orderWithVendedor, {
+    timeout: 60000 // 60 segundos para criar pedido (Render pode ser lento)
+  });
+  
+  console.log('✅ Pedido criado com sucesso:', response.data);
   return response.data;
 };
 
