@@ -97,16 +97,42 @@ export const login = async (credentials: { username: string; password: string; }
 
 // --- Ordens de Produção ---
 export const getProductionOrders = async (): Promise<ProductionOrder[]> => {
-  const response = await apiClient.get('/orders');
-  const orders = response.data as ProductionOrder[];
+  console.log('📋 Buscando pedidos DIRETO do Supabase');
   
-  // Filtrar pedidos por vendedor se não for admin
-  const user = getCurrentUser();
-  if (user && user.role === 'vendedor') {
-    return orders.filter(order => order.vendedorId === user.id);
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('createdAt', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erro ao buscar pedidos:', error);
+      throw new Error(error.message);
+    }
+
+    // Parse dos campos JSON
+    const orders = (data || []).map((order: any) => ({
+      ...order,
+      products: typeof order.products === 'string' ? JSON.parse(order.products) : order.products,
+      history: typeof order.history === 'string' ? JSON.parse(order.history) : order.history || [],
+      comments: typeof order.comments === 'string' ? JSON.parse(order.comments) : order.comments || [],
+    })) as ProductionOrder[];
+
+    console.log('✅ Pedidos carregados do Supabase:', orders.length);
+    
+    // Filtrar pedidos por vendedor se não for admin
+    const user = getCurrentUser();
+    if (user && user.role === 'vendedor') {
+      const filtered = orders.filter(order => order.vendedorId === user.id);
+      console.log(`🔍 Filtrados para vendedor ${user.id}:`, filtered.length, 'de', orders.length);
+      return filtered;
+    }
+    
+    return orders;
+  } catch (error: any) {
+    console.error('❌ Erro ao buscar pedidos:', error);
+    throw error;
   }
-  
-  return orders;
 };
 
 export const createProductionOrder = async (order: NewProductionOrder): Promise<ProductionOrder> => {
