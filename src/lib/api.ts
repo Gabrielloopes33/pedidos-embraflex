@@ -187,8 +187,8 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
   });
   
   try {
-    // Preparar dados para inserção
-    const insertData = {
+    // Preparar dados para inserção - REMOVER userId se não existir
+    const insertData: any = {
       id: newOrder.id,
       customerName: newOrder.customerName,
       products: JSON.stringify(newOrder.products),
@@ -198,12 +198,17 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
       notes: newOrder.notes || null,
       history: JSON.stringify(newOrder.history),
       comments: JSON.stringify(newOrder.comments),
-      userId: newOrder.userId, // null explícito se não tiver user
       vendedorId: newOrder.vendedorId, 
       vendedorName: newOrder.vendedorName,
     };
     
+    // Adicionar userId apenas se existir (evitar foreign key constraint)
+    if (newOrder.userId) {
+      insertData.userId = newOrder.userId;
+    }
+    
     console.log('🔍 DEBUG - Dados que serão inseridos no Supabase:', insertData);
+    console.log('🔍 DEBUG - Tem userId?', !!newOrder.userId, 'Valor:', newOrder.userId);
     
     // Inserir diretamente no Supabase (ultra-rápido!)
     const { error } = await supabase
