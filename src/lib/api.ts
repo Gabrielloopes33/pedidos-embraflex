@@ -172,7 +172,7 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
       user: user?.name || user?.username || 'Sistema' 
     }],
     comments: [],
-    userId: user?.id, // Enviar undefined (vira NULL no banco) se não tiver user, para não quebrar FK
+    userId: user?.id || null, // IMPORTANTE: null explícito para não quebrar FK
     vendedorId: user?.id || 'unknown', // vendedorId geralmente não tem FK, pode ser string qualquer
     vendedorName: user?.name || user?.username || 'Sistema',
   };
@@ -180,29 +180,35 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
   console.log('📤 [v2] Inserindo pedido DIRETO no Supabase (sem backend):', { 
     customerName: newOrder.customerName, 
     userId: newOrder.userId,
+    userObject: user,
     vendedorId: newOrder.vendedorId,
     productsCount: newOrder.products?.length,
     orderId: newOrder.id
   });
   
   try {
+    // Preparar dados para inserção
+    const insertData = {
+      id: newOrder.id,
+      customerName: newOrder.customerName,
+      products: JSON.stringify(newOrder.products),
+      status: newOrder.status,
+      priority: newOrder.priority,
+      createdAt: newOrder.createdAt,
+      notes: newOrder.notes || null,
+      history: JSON.stringify(newOrder.history),
+      comments: JSON.stringify(newOrder.comments),
+      userId: newOrder.userId, // null explícito se não tiver user
+      vendedorId: newOrder.vendedorId, 
+      vendedorName: newOrder.vendedorName,
+    };
+    
+    console.log('🔍 DEBUG - Dados que serão inseridos no Supabase:', insertData);
+    
     // Inserir diretamente no Supabase (ultra-rápido!)
     const { error } = await supabase
       .from('orders')
-      .insert([{
-        id: newOrder.id,
-        customerName: newOrder.customerName,
-        products: JSON.stringify(newOrder.products),
-        status: newOrder.status,
-        priority: newOrder.priority,
-        createdAt: newOrder.createdAt,
-        notes: newOrder.notes || null,
-        history: JSON.stringify(newOrder.history),
-        comments: JSON.stringify(newOrder.comments),
-        userId: newOrder.userId, // Agora pode ser null/undefined
-        vendedorId: newOrder.vendedorId, 
-        vendedorName: newOrder.vendedorName,
-      }]);
+      .insert([insertData]);
 
     if (error) {
       console.error('❌ Erro do Supabase:', error);
