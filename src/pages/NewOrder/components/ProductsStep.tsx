@@ -69,14 +69,14 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold">Produtos do Pedido</h3>
           <p className="text-sm text-muted-foreground">
             Adicione os produtos que fazem parte deste pedido
           </p>
         </div>
-        <Button type="button" onClick={handleAddProduct} size="sm">
+        <Button type="button" onClick={handleAddProduct} size="sm" className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Adicionar Produto
         </Button>
@@ -103,8 +103,8 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
               
               return (
               <Card key={index} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-start gap-3">
                         <Badge variant="outline" className="mt-1">
@@ -171,7 +171,7 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                     </div>
 
                     {/* Ações */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 self-end sm:self-start">
                       <Button
                         type="button"
                         variant="ghost"

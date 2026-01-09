@@ -82,7 +82,7 @@ export function CustomerStep({ customer, onUpdate }: CustomerStepProps) {
       {/* Buscar Cliente Existente */}
       <div className="space-y-2">
         <Label>Buscar Cliente Existente</Label>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
@@ -121,25 +121,29 @@ export function CustomerStep({ customer, onUpdate }: CustomerStepProps) {
               </div>
             )}
           </div>
-          {customer.customerId && (
+          <div className="flex gap-2 w-full sm:w-auto">
+            {customer.customerId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearCustomerSelection}
+                className="flex-1 sm:flex-none"
+              >
+                Limpar
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={clearCustomerSelection}
+              onClick={() => setIsCustomerDialogOpen(true)}
+              className="flex-1 sm:flex-none"
             >
-              Limpar
+              <UserPlus className="w-4 h-4 mr-2" />
+              Novo
             </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsCustomerDialogOpen(true)}
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Novo
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -149,7 +153,7 @@ export function CustomerStep({ customer, onUpdate }: CustomerStepProps) {
             <h4 className="font-semibold">Cliente Selecionado</h4>
             <span className="text-xs text-muted-foreground">ID: {customer.customerId}</span>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
               <span className="text-muted-foreground">Nome:</span>
               <p className="font-medium">{customer.firstName} {customer.lastName}</p>
