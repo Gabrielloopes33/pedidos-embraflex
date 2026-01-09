@@ -172,8 +172,8 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
       user: user?.name || user?.username || 'Sistema' 
     }],
     comments: [],
-    userId: user?.id || 'user-admin', // Fallback seguro para evitar erro de violação de chave estrangeira
-    vendedorId: user?.id || 'user-admin',
+    userId: user?.id, // Enviar undefined (vira NULL no banco) se não tiver user, para não quebrar FK
+    vendedorId: user?.id || 'unknown', // vendedorId geralmente não tem FK, pode ser string qualquer
     vendedorName: user?.name || user?.username || 'Sistema',
   };
   
@@ -199,8 +199,8 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
         notes: newOrder.notes || null,
         history: JSON.stringify(newOrder.history),
         comments: JSON.stringify(newOrder.comments),
-        userId: newOrder.userId, // Agora com fallback seguro
-        vendedorId: newOrder.vendedorId, // Agora com fallback seguro
+        userId: newOrder.userId, // Agora pode ser null/undefined
+        vendedorId: newOrder.vendedorId, 
         vendedorName: newOrder.vendedorName,
       }]);
 
