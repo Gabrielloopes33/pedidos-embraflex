@@ -15,6 +15,7 @@ import { createProductionOrderV2, createWooCommerceOrder } from "@/lib/api";
 import { downloadOrderPDF } from "@/lib/pdf-generator";
 import type { NewProductionOrder, ProductionOrder } from "@/lib/types";
 import type { ProductItem } from "./NewOrder/types";
+import { generateUUID } from "@/lib/utils";
 
 const STEPS = [
   { id: 1, title: "Cliente", description: "Informações do cliente" },
@@ -117,7 +118,7 @@ export default function NewOrder() {
       const productionOrder: NewProductionOrder = {
         customerName: customerFullName,
         products: formData.products.map(item => ({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           productId: item.productId,
           productName: item.productName,
           quantity: item.quantity,
@@ -194,7 +195,7 @@ export default function NewOrder() {
       // 3. Finalizar fluxo na interface
       // Criar objeto de ordem completo para exibir no modal
       const completeOrder: ProductionOrder = {
-        id: createdProductionOrder.id || crypto.randomUUID(),
+        id: createdProductionOrder.id || generateUUID(),
         customerName: customerFullName,
         products: productionOrder.products,
         priority: productionOrder.priority,
