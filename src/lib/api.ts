@@ -172,13 +172,15 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
       user: user?.name || user?.username || 'Sistema' 
     }],
     comments: [],
-    userId: user?.id || 'unknown',
-    vendedorId: user?.id || 'unknown',
+    userId: user?.id || 'user-admin', // Fallback seguro para evitar erro de violação de chave estrangeira
+    vendedorId: user?.id || 'user-admin',
     vendedorName: user?.name || user?.username || 'Sistema',
   };
   
   console.log('📤 [v2] Inserindo pedido DIRETO no Supabase (sem backend):', { 
     customerName: newOrder.customerName, 
+    userId: newOrder.userId,
+    vendedorId: newOrder.vendedorId,
     productsCount: newOrder.products?.length,
     orderId: newOrder.id
   });
@@ -197,8 +199,8 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
         notes: newOrder.notes || null,
         history: JSON.stringify(newOrder.history),
         comments: JSON.stringify(newOrder.comments),
-        userId: newOrder.userId,
-        vendedorId: newOrder.vendedorId,
+        userId: newOrder.userId, // Agora com fallback seguro
+        vendedorId: newOrder.vendedorId, // Agora com fallback seguro
         vendedorName: newOrder.vendedorName,
       }]);
 
