@@ -148,6 +148,7 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
   const user = getCurrentUser();
   
   console.log('🔥🔥🔥 USANDO SUPABASE DIRETO V2 - SEM BACKEND! 🔥🔥🔥');
+  console.log('👤 Usuário atual recuperado:', user);
   
   // Gerar UUID simples
   const uuid = () => {
@@ -172,14 +173,13 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
       user: user?.name || user?.username || 'Sistema' 
     }],
     comments: [],
-    userId: user?.id || null, // IMPORTANTE: null explícito para não quebrar FK
-    vendedorId: user?.id || 'unknown', // vendedorId geralmente não tem FK, pode ser string qualquer
+    // NÃO incluir userId - deixar sem esse campo para evitar FK constraint
+    vendedorId: user?.id || 'unknown',
     vendedorName: user?.name || user?.username || 'Sistema',
   };
   
-  console.log('📤 [v2] Inserindo pedido DIRETO no Supabase (sem backend):', { 
+  console.log('📤 [v3] Inserindo pedido DIRETO no Supabase (SEM userId):', { 
     customerName: newOrder.customerName, 
-    userId: newOrder.userId,
     userObject: user,
     vendedorId: newOrder.vendedorId,
     productsCount: newOrder.products?.length,
@@ -187,7 +187,7 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
   });
   
   try {
-    // Preparar dados para inserção - REMOVER userId se não existir
+    // Preparar dados para inserção - NUNCA incluir userId (elimina FK constraint de vez)
     const insertData: any = {
       id: newOrder.id,
       customerName: newOrder.customerName,
@@ -202,13 +202,7 @@ export const createProductionOrderV2 = async (order: NewProductionOrder): Promis
       vendedorName: newOrder.vendedorName,
     };
     
-    // Adicionar userId apenas se existir (evitar foreign key constraint)
-    if (newOrder.userId) {
-      insertData.userId = newOrder.userId;
-    }
-    
-    console.log('🔍 DEBUG - Dados que serão inseridos no Supabase:', insertData);
-    console.log('🔍 DEBUG - Tem userId?', !!newOrder.userId, 'Valor:', newOrder.userId);
+    console.log('🔍 DEBUG - Dados que serão inseridos (SEM userId):', insertData);
     
     // Inserir diretamente no Supabase (ultra-rápido!)
     const { error } = await supabase
