@@ -113,9 +113,7 @@ export default function NewOrder() {
         },
       };
 
-      await createWooCommerceOrder(wooCommerceOrderData);
-
-      // 2. Criar ordem de produção
+      // 1. PRIMEIRO: Criar ordem de produção interna (Supabase V2 - Direto)
       const productionOrder: NewProductionOrder = {
         customerName: customerFullName,
         products: formData.products.map(item => ({
@@ -155,11 +153,48 @@ export default function NewOrder() {
       };
 
       console.log('🚀 Iniciando criação de pedido V2...');
-      await createProductionOrderV2(productionOrder);
+      const createdProductionOrder = await createProductionOrderV2(productionOrder);
 
+      // 2. TENTAR Sincronizar com WooCommerce (Opcional - Não bloqueante)
+      try {
+        const wooCommerceOrderData = {
+          customerName: customerFullName,
+          customerEmail: formData.customer.email,
+          products: formData.products.map(item => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+          billing: {
+            firstName: formData.customer.firstName,
+            lastName: formData.customer.lastName || '',
+            email: formData.customer.email,
+            phone: formData.customer.phone,
+            address: formData.customer.address,
+            city: formData.customer.city,
+            state: formData.customer.state,
+            postcode: formData.customer.postcode,
+          },
+        };
+        
+        console.log('🔄 Tentando sincronizar com WooCommerce...');
+         // Executar sem await para não travar a UI, ou com await mas catch silencioso
+        createWooCommerceOrder(wooCommerceOrderData)
+          .then(() => toast.success("Pedido sincronizado com WooCommerce!"))
+          .catch(err => {
+            console.warn("⚠️ Falha ao sincronizar com WooCommerce:", err);
+            toast.warning("Pedido salvo, mas não foi possível sincronizar com o site (Timeout).");
+          });
+
+      } catch (wcError) {
+        console.warn("⚠️ Erro na preparação do WooCommerce:", wcError);
+      }
+
+      // 3. Finalizar fluxo na interface
       // Criar objeto de ordem completo para exibir no modal
       const completeOrder: ProductionOrder = {
-        id: crypto.randomUUID(),
+        id: createdProductionOrder.id || crypto.randomUUID(),
         customerName: customerFullName,
         products: productionOrder.products,
         priority: productionOrder.priority,
