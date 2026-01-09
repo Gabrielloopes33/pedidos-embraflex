@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { NewProductionOrder, ProductionOrder } from './types';
 import { authenticateUser, getCurrentUser } from './auth';
+import { supabase } from './supabase';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
@@ -111,21 +112,70 @@ export const getProductionOrders = async (): Promise<ProductionOrder[]> => {
 export const createProductionOrder = async (order: NewProductionOrder): Promise<ProductionOrder> => {
   // Adicionar informações do vendedor ao pedido
   const user = getCurrentUser();
-  const orderWithVendedor = {
-    ...order,
-    vendedorId: user?.id || 'unknown',
-    vendedorName: user?.name || user?.username || 'Sistema'
+  
+  // Gerar UUID simples
+  const uuid = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   };
   
-  console.log('📤 Enviando pedido para backend:', { 
-    customerName: orderWithVendedor.customerName, 
-    productsCount: orderWithVendedor.products?.length 
+  const newOrder: ProductionOrder = {
+    id: uuid(),
+    customerName: order.customerName,
+    products: order.products,
+    priority: order.priority || 'Normal',
+    notes: order.notes,
+    status: 'Pendente',
+    createdAt: new Date().toISOString(),
+    history: [{ 
+      event: 'Ordem criada', 
+      timestamp: new Date().toISOString(), 
+      user: user?.name || user?.username || 'Sistema' 
+    }],
+    comments: [],
+    userId: user?.id || 'unknown',
+    vendedorId: user?.id || 'unknown',
+    vendedorName: user?.name || user?.username || 'Sistema',
+  };
+  
+  console.log('📤 Inserindo pedido direto no Supabase:', { 
+    customerName: newOrder.customerName, 
+    productsCount: newOrder.products?.length 
   });
   
-  const response = await apiClient.post('/orders', orderWithVendedor);
-  
-  console.log('✅ Pedido criado com sucesso:', response.data);
-  return response.data;
+  try {
+    // Inserir diretamente no Supabase (ultra-rápido!)
+    const { error } = await supabase
+      .from('orders')
+      .insert([{
+        id: newOrder.id,
+        customerName: newOrder.customerName,
+        products: JSON.stringify(newOrder.products),
+        status: newOrder.status,
+        priority: newOrder.priority,
+        createdAt: newOrder.createdAt,
+        notes: newOrder.notes || null,
+        history: JSON.stringify(newOrder.history),
+        comments: JSON.stringify(newOrder.comments),
+        userId: newOrder.userId,
+        vendedorId: newOrder.vendedorId,
+        vendedorName: newOrder.vendedorName,
+      }]);
+
+    if (error) {
+      console.error('❌ Erro do Supabase:', error);
+      throw new Error(error.message);
+    }
+    
+    console.log('✅ Pedido criado com sucesso no Supabase:', newOrder.id);
+    return newOrder;
+  } catch (error: any) {
+    console.error('❌ Erro ao criar pedido:', error);
+    throw error;
+  }
 };
 
 export const updateProductionOrderStatus = async (
