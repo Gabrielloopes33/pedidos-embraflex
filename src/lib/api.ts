@@ -14,6 +14,7 @@ console.log('🔧 API Configuration:', {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 5000, // 5 segundos de timeout
 });
 
 // Interceptor para adicionar o token de autenticação a cada requisição
@@ -61,30 +62,35 @@ apiClient.interceptors.response.use(
 export const login = async (credentials: { username: string; password: string; }) => {
   console.log('🔐 Tentando autenticar:', credentials.username);
   
-  try {
-    // Tentar autenticar no backend
-    console.log('📡 Autenticando no backend:', `${API_BASE_URL}/auth/login`);
-    const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
-    console.log('✅ Autenticação no backend bem-sucedida!', response.data);
-    return response.data;
-  } catch (error) {
-    // Se o backend falhar, usar autenticação local como fallback
-    console.warn('⚠️ Backend auth failed, using local auth:', error);
-    const user = authenticateUser(credentials.username, credentials.password);
-    
-    if (!user) {
-      throw new Error('Credenciais inválidas');
-    }
-    
-    // Gerar um token simulado
-    const accessToken = `local-token-${user.id}-${Date.now()}`;
-    
-    console.log('✅ Usando autenticação local:', { accessToken, user });
-    return {
-      accessToken,
-      user
-    };
+  // Primeiro validar localmente
+  const user = authenticateUser(credentials.username, credentials.password);
+  
+  if (!user) {
+    throw new Error('Credenciais inválidas');
   }
+  
+  // Gerar um token simulado
+  const accessToken = `local-token-${user.id}-${Date.now()}`;
+  
+  console.log('✅ Login bem-sucedido:', { accessToken, user });
+  
+  // Tentar sincronizar com backend em background (sem bloquear)
+  axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 3000 })
+    .then(response => {
+      console.log('✅ Backend sync bem-sucedida:', response.data);
+      // Atualizar token se o backend retornar um diferente
+      if (response.data.accessToken && response.data.accessToken !== accessToken) {
+        localStorage.setItem('authToken', response.data.accessToken);
+      }
+    })
+    .catch(error => {
+      console.warn('⚠️ Backend sync falhou (continuando com auth local):', error.message);
+    });
+  
+  return {
+    accessToken,
+    user
+  };
 };
 
 

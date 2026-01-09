@@ -355,6 +355,8 @@ const Products = () => {
       orderby: 'menu_order',
       order: 'asc'
     }),
+    retry: 0, // Não retry - falhar rápido
+    staleTime: 120000, // 2 minutos de cache
   });
 
   const { data: searchResults, isLoading: searchLoading } = useQuery({
@@ -364,6 +366,8 @@ const Products = () => {
       per_page: 20,
     }),
     enabled: searchTerm.length > 0,
+    retry: 0,
+    staleTime: 60000, // 1 minuto de cache
   });
 
   // Agrupar TODOS os produtos por linha (Premium, Comercial, Econômica)

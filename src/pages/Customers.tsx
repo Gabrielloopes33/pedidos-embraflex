@@ -34,7 +34,8 @@ const Customers = () => {
       orderby: 'registered_date',
       order: 'desc',
     }),
-    retry: 1,
+    retry: 0, // Não retry - falhar rápido
+    staleTime: 60000, // 1 minuto de cache
   });
 
   const handleCustomerCreated = () => {

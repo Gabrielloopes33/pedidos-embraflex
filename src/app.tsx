@@ -16,7 +16,17 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import ProductionPage from "./pages/Production";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1, // Tentar apenas 1 vez se falhar
+      staleTime: 30000, // 30 segundos - dados considerados frescos
+      gcTime: 5 * 60 * 1000, // 5 minutos de cache
+      refetchOnWindowFocus: false, // Não recarregar ao focar janela
+      refetchOnMount: false, // Não recarregar ao montar se já tem cache
+    },
+  },
+});
 
 // Layout principal para as páginas protegidas
 const AppLayout = () => (

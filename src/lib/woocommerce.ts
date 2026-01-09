@@ -5,7 +5,10 @@ import type { ProductsParams, WooCommerceProduct } from './types'; // Importar t
 export const getProducts = async (params?: ProductsParams): Promise<WooCommerceProduct[]> => {
   try {
     console.log('🔍 Buscando produtos via proxy com params:', params);
-    const response = await apiClient.get(`/wc/products`, { params });
+    const response = await apiClient.get(`/wc/products`, { 
+      params,
+      timeout: 8000 // 8 segundos para produtos (podem ser muitos)
+    });
     console.log('✅ Produtos recebidos:', response.data?.length || 0);
     return response.data;
   } catch (error) {
@@ -15,6 +18,14 @@ export const getProducts = async (params?: ProductsParams): Promise<WooCommerceP
       data: (error as {response?: {data?: unknown}}).response?.data,
       message: (error as {message?: string}).message
     });
+    
+    // Se for erro de timeout ou network, retornar array vazio ao invés de travar
+    const errorMessage = (error as {message?: string}).message || '';
+    if (errorMessage.includes('timeout') || errorMessage.includes('network') || errorMessage.includes('ECONNREFUSED')) {
+      console.warn('⚠️ Usando modo offline - sem produtos disponíveis');
+      return [];
+    }
+    
     throw error;
   }
 };

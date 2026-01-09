@@ -6,7 +6,10 @@ export const getCustomers = async (params?: CustomersParams): Promise<WooCommerc
   try {
     console.log('🔍 [Customers] Buscando clientes...', params);
     
-    const response = await apiClient.get(`/wc/customers`, { params });
+    const response = await apiClient.get(`/wc/customers`, { 
+      params,
+      timeout: 8000 // 8 segundos
+    });
     console.log('✅ [Customers] Clientes recebidos:', response.data?.length || 0);
     return response.data;
   } catch (error: any) {
@@ -17,7 +20,13 @@ export const getCustomers = async (params?: CustomersParams): Promise<WooCommerc
       data: error.response?.data
     });
     
-    // O interceptor do axios já cuida de redirecionar para login em caso de 401
+    // Se for erro de timeout ou network, retornar array vazio
+    const errorMessage = error.message || '';
+    if (errorMessage.includes('timeout') || errorMessage.includes('network') || errorMessage.includes('ECONNREFUSED')) {
+      console.warn('⚠️ Usando modo offline - sem clientes disponíveis');
+      return [];
+    }
+    
     throw error;
   }
 };
