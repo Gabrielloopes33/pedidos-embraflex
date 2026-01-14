@@ -197,7 +197,9 @@ export function CustomerFormStep({
   };
 
   const formatPhone = (value: string) => {
+    if (!value) return '';
     const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length === 0) return '';
     if (cleaned.length <= 10) {
       return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
     }

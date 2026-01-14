@@ -32,7 +32,7 @@ const Login = () => {
       toast.success("Login realizado com sucesso!");
       
       // Forçar um recarregamento da página para que a lógica de rotas em app.tsx seja reavaliada
-      window.location.href = '/dashboard';
+      window.location.href = '/cotacoes/nova';
 
     } catch (error) {
       console.error("Erro de login:", error);
