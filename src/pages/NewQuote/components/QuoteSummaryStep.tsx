@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from '@/componentes/ui/dialog';
 import { ChevronLeft, Link2, Copy, Check, FileDown, Save, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { QuoteProduct } from '@/lib/quotes';
 import { QuoteCustomerData } from '../hooks/useQuoteWizard';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +49,7 @@ export function QuoteSummaryStep({
   const [expiresAt, setExpiresAt] = useState('');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Create quote mutation
   const createQuoteMutation = useMutation({
@@ -149,11 +151,7 @@ export function QuoteSummaryStep({
           });
         } catch (error: any) {
           console.error('Erro ao criar cliente no WooCommerce:', error);
-          toast({
-            title: 'Aviso',
-            description: 'Não foi possível cadastrar no WooCommerce, mas a cotação será criada.',
-            variant: 'destructive',
-          });
+          // Não mostrar toast de erro - continuar silenciosamente com a criação da cotação
         }
       }
       
@@ -173,6 +171,12 @@ export function QuoteSummaryStep({
     }
   };
 
+  const handleCloseModal = () => {
+    setShowLinkModal(false);
+    onSuccess();
+    navigate('/orders?tab=quotes');
+  };
+
   const handleCopyLink = () => {
     navigator.clipboard.writeText(signatureLink);
     setCopied(true);
@@ -181,11 +185,6 @@ export function QuoteSummaryStep({
       description: 'Link de assinatura copiado para a área de transferência.',
     });
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleCloseModal = () => {
-    setShowLinkModal(false);
-    onSuccess();
   };
 
   const isLoading = createQuoteMutation.isPending || generateLinkMutation.isPending;

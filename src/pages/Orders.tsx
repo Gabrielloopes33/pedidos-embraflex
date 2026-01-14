@@ -4,7 +4,7 @@ import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Badge } from "@/componentes/ui/badge";
 import { Plus, Search, Filter, Loader2, User, FileText, Package } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -38,6 +38,7 @@ const quoteStatusConfig = {
 
 const Orders = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [quoteStatusFilter, setQuoteStatusFilter] = useState("all");
@@ -49,7 +50,15 @@ const Orders = () => {
   const [quotesError, setQuotesError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<ProductionOrder | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("orders");
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "orders");
+
+  // Update tab when URL parameter changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'quotes' || tab === 'orders') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchOrders = async () => {

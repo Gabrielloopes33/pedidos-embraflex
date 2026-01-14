@@ -97,7 +97,7 @@ export function QuickProductsStep({
           {/* Carrinho de produtos */}
           <Card>
             <CardHeader className="bg-primary text-primary-foreground">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                   <ShoppingCart className="w-6 h-6" />
                   <div>
@@ -107,9 +107,9 @@ export function QuickProductsStep({
                     </CardDescription>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <p className="text-sm text-primary-foreground/80">Total</p>
-                  <p className="text-2xl font-bold">{formatCurrency(calculateTotal())}</p>
+                  <p className="text-2xl font-bold whitespace-nowrap">{formatCurrency(calculateTotal())}</p>
                 </div>
               </div>
             </CardHeader>
