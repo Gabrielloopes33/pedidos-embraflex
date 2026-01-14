@@ -200,10 +200,17 @@ export function CustomerFormStep({
     if (!value) return '';
     const cleaned = value.replace(/\D/g, '');
     if (cleaned.length === 0) return '';
-    if (cleaned.length <= 10) {
-      return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    
+    // Permite digitação progressiva
+    if (cleaned.length <= 2) {
+      return cleaned;
+    } else if (cleaned.length <= 6) {
+      return cleaned.replace(/(\d{2})(\d+)/, '($1) $2');
+    } else if (cleaned.length <= 10) {
+      return cleaned.replace(/(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
+    } else {
+      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
     }
-    return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   };
 
   const formatCEP = (value: string) => {
@@ -357,8 +364,12 @@ export function CustomerFormStep({
                 </Label>
                 <Input
                   id="phone"
+                  type="tel"
                   value={customerData.phone || ''}
-                  onChange={(e) => handleChange('phone', formatPhone(e.target.value))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    handleChange('phone', formatPhone(value));
+                  }}
                   onBlur={() => handleBlur('phone')}
                   placeholder="(00) 00000-0000"
                   maxLength={15}
