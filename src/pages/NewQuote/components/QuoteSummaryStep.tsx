@@ -178,7 +178,10 @@ export function QuoteSummaryStep({
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(signatureLink);
+    const productionUrl = 'https://embraflex1.netlify.app';
+    const token = signatureLink.split('/').pop();
+    const fullLink = `${productionUrl}/assinar/${token}`;
+    navigator.clipboard.writeText(fullLink);
     setCopied(true);
     toast({
       title: 'Link copiado!',
@@ -397,7 +400,9 @@ export function QuoteSummaryStep({
           <div className="space-y-4 py-4">
             {/* Link Display */}
             <div className="p-4 bg-muted rounded-lg break-all">
-              <p className="text-sm font-mono">{signatureLink}</p>
+              <p className="text-sm font-mono">
+                https://embraflex1.netlify.app/assinar/{signatureLink.split('/').pop()}
+              </p>
             </div>
 
             {/* Copy Button */}
