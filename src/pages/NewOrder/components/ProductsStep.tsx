@@ -12,9 +12,12 @@ interface ProductsStepProps {
   onUpdateProducts: (products: ProductItem[]) => void;
 }
 
+export type ProductLine = 'premium' | 'comercial' | 'economica' | null;
+
 export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [selectedLine, setSelectedLine] = useState<ProductLine>(null);
 
   const emptyProduct: ProductItem = {
     productId: 0,
@@ -42,6 +45,12 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
     setIsModalOpen(true);
   };
 
+  const handleAddProductWithLine = (line: ProductLine) => {
+    setSelectedLine(line);
+    setEditingIndex(null);
+    setIsModalOpen(true);
+  };
+
   const handleEditProduct = (index: number) => {
     setEditingIndex(index);
     setIsModalOpen(true);
@@ -58,6 +67,7 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
       onUpdateProducts([...products, product]);
     }
     setEditingIndex(null);
+    setSelectedLine(null); // Resetar linha selecionada
   };
 
   const handleRemoveProduct = (index: number) => {
@@ -84,13 +94,41 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
 
       {products.length === 0 ? (
         <div className="border-2 border-dashed rounded-lg p-12 text-center">
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground mb-6">
             Nenhum produto adicionado ainda
           </p>
-          <Button type="button" onClick={handleAddProduct} variant="outline">
-            <Plus className="w-4 h-4 mr-2" />
-            Adicionar Primeiro Produto
-          </Button>
+          <p className="text-sm text-muted-foreground mb-4">
+            Selecione a linha de produtos que deseja adicionar:
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-2xl mx-auto">
+            <Button 
+              type="button" 
+              onClick={() => handleAddProductWithLine('premium')} 
+              variant="outline"
+              className="flex-1 h-auto py-4 px-6 flex flex-col items-center gap-2 hover:bg-amber-50 hover:border-amber-300 transition-all"
+            >
+              <span className="text-lg font-semibold text-amber-600">LINHA PREMIUM</span>
+              <span className="text-xs text-muted-foreground">Produtos de alta qualidade</span>
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddProductWithLine('comercial')} 
+              variant="outline"
+              className="flex-1 h-auto py-4 px-6 flex flex-col items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all"
+            >
+              <span className="text-lg font-semibold text-blue-600">LINHA COMERCIAL</span>
+              <span className="text-xs text-muted-foreground">Produtos para uso comercial</span>
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddProductWithLine('economica')} 
+              variant="outline"
+              className="flex-1 h-auto py-4 px-6 flex flex-col items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all"
+            >
+              <span className="text-lg font-semibold text-green-600">LINHA ECONÔMICA</span>
+              <span className="text-xs text-muted-foreground">Produtos custo-benefício</span>
+            </Button>
+          </div>
         </div>
       ) : (
         <>
@@ -220,9 +258,13 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
       {/* Modal de Produto */}
       <ProductFormModal
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) setSelectedLine(null); // Resetar linha ao fechar modal
+        }}
         item={editingIndex !== null ? products[editingIndex] : emptyProduct}
         onSave={handleSaveProduct}
+        selectedLine={selectedLine}
       />
     </div>
   );

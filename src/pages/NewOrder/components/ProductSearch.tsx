@@ -7,18 +7,41 @@ import { useQuery } from "@tanstack/react-query";
 import { getProducts, getProductById } from "@/lib/woocommerce";
 import type { WooCommerceProduct } from "@/lib/types";
 import type { ProductItem } from "../types";
+import type { ProductLine } from "./ProductsStep";
 import { toast } from "sonner";
 
 interface ProductSearchProps {
   item: ProductItem;
   onSelect: (product: WooCommerceProduct) => void;
   onClear: () => void;
+  selectedLine?: ProductLine;
 }
 
-export function ProductSearch({ item, onSelect, onClear }: ProductSearchProps) {
+export function ProductSearch({ item, onSelect, onClear, selectedLine }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: products, isLoading: isLoadingProducts, error: productsError } = useQuery({
+  // Função para filtrar produtos por linha baseado em categorias
+  const filterProductsByLine = (products: WooCommerceProduct[]): WooCommerceProduct[] => {
+    if (!selectedLine) return products;
+
+    return products.filter(product => {
+      const categoryNames = product.categories.map(cat => cat.name.toLowerCase());
+      const categoryString = categoryNames.join(' ');
+      
+      switch (selectedLine) {
+        case 'premium':
+          return categoryString.includes('premium') || categoryString.includes('prêmium');
+        case 'comercial':
+          return categoryString.includes('comercial');
+        case 'economica':
+          return categoryString.includes('econômica') || categoryString.includes('economica');
+        default:
+          return true;
+      }
+    });
+  };
+
+  const { data: productsRaw, isLoading: isLoadingProducts, error: productsError } = useQuery({
     queryKey: ['products-search', searchTerm],
     queryFn: () => getProducts({
       search: searchTerm || undefined,
@@ -26,6 +49,9 @@ export function ProductSearch({ item, onSelect, onClear }: ProductSearchProps) {
     }),
     enabled: searchTerm.length > 2,
   });
+
+  // Aplicar filtro de linha aos produtos
+  const products = productsRaw ? filterProductsByLine(productsRaw) : [];
 
   const handleSelect = async (product: WooCommerceProduct) => {
     try {
@@ -41,6 +67,17 @@ export function ProductSearch({ item, onSelect, onClear }: ProductSearchProps) {
   return (
     <div className="space-y-2">
       <Label>Produto (WooCommerce)</Label>
+      {selectedLine && (
+        <div className="mb-2">
+          <span className={`text-xs px-2 py-1 rounded-md font-medium ${
+            selectedLine === 'premium' ? 'bg-amber-100 text-amber-700' :
+            selectedLine === 'comercial' ? 'bg-blue-100 text-blue-700' :
+            'bg-green-100 text-green-700'
+          }`}>
+            Filtrando: LINHA {selectedLine.toUpperCase()}
+          </span>
+        </div>
+      )}
       <div className="flex gap-2">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />

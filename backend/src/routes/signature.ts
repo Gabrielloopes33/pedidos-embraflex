@@ -1,0 +1,303 @@
+// Signature routes - Public routes for quote signing (no authentication required)
+import { Router, Request, Response } from 'express';
+import { supabase } from '../database';
+import { PublicQuoteData, SignatureConfirmRequest, RejectQuoteRequest } from '../types/quote';
+import { sendQuoteApprovedEmail, sendQuoteRejectedEmail } from '../services/email';
+
+const router = Router();
+
+// Helper: Get client IP address
+function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
+// GET /api/signature/:token - Get quote data by signature token (PUBLIC)
+router.get('/:token', async (req: Request, res: Response) => {
+  const { token } = req.params;
+
+  try {
+    const { data: quote, error } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('signature_link', token)
+      .single();
+
+    if (error || !quote) {
+      return res.status(404).json({
+        message: 'Cotação não encontrada ou link inválido.',
+        code: 'NOT_FOUND',
+      });
+    }
+
+    // Check if link is expired
+    const now = new Date();
+    const expiresAt = new Date(quote.expires_at);
+
+    if (expiresAt < now) {
+      return res.status(410).json({
+        message: 'Este link de assinatura expirou.',
+        code: 'EXPIRED',
+        expiredAt: quote.expires_at,
+      });
+    }
+
+    // Check if already signed
+    if (quote.status === 'approved') {
+      return res.status(200).json({
+        message: 'Esta cotação já foi assinada anteriormente.',
+        code: 'ALREADY_SIGNED',
+        signedAt: quote.signed_at,
+      });
+    }
+
+    // Check if rejected
+    if (quote.status === 'rejected') {
+      return res.status(200).json({
+        message: 'Esta cotação foi recusada.',
+        code: 'REJECTED',
+        rejectedAt: quote.rejected_at,
+      });
+    }
+
+    // Return public quote data (no sensitive information)
+    const publicData: PublicQuoteData = {
+      quoteNumber: quote.quote_number,
+      customerName: quote.customer_name,
+      products: quote.products,
+      totalPrice: parseFloat(quote.total_price),
+      expiresAt: quote.expires_at,
+      status: quote.status,
+    };
+
+    res.json(publicData);
+  } catch (error) {
+    console.error(`❌ Error fetching quote by token ${token}:`, error);
+    res.status(500).json({ message: 'Erro ao buscar cotação.' });
+  }
+});
+
+// POST /api/signature/:token/view - Register quote view (PUBLIC)
+router.post('/:token/view', async (req: Request, res: Response) => {
+  const { token } = req.params;
+
+  try {
+    // Get quote ID from token
+    const { data: quote, error: quoteError } = await supabase
+      .from('quotes')
+      .select('id')
+      .eq('signature_link', token)
+      .single();
+
+    if (quoteError || !quote) {
+      return res.status(404).json({ message: 'Cotação não encontrada.' });
+    }
+
+    // Register view
+    const viewData = {
+      quote_id: quote.id,
+      ip_address: getClientIp(req),
+      user_agent: req.headers['user-agent'] || null,
+      geolocation: req.body.geolocation || null,
+    };
+
+    const { error } = await supabase.from('quote_views').insert([viewData]);
+
+    if (error) {
+      console.error('❌ Error registering view:', error);
+      // Don't fail the request if view registration fails
+    } else {
+      console.log(`👁️ Quote ${quote.id} viewed from ${viewData.ip_address}`);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(`❌ Error registering view for token ${token}:`, error);
+    res.status(500).json({ message: 'Erro ao registrar visualização.' });
+  }
+});
+
+// POST /api/signature/:token/confirm - Confirm/sign quote (PUBLIC)
+router.post('/:token/confirm', async (req: Request, res: Response) => {
+  const { token } = req.params;
+  const body: SignatureConfirmRequest = req.body;
+
+  try {
+    // Get quote
+    const { data: quote, error: quoteError } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('signature_link', token)
+      .single();
+
+    if (quoteError || !quote) {
+      return res.status(404).json({ message: 'Cotação não encontrada.' });
+    }
+
+    // Validate not expired
+    const now = new Date();
+    const expiresAt = new Date(quote.expires_at);
+
+    if (expiresAt < now) {
+      return res.status(410).json({
+        message: 'Este link expirou. Entre em contato com o vendedor.',
+        code: 'EXPIRED',
+      });
+    }
+
+    // Validate status is 'sent'
+    if (quote.status !== 'sent') {
+      return res.status(400).json({
+        message: 'Esta cotação não pode mais ser assinada.',
+        code: 'INVALID_STATUS',
+        currentStatus: quote.status,
+      });
+    }
+
+    // Capture signature data
+    const signatureData = {
+      ip: getClientIp(req),
+      userAgent: req.headers['user-agent'] || 'unknown',
+      timestamp: new Date().toISOString(),
+      geolocation: body.geolocation || null,
+    };
+
+    // Update quote status to approved
+    const { data: updatedQuote, error: updateError } = await supabase
+      .from('quotes')
+      .update({
+        status: 'approved',
+        signed_at: new Date().toISOString(),
+        signature_data: signatureData,
+      })
+      .eq('signature_link', token)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    console.log(`✅ Quote ${quote.quote_number} signed by ${quote.customer_name}`);
+    console.log(`📝 Signature data:`, signatureData);
+
+    // Send email notification to production team (async, don't wait)
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    sendQuoteApprovedEmail(
+      {
+        ...updatedQuote,
+        products: updatedQuote.products,
+        totalPrice: parseFloat(updatedQuote.total_price),
+      },
+      appUrl
+    ).catch((emailError) => {
+      console.error('❌ Error sending approval email:', emailError);
+      // Don't fail the request if email fails
+    });
+
+    res.json({
+      success: true,
+      message: 'Cotação assinada com sucesso! Entraremos em contato em breve.',
+      quoteNumber: quote.quote_number,
+    });
+  } catch (error) {
+    console.error(`❌ Error confirming signature for token ${token}:`, error);
+    res.status(500).json({ message: 'Erro ao confirmar assinatura.' });
+  }
+});
+
+// POST /api/signature/:token/reject - Reject quote (PUBLIC)
+router.post('/:token/reject', async (req: Request, res: Response) => {
+  const { token } = req.params;
+  const body: RejectQuoteRequest = req.body;
+
+  try {
+    // Get quote
+    const { data: quote, error: quoteError } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('signature_link', token)
+      .single();
+
+    if (quoteError || !quote) {
+      return res.status(404).json({ message: 'Cotação não encontrada.' });
+    }
+
+    // Validate not expired
+    const now = new Date();
+    const expiresAt = new Date(quote.expires_at);
+
+    if (expiresAt < now) {
+      return res.status(410).json({
+        message: 'Este link expirou.',
+        code: 'EXPIRED',
+      });
+    }
+
+    // Validate status is 'sent'
+    if (quote.status !== 'sent') {
+      return res.status(400).json({
+        message: 'Esta cotação não pode mais ser recusada.',
+        code: 'INVALID_STATUS',
+        currentStatus: quote.status,
+      });
+    }
+
+    // Update quote status to rejected
+    const { data: updatedQuote, error: updateError } = await supabase
+      .from('quotes')
+      .update({
+        status: 'rejected',
+        rejected_at: new Date().toISOString(),
+        rejection_reason: body.reason || null,
+      })
+      .eq('signature_link', token)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    console.log(`❌ Quote ${quote.quote_number} rejected by ${quote.customer_name}`);
+    if (body.reason) {
+      console.log(`📝 Rejection reason: ${body.reason}`);
+    }
+
+    // Send rejection email to vendedor (optional, async)
+    if (quote.created_by_id) {
+      // Get vendedor email
+      const { data: userData } = await supabase
+        .from('users')
+        .select('username')
+        .eq('id', quote.created_by_id)
+        .single();
+
+      if (userData?.username) {
+        const appUrl = process.env.APP_URL || 'http://localhost:5173';
+        // Note: This assumes username is email. Adjust if different.
+        sendQuoteRejectedEmail(
+          {
+            ...updatedQuote,
+            products: updatedQuote.products,
+            totalPrice: parseFloat(updatedQuote.total_price),
+          },
+          userData.username,
+          appUrl
+        ).catch((emailError) => {
+          console.error('❌ Error sending rejection email:', emailError);
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Sua recusa foi registrada. Obrigado pelo retorno.',
+      quoteNumber: quote.quote_number,
+    });
+  } catch (error) {
+    console.error(`❌ Error rejecting quote for token ${token}:`, error);
+    res.status(500).json({ message: 'Erro ao recusar cotação.' });
+  }
+});
+
+export default router;

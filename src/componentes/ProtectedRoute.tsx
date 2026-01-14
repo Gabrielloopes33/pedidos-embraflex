@@ -7,11 +7,16 @@ const ProtectedRoute = () => {
 
   useEffect(() => {
     const checkAuth = () => {
+      console.log('🔐 ProtectedRoute: Verificando autenticação...');
       const token = localStorage.getItem('authToken');
       const expirationTime = localStorage.getItem('tokenExpiration');
+      
+      console.log('🔑 Token:', token ? 'presente' : 'ausente');
+      console.log('⏰ Expiration:', expirationTime);
 
       // Se não houver token, redireciona para login
       if (!token) {
+        console.log('❌ Sem token, redirecionando para login');
         setIsAuthenticated(false);
         return;
       }
@@ -21,8 +26,15 @@ const ProtectedRoute = () => {
         const now = new Date().getTime();
         const expiration = parseInt(expirationTime, 10);
 
+        console.log('⏱️ Verificando expiração:', {
+          now: new Date(now).toISOString(),
+          expiration: new Date(expiration).toISOString(),
+          expired: now >= expiration
+        });
+
         if (now >= expiration) {
           // Token expirado
+          console.log('⏰ Token expirado, limpando e redirecionando');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
           localStorage.removeItem('tokenExpiration');
@@ -32,6 +44,7 @@ const ProtectedRoute = () => {
         }
       }
 
+      console.log('✅ Autenticado com sucesso');
       setIsAuthenticated(true);
     };
 
@@ -43,9 +56,16 @@ const ProtectedRoute = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Mostrar nada enquanto verifica autenticação
+  // Mostrar loading enquanto verifica autenticação
   if (isAuthenticated === null) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
   }
 
   // Se não estiver autenticado, redireciona para login

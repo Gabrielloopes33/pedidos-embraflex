@@ -4,6 +4,7 @@ import { Separator } from "@/componentes/ui/separator";
 import { Save, X } from "lucide-react";
 import type { ProductItem } from "../types";
 import type { WooCommerceProduct } from "@/lib/types";
+import type { ProductLine } from "./ProductsStep";
 import { ProductSearch } from "./ProductSearch";
 import { ProductBasicInfo } from "./ProductBasicInfo";
 import { ProductDimensions } from "./ProductDimensions";
@@ -17,6 +18,7 @@ interface ProductFormModalProps {
   onOpenChange: (open: boolean) => void;
   item: ProductItem | null;
   onSave: (item: ProductItem) => void;
+  selectedLine?: ProductLine;
 }
 
 interface ProductVariation {
@@ -30,7 +32,7 @@ interface ProductVariation {
   }>;
 }
 
-export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFormModalProps) {
+export function ProductFormModal({ open, onOpenChange, item, onSave, selectedLine }: ProductFormModalProps) {
   const [editedItem, setEditedItem] = useState<ProductItem | null>(item);
   const [availableImpressionTypes, setAvailableImpressionTypes] = useState<string[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<number[]>([]);
@@ -390,6 +392,7 @@ export function ProductFormModal({ open, onOpenChange, item, onSave }: ProductFo
             item={editedItem}
             onSelect={handleProductSelect}
             onClear={handleClearProduct}
+            selectedLine={selectedLine}
           />
 
           <Separator />

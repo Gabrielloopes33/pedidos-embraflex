@@ -30,6 +30,23 @@ export const getProducts = async (params?: ProductsParams): Promise<WooCommerceP
   }
 };
 
+// Buscar produtos por nome ou SKU (para autocomplete)
+export const searchProducts = async (search: string): Promise<WooCommerceProduct[]> => {
+  try {
+    if (!search || search.length < 2) {
+      return [];
+    }
+    const response = await apiClient.get(`/wc/products`, {
+      params: { search, per_page: 20 },
+      timeout: 10000,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar produtos:', error);
+    return [];
+  }
+};
+
 // Buscar produto por ID através do nosso backend (proxy)
 export const getProductById = async (id: number): Promise<WooCommerceProduct> => {
   try {

@@ -8,6 +8,8 @@ import dotenv from 'dotenv';
 import { initializeDb, parseOrder, supabase } from './database';
 import { ProductionOrder } from './types';
 import wooCommerceApi from './woocommerce';
+import quotesRouter from './routes/quotes';
+import signatureRouter from './routes/signature';
 
 dotenv.config();
 
@@ -44,6 +46,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Register quote routes
+app.use('/api/quotes', quotesRouter);
+app.use('/api/signature', signatureRouter);
 
 // Estendendo a interface Request do Express para incluir o usuário
 interface AuthenticatedRequest extends Request {
@@ -568,24 +574,31 @@ initializeDb().then(() => {
     }
   });
 
-  // Proxy para buscar categorias de produtos (apenas INTERNO)
+  // Proxy para buscar categorias de produtos (retorna as LINHAS, não as quantidades)
   app.get('/api/wc/products/categories', async (req, res) => {
     try {
-      // Buscar apenas a categoria "Interno" ou "Interna"
+      // Buscar todas as categorias
       const { data: allCategories } = await wooCommerceApi.get('products/categories', {
         per_page: 100
       });
       
-      // Filtrar apenas categorias que contenham "Interno" no nome
-      const internoCategories = allCategories.filter((cat: any) => {
-        const name = cat.name.toLowerCase();
-        return name === 'interno' || name === 'interna' || name.includes('intern');
-      });
+      console.log('📁 Total de categorias do WooCommerce:', allCategories.length);
       
-      console.log('📁 Categorias filtradas (apenas INTERNO):', internoCategories.map((c: any) => c.name));
-      res.json(internoCategories);
+      // Encontrar quais categorias são parents (têm filhos)
+      const parentIds = new Set(allCategories.map((cat: any) => cat.parent).filter((id: number) => id > 0));
+      console.log('🔍 Parent IDs encontrados:', Array.from(parentIds));
+      
+      // As LINHAS são as categorias que aparecem como parent de outras categorias
+      // (ex: Premium ID:245, Lisa ID:244, Basic ID:246, Personalizada ID:57)
+      const lineCategories = allCategories.filter((cat: any) => parentIds.has(cat.id));
+      
+      console.log('📁 Linhas (categorias que são parents):', lineCategories.length);
+      console.log('📋 Linhas encontradas:', lineCategories.map((c: any) => `${c.name} (ID: ${c.id})`));
+      
+      // Retornar apenas as linhas
+      res.json(lineCategories);
     } catch (error: any) {
-      console.error('Erro ao buscar categorias do WooCommerce:', error.response?.data);
+      console.error('❌ Erro ao buscar categorias do WooCommerce:', error.response?.data || error.message);
       res.status(500).json({ message: 'Falha ao buscar categorias do WooCommerce.' });
     }
   });

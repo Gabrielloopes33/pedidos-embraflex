@@ -129,3 +129,59 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile-First Touch-Friendly Utilities */
+@layer utilities {
+  /* Touch-friendly sizes */
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Large inputs for mobile */
+  .input-lg {
+    @apply h-14 text-base px-4;
+  }
+
+  .input-mobile {
+    @apply h-12 text-base px-4;
+  }
+
+  /* Large buttons for mobile */
+  .btn-mobile {
+    @apply h-14 text-lg px-6 touch-manipulation;
+  }
+
+  /* Prevent text selection on buttons */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Active feedback for touch */
+  .active-feedback {
+    @apply active:scale-95 transition-transform duration-75;
+  }
+
+  /* Safe areas for mobile notches */
+  .safe-area-inset {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

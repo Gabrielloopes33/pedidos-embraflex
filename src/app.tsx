@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import NewOrder from "./pages/NewOrder";
+import NewQuote from "./pages/NewQuote";
 import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
@@ -53,10 +54,11 @@ const App = () => {
             {/* Rotas protegidas */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<Navigate to="/cotacoes/nova" replace />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/orders/new" element={<NewOrder />} />
+                <Route path="/cotacoes/nova" element={<NewQuote />} />
                 <Route path="/production" element={<ProductionPage />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/customers" element={<Customers />} />
