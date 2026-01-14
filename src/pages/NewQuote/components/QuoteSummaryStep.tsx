@@ -26,6 +26,7 @@ import { QuoteCustomerData } from '../hooks/useQuoteWizard';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
 import { createQuote, generateSignatureLink } from '@/lib/quotes';
+import { createOrUpdateCustomer } from '@/lib/customers';
 
 interface QuoteSummaryStepProps {
   customerData: QuoteCustomerData;
@@ -95,16 +96,22 @@ export function QuoteSummaryStep({
   };
 
   const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('pt-BR', {
-      dateStyle: 'long',
-    }).format(new Date(dateString));
+    if (!dateString) return '';
+    try {
+      return new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'long',
+      }).format(new Date(dateString));
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return dateString;
+    }
   };
 
   const handleSaveDraft = async () => {
     await createQuoteMutation.mutateAsync({
-      customerName: customerData.customerName,
-      customerEmail: customerData.customerEmail,
-      customerPhone: customerData.customerPhone,
+      customerName: customerData.name || customerData.customerName || '',
+      customerEmail: customerData.email || customerData.customerEmail,
+      customerPhone: customerData.phone || customerData.customerPhone,
       products,
       notes,
     });
@@ -112,11 +119,49 @@ export function QuoteSummaryStep({
 
   const handleGenerateLink = async () => {
     try {
-      // First create the quote
+      // Se configurado para criar no WooCommerce, criar/atualizar cliente primeiro
+      if (customerData.createInWooCommerce && customerData.name && customerData.email && customerData.phone) {
+        toast({
+          title: 'Criando cliente...',
+          description: 'Cadastrando cliente no WooCommerce.',
+        });
+        
+        try {
+          await createOrUpdateCustomer({
+            name: customerData.name,
+            email: customerData.email,
+            phone: customerData.phone,
+            company: customerData.company,
+            cpf: customerData.cpf,
+            cnpj: customerData.cnpj,
+            cep: customerData.cep,
+            address: customerData.address,
+            number: customerData.number,
+            complement: customerData.complement,
+            neighborhood: customerData.neighborhood,
+            city: customerData.city,
+            state: customerData.state,
+          });
+          
+          toast({
+            title: 'Cliente cadastrado!',
+            description: 'Cliente criado/atualizado no WooCommerce com sucesso.',
+          });
+        } catch (error: any) {
+          console.error('Erro ao criar cliente no WooCommerce:', error);
+          toast({
+            title: 'Aviso',
+            description: 'Não foi possível cadastrar no WooCommerce, mas a cotação será criada.',
+            variant: 'destructive',
+          });
+        }
+      }
+      
+      // Create the quote (usando nome unificado)
       const quote = await createQuoteMutation.mutateAsync({
-        customerName: customerData.customerName,
-        customerEmail: customerData.customerEmail,
-        customerPhone: customerData.customerPhone,
+        customerName: customerData.name || customerData.customerName || '',
+        customerEmail: customerData.email || customerData.customerEmail,
+        customerPhone: customerData.phone || customerData.customerPhone,
         products,
         notes,
       });
@@ -153,21 +198,52 @@ export function QuoteSummaryStep({
           <CardTitle>Informações do Cliente</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <span className="text-sm text-muted-foreground">Nome:</span>
-              <p className="font-medium">{customerData.customerName}</p>
+              <p className="font-medium">{customerData.name || customerData.customerName}</p>
             </div>
-            {customerData.customerEmail && (
+            {(customerData.email || customerData.customerEmail) && (
               <div>
                 <span className="text-sm text-muted-foreground">Email:</span>
-                <p>{customerData.customerEmail}</p>
+                <p>{customerData.email || customerData.customerEmail}</p>
               </div>
             )}
-            {customerData.customerPhone && (
+            {(customerData.phone || customerData.customerPhone) && (
               <div>
                 <span className="text-sm text-muted-foreground">Telefone:</span>
-                <p>{customerData.customerPhone}</p>
+                <p>{customerData.phone || customerData.customerPhone}</p>
+              </div>
+            )}
+            {customerData.company && (
+              <div>
+                <span className="text-sm text-muted-foreground">Empresa:</span>
+                <p>{customerData.company}</p>
+              </div>
+            )}
+            {customerData.cpf && (
+              <div>
+                <span className="text-sm text-muted-foreground">CPF:</span>
+                <p>{customerData.cpf}</p>
+              </div>
+            )}
+            {customerData.cnpj && (
+              <div>
+                <span className="text-sm text-muted-foreground">CNPJ:</span>
+                <p>{customerData.cnpj}</p>
+              </div>
+            )}
+            {customerData.address && (
+              <div className="md:col-span-2">
+                <span className="text-sm text-muted-foreground">Endereço:</span>
+                <p>
+                  {customerData.address}
+                  {customerData.number && `, ${customerData.number}`}
+                  {customerData.complement && ` - ${customerData.complement}`}
+                  {customerData.neighborhood && ` - ${customerData.neighborhood}`}
+                  {customerData.city && customerData.state && ` - ${customerData.city}/${customerData.state}`}
+                  {customerData.cep && ` - CEP: ${customerData.cep}`}
+                </p>
               </div>
             )}
           </div>
@@ -357,10 +433,12 @@ export function QuoteSummaryStep({
             </div>
 
             {/* Expiry Warning */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>⏰ Este link expira em:</span>
-              <span className="font-medium text-foreground">{formatDate(expiresAt)}</span>
-            </div>
+            {expiresAt && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>⏰ Este link expira em:</span>
+                <span className="font-medium text-foreground">{formatDate(expiresAt)}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">

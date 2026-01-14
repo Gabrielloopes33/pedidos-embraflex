@@ -3,7 +3,22 @@ import { useState, useEffect, useCallback } from 'react';
 import { QuoteProduct } from '@/lib/quotes';
 
 export interface QuoteCustomerData {
-  customerName: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  cpf?: string;
+  cnpj?: string;
+  cep?: string;
+  address?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  createInWooCommerce?: boolean;
+  // Manter compatibilidade com código legado
+  customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
 }
@@ -32,9 +47,10 @@ export function useQuoteWizard() {
 
     return {
       customer: {
-        customerName: '',
-        customerEmail: '',
-        customerPhone: '',
+        name: '',
+        email: '',
+        phone: '',
+        createInWooCommerce: true,
       },
       products: [],
       notes: '',
@@ -60,7 +76,7 @@ export function useQuoteWizard() {
   }, []);
 
   const nextStep = useCallback(() => {
-    setCurrentStep((prev) => Math.min(prev + 1, 3));
+    setCurrentStep((prev) => Math.min(prev + 1, 4));
   }, []);
 
   const prevStep = useCallback(() => {
@@ -109,9 +125,10 @@ export function useQuoteWizard() {
   const clearForm = useCallback(() => {
     const emptyForm: QuoteFormData = {
       customer: {
-        customerName: '',
-        customerEmail: '',
-        customerPhone: '',
+        name: '',
+        email: '',
+        phone: '',
+        createInWooCommerce: true,
       },
       products: [],
       notes: '',
@@ -123,12 +140,37 @@ export function useQuoteWizard() {
 
   // Validation
   const isStep1Valid = useCallback(() => {
-    return formData.customer.customerName.trim().length > 0;
-  }, [formData.customer.customerName]);
+    const { name, customerName } = formData.customer;
+    // Step 1 só precisa do nome
+    return (name || customerName) && (name || customerName)!.trim().length > 0;
+  }, [formData.customer]);
 
   const isStep2Valid = useCallback(() => {
     return formData.products.length > 0;
   }, [formData.products]);
+
+  const isStep3Valid = useCallback(() => {
+    const { name, email, phone, customerName } = formData.customer;
+    // Step 3 precisa de nome, email e telefone completos
+    const finalName = name || customerName || '';
+    const finalEmail = email || '';
+    const finalPhone = phone || '';
+    
+    const isValid = (
+      finalName.trim().length > 0 &&
+      finalEmail.trim().length > 0 &&
+      finalPhone.trim().length > 0
+    );
+    
+    console.log('🔍 isStep3Valid:', {
+      finalName: finalName.trim(),
+      finalEmail: finalEmail.trim(),
+      finalPhone: finalPhone.trim(),
+      isValid
+    });
+    
+    return isValid;
+  }, [formData.customer]);
 
   // Calculate total
   const calculateTotal = useCallback(() => {
@@ -160,6 +202,7 @@ export function useQuoteWizard() {
     clearForm,
     isStep1Valid,
     isStep2Valid,
+    isStep3Valid,
     calculateTotal,
   };
 }

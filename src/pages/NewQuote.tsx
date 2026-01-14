@@ -2,6 +2,7 @@
 import { useQuoteWizard } from './NewQuote/hooks/useQuoteWizard';
 import { QuickCustomerStep } from './NewQuote/components/QuickCustomerStep';
 import { QuickProductsStep } from './NewQuote/components/QuickProductsStep';
+import { CustomerFormStep } from './NewQuote/components/CustomerFormStep';
 import { QuoteSummaryStep } from './NewQuote/components/QuoteSummaryStep';
 import { Card, CardContent } from '@/componentes/ui/card';
 import { Button } from '@/componentes/ui/button';
@@ -49,7 +50,7 @@ export default function NewQuote() {
                   </div>
                   <div className="hidden sm:block">
                     <p className="font-medium text-sm">Cliente</p>
-                    <p className="text-xs text-muted-foreground">Nome e contato</p>
+                    <p className="text-xs text-muted-foreground">Nome rápido</p>
                   </div>
                 </div>
 
@@ -84,10 +85,32 @@ export default function NewQuote() {
                     className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-colors ${
                       wizard.currentStep === 3
                         ? 'bg-primary text-primary-foreground'
+                        : wizard.currentStep > 3
+                        ? 'bg-primary/20 text-primary'
                         : 'bg-muted text-muted-foreground'
                     }`}
                   >
                     3
+                  </div>
+                  <div className="hidden sm:block">
+                    <p className="font-medium text-sm">Dados</p>
+                    <p className="text-xs text-muted-foreground">Informações completas</p>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="flex-1 h-px bg-border mx-2" />
+
+                {/* Step 4 */}
+                <div className="flex items-center gap-3 flex-1">
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-colors ${
+                      wizard.currentStep === 4
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    4
                   </div>
                   <div className="hidden sm:block">
                     <p className="font-medium text-sm">Resumo</p>
@@ -99,9 +122,10 @@ export default function NewQuote() {
               {/* Mobile Step Labels */}
               <div className="sm:hidden mt-4 text-center">
                 <p className="text-sm font-medium">
-                  {wizard.currentStep === 1 && 'Etapa 1: Informações do Cliente'}
+                  {wizard.currentStep === 1 && 'Etapa 1: Nome do Cliente'}
                   {wizard.currentStep === 2 && 'Etapa 2: Seleção de Produtos'}
-                  {wizard.currentStep === 3 && 'Etapa 3: Resumo e Envio'}
+                  {wizard.currentStep === 3 && 'Etapa 3: Dados do Cliente'}
+                  {wizard.currentStep === 4 && 'Etapa 4: Resumo e Envio'}
                 </p>
               </div>
             </CardContent>
@@ -111,9 +135,8 @@ export default function NewQuote() {
           <div className="animate-in fade-in-50 duration-300">
             {wizard.currentStep === 1 && (
               <QuickCustomerStep
-                customerData={wizard.formData.customer}
-                onUpdate={wizard.updateCustomer}
-                isValid={wizard.isStep1Valid()}
+                customerName={wizard.formData.customer.name || wizard.formData.customer.customerName || ''}
+                onUpdateName={(name) => wizard.updateCustomer({ name, customerName: name })}
               />
             )}
 
@@ -128,6 +151,14 @@ export default function NewQuote() {
             )}
 
             {wizard.currentStep === 3 && (
+              <CustomerFormStep
+                customerData={wizard.formData.customer}
+                onUpdateCustomer={wizard.updateCustomer}
+                isValid={wizard.isStep3Valid()}
+              />
+            )}
+
+            {wizard.currentStep === 4 && (
               <QuoteSummaryStep
                 customerData={wizard.formData.customer}
                 products={wizard.formData.products}
@@ -140,14 +171,28 @@ export default function NewQuote() {
 
           {/* Navigation Buttons (inline no conteúdo) */}
           <div className="mt-8 space-y-4">
-            {wizard.currentStep < 3 && (
+            {wizard.currentStep < 4 && (
               <Button
                 size="lg"
-                onClick={wizard.nextStep}
-                disabled={wizard.currentStep === 1 ? !wizard.isStep1Valid() : !wizard.isStep2Valid()}
+                onClick={() => {
+                  console.log('🔘 Botão clicado! Step:', wizard.currentStep);
+                  console.log('🔍 Validações:', {
+                    step1: wizard.isStep1Valid(),
+                    step2: wizard.isStep2Valid(),
+                    step3: wizard.isStep3Valid(),
+                  });
+                  wizard.nextStep();
+                }}
+                disabled={
+                  wizard.currentStep === 1 ? !wizard.isStep1Valid() :
+                  wizard.currentStep === 2 ? !wizard.isStep2Valid() :
+                  !wizard.isStep3Valid()
+                }
                 className="w-full h-14 text-lg font-semibold touch-manipulation"
               >
-                {wizard.currentStep === 1 ? 'Próximo: Selecionar Produtos' : 'Próximo: Resumo'}
+                {wizard.currentStep === 1 && 'Próximo: Selecionar Produtos'}
+                {wizard.currentStep === 2 && 'Próximo: Dados do Cliente'}
+                {wizard.currentStep === 3 && 'Próximo: Resumo'}
                 <ChevronRight className="ml-2 h-5 w-5" />
               </Button>
             )}
