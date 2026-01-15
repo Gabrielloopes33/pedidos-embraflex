@@ -36,6 +36,19 @@ export interface ProductConfig {
 
 type NavigationStep = 'line' | 'category' | 'subcategory' | 'product' | 'variation';
 
+// Interface para produtos agrupados por SKU
+interface GroupedProduct {
+  sku: string;
+  products: WooCommerceProduct[];
+  paperTypes: string[]; // Laminado, Verniz, Klabin, etc.
+}
+
+// Interface para variação com informação do produto pai
+interface VariationWithProduct extends WooCommerceProductVariation {
+  parentProduct: WooCommerceProduct;
+  paperType: string;
+}
+
 interface Category {
   id: number;
   name: string;
@@ -47,6 +60,7 @@ interface Category {
 export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProps) {
   const [currentStep, setCurrentStep] = useState<NavigationStep>('line');
   const [selectedLine, setSelectedLine] = useState<Category | null>(null);
+  const [selectedGroupedProduct, setSelectedGroupedProduct] = useState<GroupedProduct | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<WooCommerceProduct | null>(null);
   const [breadcrumb, setBreadcrumb] = useState<string[]>(['Escolha a Linha']);
 
@@ -100,20 +114,90 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     return result;
   })();
 
-  // Filtrar produtos da linha selecionada
-  const products = (() => {
+  // Filtrar produtos da linha selecionada e agrupar por SKU
+  const groupedProducts: GroupedProduct[] = (() => {
     if (!selectedLine || !allProducts) return [];
-    
-    return allProducts.filter((product: WooCommerceProduct) => {
+
+    const lineProducts = allProducts.filter((product: WooCommerceProduct) => {
       return product.categories?.some((cat) => cat.id === selectedLine.id);
     });
+
+    // Agrupar por SKU (ex: k-034, k-126)
+    const grouped = new Map<string, GroupedProduct>();
+
+    lineProducts.forEach((product: WooCommerceProduct) => {
+      // Extrair SKU do produto ou do nome
+      let sku = product.sku;
+      if (!sku) {
+        const nameMatch = product.name.match(/^([kK]-\d+)/);
+        sku = nameMatch ? nameMatch[1] : `#${product.id}`;
+      }
+      // Normalizar SKU para lowercase
+      const normalizedSku = sku.toLowerCase();
+
+      // Extrair tipo de papel do nome (ex: "Duplex - Laminado", "Duplex Klabin - Verniz")
+      const name = product.name;
+      let paperType = 'Padrão';
+
+      // Detectar tipo de papel
+      if (name.toLowerCase().includes('laminado')) {
+        paperType = 'Laminado';
+      } else if (name.toLowerCase().includes('verniz')) {
+        paperType = 'Verniz';
+      }
+
+      // Detectar se é Klabin
+      const isKlabin = name.toLowerCase().includes('klabin');
+      if (isKlabin) {
+        paperType = `Klabin - ${paperType}`;
+      }
+
+      if (!grouped.has(normalizedSku)) {
+        grouped.set(normalizedSku, {
+          sku: sku,
+          products: [product],
+          paperTypes: [paperType]
+        });
+      } else {
+        const existing = grouped.get(normalizedSku)!;
+        existing.products.push(product);
+        if (!existing.paperTypes.includes(paperType)) {
+          existing.paperTypes.push(paperType);
+        }
+      }
+    });
+
+    return Array.from(grouped.values());
   })();
 
-  // Buscar variações do produto selecionado
-  const { data: variations, isLoading: loadingVariations } = useQuery({
-    queryKey: ['variations', selectedProduct?.id],
-    queryFn: () => getProductVariations(selectedProduct!.id),
-    enabled: !!selectedProduct && selectedProduct.type === 'variable',
+  // Buscar variações de TODOS os produtos do grupo selecionado
+  const { data: allGroupVariations, isLoading: loadingVariations } = useQuery({
+    queryKey: ['group-variations', selectedGroupedProduct?.sku],
+    queryFn: async () => {
+      if (!selectedGroupedProduct) return [];
+
+      // Buscar variações de todos os produtos do grupo em paralelo
+      const variationsPromises = selectedGroupedProduct.products.map(async (product) => {
+        if (product.type !== 'variable') return [];
+
+        const variations = await getProductVariations(product.id);
+
+        // Extrair tipo de papel do nome do produto
+        const name = product.name;
+        let paperType = name.replace(/^[kK]-\d+\s*-?\s*/, '').trim();
+
+        // Adicionar informação do produto pai a cada variação
+        return variations.map((variation: WooCommerceProductVariation) => ({
+          ...variation,
+          parentProduct: product,
+          paperType,
+        }));
+      });
+
+      const results = await Promise.all(variationsPromises);
+      return results.flat() as VariationWithProduct[];
+    },
+    enabled: !!selectedGroupedProduct,
     staleTime: 2 * 60 * 1000,
   });
 
@@ -123,32 +207,20 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     setCurrentStep('product');
   };
 
-  const handleProductSelect = (product: WooCommerceProduct) => {
-    setSelectedProduct(product);
+  const handleGroupedProductSelect = (grouped: GroupedProduct) => {
+    setSelectedGroupedProduct(grouped);
+
+    // Ir direto para variações (com todos os tipos de papel)
     setBreadcrumb([
       'Escolha a Linha',
       selectedLine?.name || '',
       'Produtos',
-      product.name,
+      grouped.sku,
     ]);
-
-    // Se o produto tem variações, mostrar tela de variações
-    if (product.type === 'variable') {
-      setCurrentStep('variation');
-    } else {
-      // Produto simples - adicionar diretamente
-      onAddProduct({
-        product,
-        quantity: 1000, // Quantidade padrão
-        price: parseFloat(product.price) || 0,
-      });
-      onClose();
-    }
+    setCurrentStep('variation');
   };
 
-  const handleVariationSelect = (variation: WooCommerceProductVariation, quantity: number, finishing?: FinishingOptions) => {
-    if (!selectedProduct) return;
-
+  const handleVariationSelect = (variation: VariationWithProduct, quantity: number, finishing?: FinishingOptions) => {
     // Extrair atributos da variação
     const attributes: Record<string, string> = {};
     variation.attributes?.forEach((attr) => {
@@ -156,7 +228,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     });
 
     onAddProduct({
-      product: selectedProduct,
+      product: variation.parentProduct,
       variationId: variation.id,
       quantity,
       price: parseFloat(variation.price) || 0,
@@ -170,6 +242,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
   const handleBack = () => {
     if (currentStep === 'variation') {
       setSelectedProduct(null);
+      setSelectedGroupedProduct(null);
       setCurrentStep('product');
       setBreadcrumb(['Escolha a Linha', selectedLine?.name || '', 'Produtos']);
     } else if (currentStep === 'product') {
@@ -252,7 +325,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           </div>
         )}
 
-        {/* Step 2: Lista de Produtos (Códigos K-034, K-038, etc) */}
+        {/* Step 2: Lista de Produtos Agrupados por SKU (K-034, K-126, etc) */}
         {currentStep === 'product' && (
           <div className="grid grid-cols-2 gap-4">
             {loadingProducts ? (
@@ -260,37 +333,39 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="ml-3 text-muted-foreground">Carregando produtos...</p>
               </div>
-            ) : products && products.length > 0 ? (
-              products.map((product: WooCommerceProduct) => {
-                // Usar o SKU do WooCommerce, ou extrair do nome
-                let sku = product.sku;
-                
-                // Se não tiver SKU, tentar extrair do nome (formato: "k-034 - Descrição...")
-                if (!sku) {
-                  const nameMatch = product.name.match(/^([kK]-\d+)/);
-                  sku = nameMatch ? nameMatch[1] : `#${product.id}`;
-                }
-                
-                // Remover o SKU do nome para pegar só a descrição
-                const description = product.name
-                  .replace(product.sku || '', '')
-                  .replace(/^[kK]-\d+/, '')
-                  .replace(/^[\s-]+/, '')
+            ) : groupedProducts && groupedProducts.length > 0 ? (
+              groupedProducts.map((grouped: GroupedProduct) => {
+                // Pegar a descrição base do primeiro produto (sem variação de papel)
+                const firstProduct = grouped.products[0];
+                let description = firstProduct.name
+                  .replace(/^[kK]-\d+\s*-?\s*/, '') // Remove SKU
+                  .replace(/\s*-?\s*(laminado|verniz|klabin)/gi, '') // Remove tipo de papel
+                  .replace(/\s*-\s*$/, '') // Remove traços no final
                   .trim();
-                
+
+                // Simplificar descrição se muito longa
+                if (description.length > 30) {
+                  description = description.split(' - ')[0];
+                }
+
                 return (
                   <Card
-                    key={product.id}
-                    onClick={() => handleProductSelect(product)}
+                    key={grouped.sku}
+                    onClick={() => handleGroupedProductSelect(grouped)}
                     className="cursor-pointer hover:bg-accent transition-colors touch-manipulation"
                   >
                     <CardContent className="p-6 flex flex-col items-center justify-center min-h-[120px]">
                       <span className="text-2xl font-bold text-primary">
-                        {sku}
+                        {grouped.sku}
                       </span>
                       {description && (
                         <p className="text-xs text-muted-foreground text-center mt-2 line-clamp-2">
                           {description}
+                        </p>
+                      )}
+                      {grouped.products.length > 1 && (
+                        <p className="text-xs text-primary/70 mt-1">
+                          {grouped.products.length} variações
                         </p>
                       )}
                     </CardContent>
@@ -305,11 +380,11 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           </div>
         )}
 
-        {/* Step 3: Variações (Cor/Quantidade) */}
-        {currentStep === 'variation' && selectedProduct && (
+        {/* Step 3: Variações agrupadas por tipo de papel (Cor/Quantidade) */}
+        {currentStep === 'variation' && selectedGroupedProduct && (
           <VariationSelector
-            product={selectedProduct}
-            variations={variations || []}
+            groupedProduct={selectedGroupedProduct}
+            variations={allGroupVariations || []}
             loading={loadingVariations}
             onSelect={handleVariationSelect}
           />
@@ -319,16 +394,16 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
   );
 }
 
-// Componente para seleção de variações
+// Componente para seleção de variações - agrupado por tipo de papel
 interface VariationSelectorProps {
-  product: WooCommerceProduct;
-  variations: WooCommerceProductVariation[];
+  groupedProduct: GroupedProduct;
+  variations: VariationWithProduct[];
   loading: boolean;
-  onSelect: (variation: WooCommerceProductVariation, quantity: number, finishing?: FinishingOptions) => void;
+  onSelect: (variation: VariationWithProduct, quantity: number, finishing?: FinishingOptions) => void;
 }
 
-function VariationSelector({ product, variations, loading, onSelect }: VariationSelectorProps) {
-  const [selectedVariation, setSelectedVariation] = useState<WooCommerceProductVariation | null>(null);
+function VariationSelector({ groupedProduct, variations, loading, onSelect }: VariationSelectorProps) {
+  const [selectedVariation, setSelectedVariation] = useState<VariationWithProduct | null>(null);
   const [selectedQuantity, setSelectedQuantity] = useState<number>(1000);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
   const [finishing, setFinishing] = useState<FinishingOptions>({
@@ -339,11 +414,6 @@ function VariationSelector({ product, variations, loading, onSelect }: Variation
     corCordao: 'nenhum',
   });
 
-  console.log('🔧 VariationSelector - Produto:', product.name);
-  console.log('🔧 VariationSelector - Total variações:', variations?.length || 0);
-  console.log('🔧 VariationSelector - Variações recebidas:', variations);
-  console.log('🔧 VariationSelector - Loading:', loading);
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -351,71 +421,25 @@ function VariationSelector({ product, variations, loading, onSelect }: Variation
     }).format(value);
   };
 
-  // Agrupar variações por cor e quantidade
-  const groupedVariations = variations.reduce((acc: Record<string, WooCommerceProductVariation[]>, variation) => {
-    // Log detalhado dos atributos de CADA variação
-    console.log('🔍 Analisando variação ID:', variation.id);
-    console.log('  📋 Atributos:', variation.attributes);
-    variation.attributes?.forEach((attr, index) => {
-      console.log(`  ➡️ Atributo ${index + 1}:`, {
-        name: attr.name,
-        nameLower: attr.name.toLowerCase(),
-        option: attr.option
-      });
-    });
-    
-    const colorAttr = variation.attributes?.find(
-      (attr) => {
-        const nameLower = attr.name.toLowerCase();
-        return nameLower === 'cor' || 
-               nameLower === 'color' ||
-               nameLower.includes('cor de impressão') ||
-               nameLower.includes('cor de impressao') ||
-               nameLower.includes('tipo de impressão') ||
-               nameLower.includes('tipo de impressao') ||
-               nameLower.includes('impressao');
-      }
-    );
-    const quantityAttr = variation.attributes?.find(
-      (attr) => attr.name.toLowerCase() === 'quantidade' || 
-                     attr.name.toLowerCase() === 'quantity' ||
-                     attr.name.toLowerCase() === 'qtd'
-    );
+  // Agrupar variações: primeiro por tipo de papel, depois por cor
+  const groupedByPaper = variations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
+    const paperType = variation.paperType;
 
-    const color = colorAttr?.option || 'Padrão';
-    const quantity = parseInt(quantityAttr?.option?.toString().replace(/\D/g, '') || '1000');
-
-    console.log('  ✅ Resultado:', { 
-      colorAttr: colorAttr ? `${colorAttr.name} = ${colorAttr.option}` : 'NÃO ENCONTRADO',
-      quantityAttr: quantityAttr ? `${quantityAttr.name} = ${quantityAttr.option}` : 'NÃO ENCONTRADO',
-      color, 
-      quantity, 
-      price: variation.price
-    });
-    console.log('  ---');
-
-    if (!acc[color]) {
-      acc[color] = [];
+    if (!acc[paperType]) {
+      acc[paperType] = [];
     }
-
-    acc[color].push({
-      ...variation,
-      quantity,
-      color,
-    });
+    acc[paperType].push(variation);
 
     return acc;
   }, {});
 
-  const colors = Object.keys(groupedVariations);
-  
-  console.log('🎨 Cores encontradas:', colors);
-  console.log('📦 Variações agrupadas:', groupedVariations);
+  // Para cada tipo de papel, agrupar por cor
+  const paperTypes = Object.keys(groupedByPaper);
 
-  // Cores de fundo para cada tipo (bem claras)
+  // Cores de fundo para cada tipo de impressão
   const getColorBackground = (color: string) => {
     const lowerColor = color.toLowerCase();
-    
+
     if (lowerColor.includes('preto') || lowerColor.includes('black')) {
       return 'bg-slate-100 dark:bg-slate-900';
     }
@@ -425,17 +449,14 @@ function VariationSelector({ product, variations, loading, onSelect }: Variation
     if (lowerColor.includes('pantone') || lowerColor.includes('cyan')) {
       return 'bg-cyan-100 dark:bg-cyan-900/30';
     }
-    if (lowerColor.includes('padrão') || lowerColor.includes('padrao')) {
-      return 'bg-gray-100 dark:bg-gray-900';
-    }
-    
-    return 'bg-muted';
+
+    return 'bg-gray-50 dark:bg-gray-900';
   };
 
   // Cor do texto do título
   const getColorTitle = (color: string) => {
     const lowerColor = color.toLowerCase();
-    
+
     if (lowerColor.includes('preto') || lowerColor.includes('black')) {
       return 'text-slate-800 dark:text-slate-100 font-bold';
     }
@@ -445,8 +466,34 @@ function VariationSelector({ product, variations, loading, onSelect }: Variation
     if (lowerColor.includes('pantone') || lowerColor.includes('cyan')) {
       return 'text-cyan-700 dark:text-cyan-300 font-bold';
     }
-    
+
     return 'text-foreground font-bold';
+  };
+
+  // Extrair cor e quantidade de uma variação
+  const extractColorAndQuantity = (variation: VariationWithProduct) => {
+    const colorAttr = variation.attributes?.find(
+      (attr) => {
+        const nameLower = attr.name.toLowerCase();
+        return nameLower === 'cor' ||
+               nameLower === 'color' ||
+               nameLower.includes('cor de impressão') ||
+               nameLower.includes('cor de impressao') ||
+               nameLower.includes('tipo de impressão') ||
+               nameLower.includes('tipo de impressao') ||
+               nameLower.includes('impressao');
+      }
+    );
+    const quantityAttr = variation.attributes?.find(
+      (attr) => attr.name.toLowerCase() === 'quantidade' ||
+                     attr.name.toLowerCase() === 'quantity' ||
+                     attr.name.toLowerCase() === 'qtd'
+    );
+
+    return {
+      color: colorAttr?.option || 'Padrão',
+      quantity: parseInt(quantityAttr?.option?.toString().replace(/\D/g, '') || '1000'),
+    };
   };
 
   if (loading) {
@@ -460,48 +507,82 @@ function VariationSelector({ product, variations, loading, onSelect }: Variation
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-2">{product.name}</h3>
-        <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+        <h3 className="text-lg font-semibold mb-2">{groupedProduct.sku}</h3>
+        <p className="text-sm text-muted-foreground">Selecione o tipo e quantidade</p>
       </div>
 
-      {/* Exibir todas as cores/tipos em layout vertical */}
-      <div className="space-y-4">
-        {colors.map((color) => (
-          <div 
-            key={color} 
-            className={`rounded-lg p-4 ${getColorBackground(color)} border-2 border-transparent hover:border-primary/20 transition-all`}
-          >
-            {/* Título da seção */}
-            <h4 className={`text-base text-center mb-3 ${getColorTitle(color)}`}>
-              {color.toUpperCase()}
-            </h4>
+      {/* Exibir por tipo de papel */}
+      <div className="space-y-6">
+        {paperTypes.map((paperType) => {
+          const paperVariations = groupedByPaper[paperType];
 
-            {/* Grid de quantidades e preços */}
-            <div className="grid grid-cols-3 gap-3">
-              {groupedVariations[color]
-                .sort((a, b) => (a.quantity || 0) - (b.quantity || 0))
-                .map((variation) => {
-                  const price = parseFloat(variation.price) || 0;
-                  const isSelected = selectedVariation?.id === variation.id;
-                  
-                  return (
-                    <Button
-                      key={variation.id}
-                      variant={isSelected ? 'default' : 'outline'}
-                      onClick={() => {
-                        setSelectedVariation(variation);
-                        setSelectedQuantity(variation.quantity || 1000);
-                      }}
-                      className="h-24 flex flex-col items-center justify-center gap-1 text-center touch-manipulation"
-                    >
-                      <span className="text-2xl font-bold">{variation.quantity}</span>
-                      <span className="text-sm">{formatCurrency(price)}</span>
-                    </Button>
-                  );
-                })}
+          // Agrupar por cor dentro deste tipo de papel
+          const byColor = paperVariations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
+            const { color, quantity } = extractColorAndQuantity(variation);
+
+            if (!acc[color]) {
+              acc[color] = [];
+            }
+            acc[color].push({
+              ...variation,
+              quantity,
+              color,
+            });
+
+            return acc;
+          }, {});
+
+          const colors = Object.keys(byColor);
+
+          return (
+            <div key={paperType} className="border rounded-lg overflow-hidden">
+              {/* Header do tipo de papel */}
+              <div className="bg-muted/50 px-4 py-3 border-b">
+                <h4 className="font-semibold text-base">{paperType}</h4>
+              </div>
+
+              {/* Cores e quantidades */}
+              <div className="p-4 space-y-4">
+                {colors.map((color) => (
+                  <div
+                    key={`${paperType}-${color}`}
+                    className={`rounded-lg p-3 ${getColorBackground(color)}`}
+                  >
+                    {/* Título da cor */}
+                    <h5 className={`text-sm text-center mb-2 ${getColorTitle(color)}`}>
+                      {color.toUpperCase()}
+                    </h5>
+
+                    {/* Grid de quantidades e preços */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {byColor[color]
+                        .sort((a, b) => (a.quantity || 0) - (b.quantity || 0))
+                        .map((variation) => {
+                          const price = parseFloat(variation.price) || 0;
+                          const isSelected = selectedVariation?.id === variation.id;
+
+                          return (
+                            <Button
+                              key={variation.id}
+                              variant={isSelected ? 'default' : 'outline'}
+                              onClick={() => {
+                                setSelectedVariation(variation);
+                                setSelectedQuantity(variation.quantity || 1000);
+                              }}
+                              className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation"
+                            >
+                              <span className="text-xl font-bold">{variation.quantity}</span>
+                              <span className="text-xs">{formatCurrency(price)}</span>
+                            </Button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Botão de adicionar */}

@@ -179,7 +179,9 @@ export function QuoteSummaryStep({
 
   const handleCopyLink = () => {
     const productionUrl = 'https://embraflex1.netlify.app';
-    const token = signatureLink.split('/').pop();
+    const token = signatureLink.includes('/') 
+      ? signatureLink.split('/').pop() 
+      : signatureLink;
     const fullLink = `${productionUrl}/assinar/${token}`;
     navigator.clipboard.writeText(fullLink);
     setCopied(true);

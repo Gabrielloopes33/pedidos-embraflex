@@ -98,7 +98,9 @@ const QuoteDetails = () => {
     if (quote?.signatureLink) {
       // Sempre usar o domínio de produção, não localhost
       const productionUrl = 'https://embraflex1.netlify.app';
-      const token = quote.signatureLink.split('/').pop();
+      const token = quote.signatureLink.includes('/') 
+        ? quote.signatureLink.split('/').pop() 
+        : quote.signatureLink;
       const fullLink = `${productionUrl}/assinar/${token}`;
       navigator.clipboard.writeText(fullLink);
       setCopied(true);
@@ -113,7 +115,9 @@ const QuoteDetails = () => {
   const handleOpenLink = () => {
     if (quote?.signatureLink) {
       const productionUrl = 'https://embraflex1.netlify.app';
-      const token = quote.signatureLink.split('/').pop();
+      const token = quote.signatureLink.includes('/') 
+        ? quote.signatureLink.split('/').pop() 
+        : quote.signatureLink;
       window.open(`${productionUrl}/assinar/${token}`, '_blank');
     }
   };
@@ -242,7 +246,7 @@ const QuoteDetails = () => {
                 <div className="flex gap-2">
                   <Input
                     readOnly
-                    value={`https://embraflex1.netlify.app/assinar/${quote.signatureLink.split('/').pop()}`}
+                    value={`https://embraflex1.netlify.app/assinar/${quote.signatureLink.includes('/') ? quote.signatureLink.split('/').pop() : quote.signatureLink}`}
                     className="flex-1"
                   />
                   <Button onClick={handleCopyLink} variant="outline" size="icon">
