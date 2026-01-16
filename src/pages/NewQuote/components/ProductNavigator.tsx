@@ -76,37 +76,48 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
-  // Extrair categorias principais (Sacola de Papel, Sacola Plástica, etc.)
+  // Extrair categorias principais - usando hierarquia do WooCommerce
+  // Nível 1: Categorias de tipo de produto (Sacola de Papel, Sacola Plástica, etc.)
   const mainCategories = (() => {
     if (!allProducts || allProducts.length === 0) return [];
 
     const categoriesMap = new Map<string, Category>();
 
+    // Primeiro, coletar TODAS as categorias de todos os produtos
+    const allCategories: Array<{ id: number; name: string; slug: string }> = [];
     allProducts.forEach((product: WooCommerceProduct) => {
       if (product.categories && product.categories.length > 0) {
         product.categories.forEach((cat) => {
-          const catName = cat.name.toLowerCase();
-          // Procurar por categorias de tipo de produto (Sacola de Papel, Sacola Plástica, etc.)
-          if (catName.includes('sacola') ||
-              catName.includes('papel') ||
-              catName.includes('plástica') ||
-              catName.includes('plastica')) {
-            // Não incluir se for uma linha ou subcategoria
-            if (!catName.includes('linha') &&
-                !catName.includes('premium') &&
-                !catName.includes('comercial') &&
-                !catName.includes('econômica') &&
-                !catName.includes('economica') &&
-                !catName.includes('boca vazada')) {
-              categoriesMap.set(cat.name, {
-                id: cat.id,
-                name: cat.name,
-                slug: cat.slug,
-                parent: 0,
-                count: 0
-              });
-            }
-          }
+          allCategories.push(cat);
+        });
+      }
+    });
+
+    console.log('🔍 Todas as categorias encontradas:', [...new Set(allCategories.map(c => c.name))]);
+
+    // Identificar categorias que NÃO são linhas (Linha Premium, etc.)
+    // Essas são as categorias principais de tipo de produto
+    allCategories.forEach((cat) => {
+      const catName = cat.name.toLowerCase();
+
+      // Ignorar categorias que são claramente linhas/subcategorias
+      const isLine = catName.includes('linha') ||
+                     catName.includes('premium') ||
+                     catName.includes('comercial') ||
+                     catName.includes('econômica') ||
+                     catName.includes('economica') ||
+                     catName.includes('boca vazada') ||
+                     catName.includes('interno') || // Categoria raiz
+                     catName.includes('uncategorized') ||
+                     catName.includes('sem categoria');
+
+      if (!isLine) {
+        categoriesMap.set(cat.name, {
+          id: cat.id,
+          name: cat.name,
+          slug: cat.slug,
+          parent: 0,
+          count: 0
         });
       }
     });
@@ -116,7 +127,8 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     return result;
   })();
 
-  // Extrair linhas da categoria selecionada (Linha Premium, Boca Vazada, etc.)
+  // Extrair linhas/subcategorias da categoria selecionada
+  // Nível 2: Linhas (Linha Premium, Boca Vazada, etc.)
   const linesInCategory = (() => {
     if (!selectedCategory || !allProducts) return [];
 
@@ -127,27 +139,26 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       return product.categories?.some((cat) => cat.id === selectedCategory.id);
     });
 
+    console.log('🔍 Produtos na categoria selecionada:', categoryProducts.length);
+
     categoryProducts.forEach((product: WooCommerceProduct) => {
       if (product.categories && product.categories.length > 0) {
         product.categories.forEach((cat) => {
+          // Pegar todas as outras categorias do produto que não são a categoria selecionada
+          // e não são categorias raiz
           const catName = cat.name.toLowerCase();
-          // Procurar por linhas/subcategorias
-          if (catName.includes('linha') ||
-              catName.includes('premium') ||
-              catName.includes('comercial') ||
-              catName.includes('econômica') ||
-              catName.includes('economica') ||
-              catName.includes('boca vazada')) {
-            // Não incluir a categoria pai
-            if (cat.id !== selectedCategory.id) {
-              linesMap.set(cat.name, {
-                id: cat.id,
-                name: cat.name,
-                slug: cat.slug,
-                parent: selectedCategory.id,
-                count: 0
-              });
-            }
+          const isRoot = catName.includes('interno') ||
+                         catName.includes('uncategorized') ||
+                         catName.includes('sem categoria');
+
+          if (cat.id !== selectedCategory.id && !isRoot) {
+            linesMap.set(cat.name, {
+              id: cat.id,
+              name: cat.name,
+              slug: cat.slug,
+              parent: selectedCategory.id,
+              count: 0
+            });
           }
         });
       }
