@@ -58,11 +58,11 @@ interface Category {
 }
 
 export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProps) {
-  const [currentStep, setCurrentStep] = useState<NavigationStep>('line');
-  const [selectedLine, setSelectedLine] = useState<Category | null>(null);
+  const [currentStep, setCurrentStep] = useState<NavigationStep>('category');
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null); // Sacola de Papel, Sacola Plástica
+  const [selectedLine, setSelectedLine] = useState<Category | null>(null); // Linha Premium, Boca Vazada
   const [selectedGroupedProduct, setSelectedGroupedProduct] = useState<GroupedProduct | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<WooCommerceProduct | null>(null);
-  const [breadcrumb, setBreadcrumb] = useState<string[]>(['Escolha a Linha']);
+  const [breadcrumb, setBreadcrumb] = useState<string[]>(['Escolha o Tipo']);
 
   // Buscar TODOS os produtos (ao invés de categorias)
   const { data: allProducts, isLoading: loadingProducts, error: productsError } = useQuery({
@@ -76,27 +76,29 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
-  // Extrair linhas únicas das categorias dos produtos
+  // Extrair categorias principais (Sacola de Papel, Sacola Plástica, etc.)
   const mainCategories = (() => {
     if (!allProducts || allProducts.length === 0) return [];
-    
-    const linesSet = new Set<string>();
-    const linesMap = new Map<string, Category>();
-    
+
+    const categoriesMap = new Map<string, Category>();
+
     allProducts.forEach((product: WooCommerceProduct) => {
       if (product.categories && product.categories.length > 0) {
         product.categories.forEach((cat) => {
           const catName = cat.name.toLowerCase();
-          // Procurar por categorias que são linhas
-          if (catName.includes('linha') || 
-              catName.includes('premium') || 
-              catName.includes('comercial') ||
-              catName.includes('econômica') ||
-              catName.includes('economica')) {
-            // Adicionar apenas se não for uma quantidade
-            if (!catName.match(/\d+\s*unidades?/i)) {
-              linesSet.add(cat.name);
-              linesMap.set(cat.name, {
+          // Procurar por categorias de tipo de produto (Sacola de Papel, Sacola Plástica, etc.)
+          if (catName.includes('sacola') ||
+              catName.includes('papel') ||
+              catName.includes('plástica') ||
+              catName.includes('plastica')) {
+            // Não incluir se for uma linha ou subcategoria
+            if (!catName.includes('linha') &&
+                !catName.includes('premium') &&
+                !catName.includes('comercial') &&
+                !catName.includes('econômica') &&
+                !catName.includes('economica') &&
+                !catName.includes('boca vazada')) {
+              categoriesMap.set(cat.name, {
                 id: cat.id,
                 name: cat.name,
                 slug: cat.slug,
@@ -108,9 +110,51 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
         });
       }
     });
-    
+
+    const result = Array.from(categoriesMap.values());
+    console.log('📦 Categorias principais encontradas:', result.map(c => c.name));
+    return result;
+  })();
+
+  // Extrair linhas da categoria selecionada (Linha Premium, Boca Vazada, etc.)
+  const linesInCategory = (() => {
+    if (!selectedCategory || !allProducts) return [];
+
+    const linesMap = new Map<string, Category>();
+
+    // Filtrar produtos que pertencem à categoria selecionada
+    const categoryProducts = allProducts.filter((product: WooCommerceProduct) => {
+      return product.categories?.some((cat) => cat.id === selectedCategory.id);
+    });
+
+    categoryProducts.forEach((product: WooCommerceProduct) => {
+      if (product.categories && product.categories.length > 0) {
+        product.categories.forEach((cat) => {
+          const catName = cat.name.toLowerCase();
+          // Procurar por linhas/subcategorias
+          if (catName.includes('linha') ||
+              catName.includes('premium') ||
+              catName.includes('comercial') ||
+              catName.includes('econômica') ||
+              catName.includes('economica') ||
+              catName.includes('boca vazada')) {
+            // Não incluir a categoria pai
+            if (cat.id !== selectedCategory.id) {
+              linesMap.set(cat.name, {
+                id: cat.id,
+                name: cat.name,
+                slug: cat.slug,
+                parent: selectedCategory.id,
+                count: 0
+              });
+            }
+          }
+        });
+      }
+    });
+
     const result = Array.from(linesMap.values());
-    console.log('📦 Linhas encontradas nos produtos:', result.map(c => c.name));
+    console.log('📦 Linhas encontradas na categoria:', result.map(c => c.name));
     return result;
   })();
 
@@ -201,9 +245,15 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     staleTime: 2 * 60 * 1000,
   });
 
+  const handleCategorySelect = (category: Category) => {
+    setSelectedCategory(category);
+    setBreadcrumb(['Escolha o Tipo', category.name]);
+    setCurrentStep('line');
+  };
+
   const handleLineSelect = (line: Category) => {
     setSelectedLine(line);
-    setBreadcrumb(['Escolha a Linha', line.name, 'Produtos']);
+    setBreadcrumb(['Escolha o Tipo', selectedCategory?.name || '', line.name, 'Produtos']);
     setCurrentStep('product');
   };
 
@@ -212,7 +262,8 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
 
     // Ir direto para variações (com todos os tipos de papel)
     setBreadcrumb([
-      'Escolha a Linha',
+      'Escolha o Tipo',
+      selectedCategory?.name || '',
       selectedLine?.name || '',
       'Produtos',
       grouped.sku,
@@ -241,14 +292,17 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
 
   const handleBack = () => {
     if (currentStep === 'variation') {
-      setSelectedProduct(null);
       setSelectedGroupedProduct(null);
       setCurrentStep('product');
-      setBreadcrumb(['Escolha a Linha', selectedLine?.name || '', 'Produtos']);
+      setBreadcrumb(['Escolha o Tipo', selectedCategory?.name || '', selectedLine?.name || '', 'Produtos']);
     } else if (currentStep === 'product') {
       setSelectedLine(null);
       setCurrentStep('line');
-      setBreadcrumb(['Escolha a Linha']);
+      setBreadcrumb(['Escolha o Tipo', selectedCategory?.name || '']);
+    } else if (currentStep === 'line') {
+      setSelectedCategory(null);
+      setCurrentStep('category');
+      setBreadcrumb(['Escolha o Tipo']);
     }
   };
 
@@ -258,7 +312,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {(currentStep === 'variation' || currentStep === 'product') && (
+            {(currentStep === 'variation' || currentStep === 'product' || currentStep === 'line') && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -289,28 +343,54 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       </CardHeader>
 
       <CardContent className="p-6">
-        {/* Step 1: Escolha da Linha (Comercial, Premium, Econômica) */}
-        {currentStep === 'line' && (
+        {/* Step 0: Escolha do Tipo de Produto (Sacola de Papel, Sacola Plástica) */}
+        {currentStep === 'category' && (
           <div className="space-y-4">
             {loadingProducts ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">Carregando linhas...</p>
+                <p className="ml-3 text-muted-foreground">Carregando tipos...</p>
               </div>
             ) : productsError ? (
               <div className="text-center py-12">
-                <p className="text-destructive mb-4">Erro ao carregar linhas</p>
+                <p className="text-destructive mb-4">Erro ao carregar tipos</p>
                 <p className="text-sm text-muted-foreground">{String(productsError)}</p>
               </div>
             ) : mainCategories.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhuma linha encontrada</p>
+                <p className="text-muted-foreground">Nenhum tipo encontrado</p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Verifique se os produtos têm categorias de linha
+                  Verifique se os produtos têm categorias configuradas
                 </p>
               </div>
             ) : (
-              mainCategories.map((line: Category) => (
+              mainCategories.map((category: Category) => (
+                <Card
+                  key={category.id}
+                  onClick={() => handleCategorySelect(category)}
+                  className="cursor-pointer hover:bg-accent transition-colors touch-manipulation"
+                >
+                  <CardContent className="p-6">
+                    <h3 className="text-xl font-semibold text-center">{category.name}</h3>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Step 1: Escolha da Linha (Linha Premium, Boca Vazada, etc.) */}
+        {currentStep === 'line' && (
+          <div className="space-y-4">
+            {linesInCategory.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Nenhuma linha encontrada</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Verifique se existem subcategorias configuradas
+                </p>
+              </div>
+            ) : (
+              linesInCategory.map((line: Category) => (
                 <Card
                   key={line.id}
                   onClick={() => handleLineSelect(line)}
