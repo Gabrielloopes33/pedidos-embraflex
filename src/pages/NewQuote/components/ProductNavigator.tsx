@@ -59,113 +59,104 @@ interface Category {
 
 export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProps) {
   const [currentStep, setCurrentStep] = useState<NavigationStep>('category');
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null); // Sacola de Papel, Sacola Plástica
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null); // Sacola de Papel, Caixa, etc.
   const [selectedLine, setSelectedLine] = useState<Category | null>(null); // Linha Premium, Boca Vazada
   const [selectedGroupedProduct, setSelectedGroupedProduct] = useState<GroupedProduct | null>(null);
-  const [breadcrumb, setBreadcrumb] = useState<string[]>(['Escolha o Tipo']);
+  const [breadcrumb, setBreadcrumb] = useState<string[]>(['Escolha a Categoria']);
 
-  // Buscar TODOS os produtos (ao invés de categorias)
+  // Buscar TODOS os produtos
   const { data: allProducts, isLoading: loadingProducts, error: productsError } = useQuery({
     queryKey: ['all-products-navigator'],
     queryFn: async () => {
       console.log('🔍 Buscando todos os produtos...');
       const result = await getProducts({ per_page: 100, orderby: 'menu_order', order: 'asc' });
       console.log('✅ Produtos recebidos:', result?.length || 0);
+      // Log detalhado das categorias de cada produto
+      result?.forEach((p: WooCommerceProduct) => {
+        console.log(`📦 ${p.name} -> Categorias:`, p.categories?.map(c => c.name));
+      });
       return result;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 1 * 60 * 1000, // 1 minuto
   });
 
-  // Extrair categorias principais - usando hierarquia do WooCommerce
-  // Nível 1: Categorias de tipo de produto (Sacola de Papel, Sacola Plástica, etc.)
+  // Categorias principais extraídas dos produtos (Sacola de Papel, Sacolas Plásticas, etc.)
+  // Detectamos pelo nome que contém "Sacola" ou outras palavras-chave de categoria principal
   const mainCategories = (() => {
     if (!allProducts || allProducts.length === 0) return [];
 
-    const categoriesMap = new Map<string, Category>();
+    const categoriesMap = new Map<number, Category>();
 
-    // Primeiro, coletar TODAS as categorias de todos os produtos
-    const allCategories: Array<{ id: number; name: string; slug: string }> = [];
     allProducts.forEach((product: WooCommerceProduct) => {
-      if (product.categories && product.categories.length > 0) {
-        product.categories.forEach((cat) => {
-          allCategories.push(cat);
-        });
-      }
-    });
+      product.categories?.forEach((cat) => {
+        const catName = cat.name.toLowerCase();
 
-    console.log('🔍 Todas as categorias encontradas:', [...new Set(allCategories.map(c => c.name))]);
+        // Detectar categorias principais (contém "sacola", "caixa", etc.)
+        const isMainCategory = catName.includes('sacola') ||
+                               catName.includes('caixa') ||
+                               catName.includes('embalagem');
 
-    // Identificar categorias que NÃO são linhas (Linha Premium, etc.)
-    // Essas são as categorias principais de tipo de produto
-    allCategories.forEach((cat) => {
-      const catName = cat.name.toLowerCase();
+        // Ignorar categorias genéricas
+        const isGeneric = catName.includes('interno') ||
+                          catName.includes('uncategorized') ||
+                          catName.includes('sem categoria');
 
-      // Ignorar categorias que são claramente linhas/subcategorias
-      const isLine = catName.includes('linha') ||
-                     catName.includes('premium') ||
-                     catName.includes('comercial') ||
-                     catName.includes('econômica') ||
-                     catName.includes('economica') ||
-                     catName.includes('boca vazada') ||
-                     catName.includes('interno') || // Categoria raiz
-                     catName.includes('uncategorized') ||
-                     catName.includes('sem categoria');
-
-      if (!isLine) {
-        categoriesMap.set(cat.name, {
-          id: cat.id,
-          name: cat.name,
-          slug: cat.slug,
-          parent: 0,
-          count: 0
-        });
-      }
+        if (isMainCategory && !isGeneric) {
+          categoriesMap.set(cat.id, {
+            id: cat.id,
+            name: cat.name,
+            slug: cat.slug,
+            parent: 0,
+            count: 1
+          });
+        }
+      });
     });
 
     const result = Array.from(categoriesMap.values());
-    console.log('📦 Categorias principais encontradas:', result.map(c => c.name));
+    console.log('📦 Categorias principais:', result.map(c => c.name));
     return result;
   })();
 
-  // Extrair linhas/subcategorias da categoria selecionada
-  // Nível 2: Linhas (Linha Premium, Boca Vazada, etc.)
-  const linesInCategory = (() => {
-    if (!selectedCategory || !allProducts) return [];
+  // Linhas disponíveis para a categoria selecionada (Linha Premium, Linha Econômica, Boca Vazada, etc.)
+  // Extraídas dos produtos que pertencem à categoria selecionada
+  const availableLines = (() => {
+    if (!allProducts || allProducts.length === 0 || !selectedCategory) return [];
 
-    const linesMap = new Map<string, Category>();
+    const linesMap = new Map<number, Category>();
 
     // Filtrar produtos que pertencem à categoria selecionada
-    const categoryProducts = allProducts.filter((product: WooCommerceProduct) => {
-      return product.categories?.some((cat) => cat.id === selectedCategory.id);
-    });
+    const categoryProducts = allProducts.filter((product: WooCommerceProduct) =>
+      product.categories?.some(cat => cat.id === selectedCategory.id)
+    );
 
-    console.log('🔍 Produtos na categoria selecionada:', categoryProducts.length);
-
+    // Extrair as outras categorias desses produtos (que são as linhas)
     categoryProducts.forEach((product: WooCommerceProduct) => {
-      if (product.categories && product.categories.length > 0) {
-        product.categories.forEach((cat) => {
-          // Pegar todas as outras categorias do produto que não são a categoria selecionada
-          // e não são categorias raiz
-          const catName = cat.name.toLowerCase();
-          const isRoot = catName.includes('interno') ||
-                         catName.includes('uncategorized') ||
-                         catName.includes('sem categoria');
+      product.categories?.forEach((cat) => {
+        // Pular a categoria principal (já selecionada)
+        if (cat.id === selectedCategory.id) return;
 
-          if (cat.id !== selectedCategory.id && !isRoot) {
-            linesMap.set(cat.name, {
-              id: cat.id,
-              name: cat.name,
-              slug: cat.slug,
-              parent: selectedCategory.id,
-              count: 0
-            });
-          }
-        });
-      }
+        const catName = cat.name.toLowerCase();
+
+        // Ignorar categorias genéricas
+        const isGeneric = catName.includes('interno') ||
+                          catName.includes('uncategorized') ||
+                          catName.includes('sem categoria');
+
+        if (!isGeneric) {
+          linesMap.set(cat.id, {
+            id: cat.id,
+            name: cat.name,
+            slug: cat.slug,
+            parent: selectedCategory.id,
+            count: 1
+          });
+        }
+      });
     });
 
     const result = Array.from(linesMap.values());
-    console.log('📦 Linhas encontradas na categoria:', result.map(c => c.name));
+    console.log('📦 Linhas disponíveis para', selectedCategory.name, ':', result.map(c => c.name));
     return result;
   })();
 
@@ -258,13 +249,13 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
 
   const handleCategorySelect = (category: Category) => {
     setSelectedCategory(category);
-    setBreadcrumb(['Escolha o Tipo', category.name]);
+    setBreadcrumb(['Escolha a Categoria', category.name, 'Escolha a Linha']);
     setCurrentStep('line');
   };
 
   const handleLineSelect = (line: Category) => {
     setSelectedLine(line);
-    setBreadcrumb(['Escolha o Tipo', selectedCategory?.name || '', line.name, 'Produtos']);
+    setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', line.name, 'Produtos']);
     setCurrentStep('product');
   };
 
@@ -273,10 +264,9 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
 
     // Ir direto para variações (com todos os tipos de papel)
     setBreadcrumb([
-      'Escolha o Tipo',
+      'Escolha a Categoria',
       selectedCategory?.name || '',
       selectedLine?.name || '',
-      'Produtos',
       grouped.sku,
     ]);
     setCurrentStep('variation');
@@ -305,15 +295,15 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     if (currentStep === 'variation') {
       setSelectedGroupedProduct(null);
       setCurrentStep('product');
-      setBreadcrumb(['Escolha o Tipo', selectedCategory?.name || '', selectedLine?.name || '', 'Produtos']);
+      setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', selectedLine?.name || '', 'Produtos']);
     } else if (currentStep === 'product') {
       setSelectedLine(null);
       setCurrentStep('line');
-      setBreadcrumb(['Escolha o Tipo', selectedCategory?.name || '']);
+      setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', 'Escolha a Linha']);
     } else if (currentStep === 'line') {
       setSelectedCategory(null);
       setCurrentStep('category');
-      setBreadcrumb(['Escolha o Tipo']);
+      setBreadcrumb(['Escolha a Categoria']);
     }
   };
 
@@ -323,7 +313,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {(currentStep === 'variation' || currentStep === 'product' || currentStep === 'line') && (
+            {currentStep !== 'category' && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -354,24 +344,24 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       </CardHeader>
 
       <CardContent className="p-6">
-        {/* Step 0: Escolha do Tipo de Produto (Sacola de Papel, Sacola Plástica) */}
+        {/* Step 1: Escolha da Categoria (Sacola de Papel, Sacola de Plástico, etc.) */}
         {currentStep === 'category' && (
           <div className="space-y-4">
             {loadingProducts ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">Carregando tipos...</p>
+                <p className="ml-3 text-muted-foreground">Carregando categorias...</p>
               </div>
             ) : productsError ? (
               <div className="text-center py-12">
-                <p className="text-destructive mb-4">Erro ao carregar tipos</p>
+                <p className="text-destructive mb-4">Erro ao carregar categorias</p>
                 <p className="text-sm text-muted-foreground">{String(productsError)}</p>
               </div>
             ) : mainCategories.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum tipo encontrado</p>
+                <p className="text-muted-foreground">Nenhuma categoria encontrada</p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Verifique se os produtos têm categorias configuradas
+                  Verifique as categorias no WooCommerce
                 </p>
               </div>
             ) : (
@@ -390,18 +380,28 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           </div>
         )}
 
-        {/* Step 1: Escolha da Linha (Linha Premium, Boca Vazada, etc.) */}
+        {/* Step 2: Escolha da Linha (Linha Premium, Boca Vazada, etc.) */}
         {currentStep === 'line' && (
           <div className="space-y-4">
-            {linesInCategory.length === 0 ? (
+            {loadingProducts ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">Carregando linhas...</p>
+              </div>
+            ) : productsError ? (
+              <div className="text-center py-12">
+                <p className="text-destructive mb-4">Erro ao carregar linhas</p>
+                <p className="text-sm text-muted-foreground">{String(productsError)}</p>
+              </div>
+            ) : availableLines.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">Nenhuma linha encontrada</p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Verifique se existem subcategorias configuradas
+                  Verifique as subcategorias no WooCommerce
                 </p>
               </div>
             ) : (
-              linesInCategory.map((line: Category) => (
+              availableLines.map((line: Category) => (
                 <Card
                   key={line.id}
                   onClick={() => handleLineSelect(line)}
@@ -416,7 +416,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           </div>
         )}
 
-        {/* Step 2: Lista de Produtos Agrupados por SKU (K-034, K-126, etc) */}
+        {/* Step 3: Lista de Produtos Agrupados por SKU (K-034, K-126, etc) */}
         {currentStep === 'product' && (
           <div className="grid grid-cols-2 gap-4">
             {loadingProducts ? (
@@ -424,20 +424,23 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="ml-3 text-muted-foreground">Carregando produtos...</p>
               </div>
+            ) : productsError ? (
+              <div className="col-span-2 text-center py-12">
+                <p className="text-destructive mb-4">Erro ao carregar produtos</p>
+                <p className="text-sm text-muted-foreground">{String(productsError)}</p>
+              </div>
             ) : groupedProducts && groupedProducts.length > 0 ? (
               groupedProducts.map((grouped: GroupedProduct) => {
-                // Pegar a descrição base do primeiro produto (sem variação de papel)
                 const firstProduct = grouped.products[0];
-                let description = firstProduct.name
-                  .replace(/^[kK]-\d+\s*-?\s*/, '') // Remove SKU
-                  .replace(/\s*-?\s*(laminado|verniz|klabin)/gi, '') // Remove tipo de papel
-                  .replace(/\s*-\s*$/, '') // Remove traços no final
-                  .trim();
 
-                // Simplificar descrição se muito longa
-                if (description.length > 30) {
-                  description = description.split(' - ')[0];
-                }
+                // Verificar se é sacola plástica (não tem SKU k-XXX)
+                const isPlasticBag = !grouped.sku.toLowerCase().startsWith('k-');
+
+                // Para sacolas plásticas: usar o nome do produto (medidas)
+                // Para sacolas de papel: usar o SKU
+                const displayName = isPlasticBag
+                  ? firstProduct.name // Ex: "15x25/20x30 cm"
+                  : grouped.sku;      // Ex: "k-034"
 
                 return (
                   <Card
@@ -446,19 +449,9 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
                     className="cursor-pointer hover:bg-accent transition-colors touch-manipulation"
                   >
                     <CardContent className="p-6 flex flex-col items-center justify-center min-h-[120px]">
-                      <span className="text-2xl font-bold text-primary">
-                        {grouped.sku}
+                      <span className="text-2xl font-bold text-primary text-center">
+                        {displayName}
                       </span>
-                      {description && (
-                        <p className="text-xs text-muted-foreground text-center mt-2 line-clamp-2">
-                          {description}
-                        </p>
-                      )}
-                      {grouped.products.length > 1 && (
-                        <p className="text-xs text-primary/70 mt-1">
-                          {grouped.products.length} variações
-                        </p>
-                      )}
                     </CardContent>
                   </Card>
                 );
@@ -471,7 +464,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           </div>
         )}
 
-        {/* Step 3: Variações agrupadas por tipo de papel (Cor/Quantidade) */}
+        {/* Step 4: Variações agrupadas por tipo de papel (Cor/Quantidade) */}
         {currentStep === 'variation' && selectedGroupedProduct && (
           <VariationSelector
             groupedProduct={selectedGroupedProduct}
@@ -494,8 +487,7 @@ interface VariationSelectorProps {
 }
 
 function VariationSelector({ groupedProduct, variations, loading, onSelect }: VariationSelectorProps) {
-  const [selectedVariation, setSelectedVariation] = useState<VariationWithProduct | null>(null);
-  const [selectedQuantity, setSelectedQuantity] = useState<number>(1000);
+  const [pendingVariation, setPendingVariation] = useState<VariationWithProduct | null>(null);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
   const [finishing, setFinishing] = useState<FinishingOptions>({
     hotStamp: false,
@@ -504,6 +496,19 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
     cordao: 'nenhum',
     corCordao: 'nenhum',
   });
+
+  // Ao clicar em uma quantidade, adiciona direto ao pedido
+  const handleQuantityClick = (variation: VariationWithProduct) => {
+    // Se já tiver acabamentos selecionados, usa eles
+    const hasFinishing = finishing.hotStamp || finishing.ilhos || finishing.furoPresente || finishing.cordao !== 'nenhum';
+    onSelect(variation, variation.quantity || 1000, hasFinishing ? finishing : undefined);
+  };
+
+  // Para adicionar acabamento antes de selecionar
+  const handleFinishingClick = (variation: VariationWithProduct) => {
+    setPendingVariation(variation);
+    setShowFinishingModal(true);
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -644,30 +649,33 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
                       {color.toUpperCase()}
                     </h5>
 
-                    {/* Grid de quantidades e preços */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {byColor[color]
-                        .sort((a, b) => (a.quantity || 0) - (b.quantity || 0))
-                        .map((variation) => {
-                          const price = parseFloat(variation.price) || 0;
-                          const isSelected = selectedVariation?.id === variation.id;
+                    {/* Grid de quantidades e preços - ajusta colunas baseado na quantidade */}
+                    {(() => {
+                      const sortedVariations = byColor[color].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+                      const count = sortedVariations.length;
+                      // Se tem 2 ou menos, usa 2 colunas; se tem 3+, usa 3 colunas
+                      const gridCols = count <= 2 ? 'grid-cols-2' : 'grid-cols-3';
 
-                          return (
-                            <Button
-                              key={variation.id}
-                              variant={isSelected ? 'default' : 'outline'}
-                              onClick={() => {
-                                setSelectedVariation(variation);
-                                setSelectedQuantity(variation.quantity || 1000);
-                              }}
-                              className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation"
-                            >
-                              <span className="text-xl font-bold">{variation.quantity}</span>
-                              <span className="text-xs">{formatCurrency(price)}</span>
-                            </Button>
-                          );
-                        })}
-                    </div>
+                      return (
+                        <div className={`grid ${gridCols} gap-2`}>
+                          {sortedVariations.map((variation) => {
+                            const price = parseFloat(variation.price) || 0;
+
+                            return (
+                              <Button
+                                key={variation.id}
+                                variant="outline"
+                                onClick={() => handleQuantityClick(variation)}
+                                className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
+                              >
+                                <span className="text-xl font-bold">{variation.quantity}</span>
+                                <span className="text-xs">{formatCurrency(price)}</span>
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -676,31 +684,22 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
         })}
       </div>
 
-      {/* Botão de adicionar */}
-      {selectedVariation && (
-        <div className="space-y-3">
-          {/* Botão Adicionar Acabamento */}
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setShowFinishingModal(true)}
-            className="w-full h-14 text-base font-semibold touch-manipulation"
-          >
-            {finishing.hotStamp || finishing.ilhos || finishing.furoPresente || finishing.cordao !== 'nenhum'
-              ? '✓ Acabamentos Selecionados'
-              : 'Adicionar Acabamento'}
-          </Button>
-
-          {/* Botão Adicionar ao Pedido */}
-          <Button
-            size="lg"
-            onClick={() => onSelect(selectedVariation, selectedQuantity, finishing)}
-            className="w-full h-16 text-lg font-semibold touch-manipulation"
-          >
-            Adicionar ao Pedido
-          </Button>
-        </div>
-      )}
+      {/* Botão para configurar acabamentos (opcional, antes de selecionar) */}
+      <div className="pt-4 border-t">
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => setShowFinishingModal(true)}
+          className="w-full h-12 text-sm font-medium touch-manipulation"
+        >
+          {finishing.hotStamp || finishing.ilhos || finishing.furoPresente || finishing.cordao !== 'nenhum'
+            ? '✓ Acabamentos configurados (clique na quantidade para adicionar)'
+            : '⚙️ Configurar acabamentos antes de adicionar'}
+        </Button>
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          Clique em uma quantidade acima para adicionar ao pedido
+        </p>
+      </div>
 
       {/* Modal de Acabamentos */}
       <FinishingModal
@@ -708,9 +707,14 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
         onOpenChange={setShowFinishingModal}
         onConfirm={(newFinishing) => {
           setFinishing(newFinishing);
+          // Se tinha uma variação pendente, adiciona ao pedido com o acabamento
+          if (pendingVariation) {
+            onSelect(pendingVariation, pendingVariation.quantity || 1000, newFinishing);
+            setPendingVariation(null);
+          }
         }}
         initialFinishing={finishing}
-        quantity={selectedQuantity}
+        quantity={pendingVariation?.quantity || 1000}
       />
     </div>
   );
