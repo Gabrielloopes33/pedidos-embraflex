@@ -645,15 +645,29 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
                nameLower.includes('impressao');
       }
     );
+
+    // Buscar atributo de quantidade (quantidade, metros, etc.)
     const quantityAttr = variation.attributes?.find(
-      (attr) => attr.name.toLowerCase() === 'quantidade' ||
-                     attr.name.toLowerCase() === 'quantity' ||
-                     attr.name.toLowerCase() === 'qtd'
+      (attr) => {
+        const nameLower = attr.name.toLowerCase();
+        return nameLower === 'quantidade' ||
+               nameLower === 'quantity' ||
+               nameLower === 'qtd' ||
+               nameLower === 'metros' ||
+               nameLower === 'mts' ||
+               nameLower.includes('metro');
+      }
     );
+
+    // Extrair valor numérico para ordenação e manter label original para exibição
+    const quantityOption = quantityAttr?.option?.toString() || '';
+    const quantityNumber = parseInt(quantityOption.replace(/\D/g, '') || '1000');
+    const quantityLabel = quantityOption || quantityNumber.toString();
 
     return {
       color: colorAttr?.option || 'Padrão',
-      quantity: parseInt(quantityAttr?.option?.toString().replace(/\D/g, '') || '1000'),
+      quantity: quantityNumber,
+      quantityLabel: quantityLabel, // Para exibição (ex: "50 mts")
     };
   };
 
@@ -678,8 +692,8 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
           const paperVariations = groupedByPaper[paperType];
 
           // Agrupar por cor dentro deste tipo de papel
-          const byColor = paperVariations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
-            const { color, quantity } = extractColorAndQuantity(variation);
+          const byColor = paperVariations.reduce((acc: Record<string, (VariationWithProduct & { quantityLabel?: string })[]>, variation) => {
+            const { color, quantity, quantityLabel } = extractColorAndQuantity(variation);
 
             if (!acc[color]) {
               acc[color] = [];
@@ -688,6 +702,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
               ...variation,
               quantity,
               color,
+              quantityLabel,
             });
 
             return acc;
@@ -733,7 +748,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
                                 onClick={() => handleQuantityClick(variation)}
                                 className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
                               >
-                                <span className="text-xl font-bold">{variation.quantity}</span>
+                                <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
                                 <span className="text-xs">{formatCurrency(price)}</span>
                               </Button>
                             );
