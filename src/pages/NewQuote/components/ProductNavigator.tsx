@@ -168,12 +168,16 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     return result;
   })();
 
-  // Filtrar produtos da linha selecionada e agrupar por SKU
+  // Filtrar produtos da linha selecionada (ou categoria, se não houver linha) e agrupar por SKU
   const groupedProducts: GroupedProduct[] = (() => {
-    if (!selectedLine || !allProducts) return [];
+    if (!allProducts) return [];
+    // Se não tem linha nem categoria selecionada, não mostrar nada
+    if (!selectedLine && !selectedCategory) return [];
 
+    // Filtrar por linha se existir, senão por categoria
+    const filterCategory = selectedLine || selectedCategory;
     const lineProducts = allProducts.filter((product: WooCommerceProduct) => {
-      return product.categories?.some((cat) => cat.id === selectedLine.id);
+      return product.categories?.some((cat) => cat.id === filterCategory!.id);
     });
 
     // Agrupar por SKU (ex: k-034, k-126)
@@ -255,10 +259,55 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     staleTime: 2 * 60 * 1000,
   });
 
+  // Função auxiliar para calcular linhas disponíveis para uma categoria
+  const getLinesForCategory = (category: Category) => {
+    if (!allProducts || allProducts.length === 0) return [];
+
+    const linesMap = new Map<number, Category>();
+    const categoryProducts = allProducts.filter((product: WooCommerceProduct) =>
+      product.categories?.some(cat => cat.id === category.id)
+    );
+
+    categoryProducts.forEach((product: WooCommerceProduct) => {
+      product.categories?.forEach((cat) => {
+        if (cat.id === category.id) return;
+
+        const catName = cat.name.toLowerCase();
+        const isGeneric = catName.includes('interno') ||
+                          catName.includes('uncategorized') ||
+                          catName.includes('sem categoria');
+
+        if (!isGeneric) {
+          linesMap.set(cat.id, {
+            id: cat.id,
+            name: cat.name,
+            slug: cat.slug,
+            parent: category.id,
+            count: 1
+          });
+        }
+      });
+    });
+
+    return Array.from(linesMap.values());
+  };
+
   const handleCategorySelect = (category: Category) => {
     setSelectedCategory(category);
-    setBreadcrumb(['Escolha a Categoria', category.name, 'Escolha a Linha']);
-    setCurrentStep('line');
+
+    // Verificar se há linhas disponíveis para esta categoria
+    const lines = getLinesForCategory(category);
+
+    if (lines.length === 0) {
+      // Sem linhas - pular direto para produtos
+      setSelectedLine(null);
+      setBreadcrumb(['Escolha a Categoria', category.name, 'Produtos']);
+      setCurrentStep('product');
+    } else {
+      // Com linhas - mostrar seleção de linha
+      setBreadcrumb(['Escolha a Categoria', category.name, 'Escolha a Linha']);
+      setCurrentStep('line');
+    }
   };
 
   const handleLineSelect = (line: Category) => {
@@ -271,12 +320,13 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     setSelectedGroupedProduct(grouped);
 
     // Ir direto para variações (com todos os tipos de papel)
+    // Filtrar valores vazios para quando não há linha
     setBreadcrumb([
       'Escolha a Categoria',
-      selectedCategory?.name || '',
-      selectedLine?.name || '',
+      selectedCategory?.name,
+      selectedLine?.name,
       grouped.sku,
-    ]);
+    ].filter(Boolean) as string[]);
     setCurrentStep('variation');
   };
 
@@ -303,11 +353,18 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     if (currentStep === 'variation') {
       setSelectedGroupedProduct(null);
       setCurrentStep('product');
-      setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', selectedLine?.name || '', 'Produtos']);
+      setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', selectedLine?.name || '', 'Produtos'].filter(Boolean));
     } else if (currentStep === 'product') {
-      setSelectedLine(null);
-      setCurrentStep('line');
-      setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', 'Escolha a Linha']);
+      // Se não tinha linha (pulou direto da categoria), voltar para categoria
+      if (!selectedLine) {
+        setSelectedCategory(null);
+        setCurrentStep('category');
+        setBreadcrumb(['Escolha a Categoria']);
+      } else {
+        setSelectedLine(null);
+        setCurrentStep('line');
+        setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', 'Escolha a Linha']);
+      }
     } else if (currentStep === 'line') {
       setSelectedCategory(null);
       setCurrentStep('category');
