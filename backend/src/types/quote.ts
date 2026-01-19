@@ -149,3 +149,29 @@ export interface QuoteWithViews extends Quote {
   viewCount: number;
   lastViewedAt?: string;
 }
+
+// Interface para dados que vêm diretamente do Supabase (snake_case)
+export interface QuoteWithProducts {
+  id: string;
+  quote_number: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  products: QuoteProduct[];
+  total_price: number | string;
+  status: QuoteStatus;
+  created_by_id?: string;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+  signature_link?: string;
+  signature_link_created_at?: string;
+  signature_link_version: number;
+  signed_at?: string;
+  signature_data?: SignatureData;
+  rejected_at?: string;
+  rejection_reason?: string;
+  converted_to_order_id?: string;
+  notes?: string;
+}

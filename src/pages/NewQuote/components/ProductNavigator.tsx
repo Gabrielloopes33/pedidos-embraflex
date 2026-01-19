@@ -91,17 +91,25 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       product.categories?.forEach((cat) => {
         const catName = cat.name.toLowerCase();
 
-        // Detectar categorias principais (contém "sacola", "caixa", etc.)
-        const isMainCategory = catName.includes('sacola') ||
-                               catName.includes('caixa') ||
-                               catName.includes('embalagem');
+        // Ignorar categorias genéricas e subcategorias (linhas, quantidades, tamanhos, segmentos)
+        const isGenericOrSubcategory =
+          catName.includes('interno') ||
+          catName.includes('uncategorized') ||
+          catName.includes('sem categoria') ||
+          catName.includes('linha ') ||  // Linha Premium, Linha Econômica, etc.
+          catName.includes('boca vazada') ||  // Subcategoria de sacolas plásticas
+          catName.match(/^\d+\s*unidades?$/) ||  // 50 unidades, 100 unidades, etc.
+          catName.match(/^[pmg]$/) ||  // P, M, G (tamanhos)
+          // Categorias de segmento/nicho
+          catName.includes('joalheria') ||
+          catName.includes('clínicas') ||
+          catName.includes('óticas') ||
+          catName.includes('infantil') ||
+          catName.includes('vestuário') ||
+          catName.includes('moda íntima') ||
+          catName.includes('enxovais');
 
-        // Ignorar categorias genéricas
-        const isGeneric = catName.includes('interno') ||
-                          catName.includes('uncategorized') ||
-                          catName.includes('sem categoria');
-
-        if (isMainCategory && !isGeneric) {
+        if (!isGenericOrSubcategory) {
           categoriesMap.set(cat.id, {
             id: cat.id,
             name: cat.name,
@@ -684,22 +692,24 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
         })}
       </div>
 
-      {/* Botão para configurar acabamentos (opcional, antes de selecionar) */}
-      <div className="pt-4 border-t">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => setShowFinishingModal(true)}
-          className="w-full h-12 text-sm font-medium touch-manipulation"
-        >
-          {finishing.hotStamp || finishing.ilhos || finishing.furoPresente || finishing.cordao !== 'nenhum'
-            ? '✓ Acabamentos configurados (clique na quantidade para adicionar)'
-            : '⚙️ Configurar acabamentos antes de adicionar'}
-        </Button>
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          Clique em uma quantidade acima para adicionar ao pedido
-        </p>
-      </div>
+      {/* Botão para configurar acabamentos (opcional, antes de selecionar) - apenas para sacola de PAPEL (SKU começa com k-) */}
+      {groupedProduct.sku.toLowerCase().startsWith('k-') && (
+        <div className="pt-4 border-t">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setShowFinishingModal(true)}
+            className="w-full h-12 text-sm font-medium touch-manipulation"
+          >
+            {finishing.hotStamp || finishing.ilhos || finishing.furoPresente || finishing.cordao !== 'nenhum'
+              ? '✓ Acabamentos configurados (clique na quantidade para adicionar)'
+              : '⚙️ Configurar acabamentos antes de adicionar'}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            Clique em uma quantidade acima para adicionar ao pedido
+          </p>
+        </div>
+      )}
 
       {/* Modal de Acabamentos */}
       <FinishingModal

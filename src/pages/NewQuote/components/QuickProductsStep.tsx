@@ -168,8 +168,17 @@ export function QuickProductsStep({
 
                         {/* Product Details */}
                         <div className="space-y-3">
+                          {/* Descrições do produto (atributos) */}
+                          {product.attributes && Object.keys(product.attributes).length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              {Object.entries(product.attributes)
+                                .map(([key, value]) => `${key}: ${value}`)
+                                .join(' • ')}
+                            </p>
+                          )}
+
                           <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary">
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">
                               Qtd: {product.quantity}
                             </Badge>
                             {product.color && (
@@ -188,19 +197,21 @@ export function QuickProductsStep({
                             )}
                           </div>
 
-                          {/* Botão Adicionar Acabamento */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingProductIndex(index);
-                              setShowFinishingModal(true);
-                            }}
-                            className="w-full h-10 text-xs touch-manipulation"
-                          >
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Adicionar Acabamento
-                          </Button>
+                          {/* Botão Adicionar Acabamento - apenas para sacola de PAPEL (SKU começa com k-) */}
+                          {product.sku.toLowerCase().startsWith('k-') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingProductIndex(index);
+                                setShowFinishingModal(true);
+                              }}
+                              className="w-full h-10 text-xs touch-manipulation"
+                            >
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Adicionar Acabamento
+                            </Button>
+                          )}
                         </div>
 
                         {/* Price */}

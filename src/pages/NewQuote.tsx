@@ -31,8 +31,8 @@ export default function NewQuote() {
             </p>
           </div>
 
-          {/* Progress Indicator */}
-          <Card className="mb-6">
+          {/* Progress Indicator - oculto no mobile */}
+          <Card className="mb-6 hidden md:block">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 {/* Step 1 */}

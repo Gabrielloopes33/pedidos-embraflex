@@ -1,8 +1,9 @@
 // Signature routes - Public routes for quote signing (no authentication required)
 import { Router, Request, Response } from 'express';
 import { supabase } from '../database';
-import { PublicQuoteData, SignatureConfirmRequest, RejectQuoteRequest } from '../types/quote';
+import { PublicQuoteData, SignatureConfirmRequest, RejectQuoteRequest, QuoteWithProducts } from '../types/quote';
 import { sendQuoteApprovedEmail, sendQuoteRejectedEmail } from '../services/email';
+import { triggerQuoteSignedWebhook, triggerQuoteRejectedWebhook } from '../services/webhook';
 
 const router = Router();
 
@@ -196,6 +197,13 @@ router.post('/:token/confirm', async (req: Request, res: Response) => {
       // Don't fail the request if email fails
     });
 
+    // Dispara webhook com os dados do orçamento assinado (async, don't wait)
+    // Configure WEBHOOK_QUOTE_SIGNED nas variáveis de ambiente
+    triggerQuoteSignedWebhook(updatedQuote as QuoteWithProducts).catch((webhookError) => {
+      console.error('❌ Error triggering webhook:', webhookError);
+      // Don't fail the request if webhook fails
+    });
+
     res.json({
       success: true,
       message: 'Cotação assinada com sucesso! Entraremos em contato em breve.',
@@ -288,6 +296,12 @@ router.post('/:token/reject', async (req: Request, res: Response) => {
         });
       }
     }
+
+    // Dispara webhook de rejeição (async, don't wait)
+    // Configure WEBHOOK_QUOTE_REJECTED nas variáveis de ambiente (ou usa WEBHOOK_QUOTE_SIGNED)
+    triggerQuoteRejectedWebhook(updatedQuote as QuoteWithProducts).catch((webhookError) => {
+      console.error('❌ Error triggering rejection webhook:', webhookError);
+    });
 
     res.json({
       success: true,
