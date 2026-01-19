@@ -536,6 +536,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
             variations={allGroupVariations || []}
             loading={loadingVariations}
             onSelect={handleVariationSelect}
+            lineName={selectedLine?.name || selectedCategory?.name}
           />
         )}
       </CardContent>
@@ -549,9 +550,10 @@ interface VariationSelectorProps {
   variations: VariationWithProduct[];
   loading: boolean;
   onSelect: (variation: VariationWithProduct, quantity: number, finishing?: FinishingOptions) => void;
+  lineName?: string | null;
 }
 
-function VariationSelector({ groupedProduct, variations, loading, onSelect }: VariationSelectorProps) {
+function VariationSelector({ groupedProduct, variations, loading, onSelect, lineName }: VariationSelectorProps) {
   const [pendingVariation, setPendingVariation] = useState<VariationWithProduct | null>(null);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
   const [finishing, setFinishing] = useState<FinishingOptions>({
@@ -682,7 +684,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect }: Va
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-2">{groupedProduct.sku}</h3>
+        <h3 className="text-lg font-semibold mb-2">{lineName || groupedProduct.sku}</h3>
         <p className="text-sm text-muted-foreground">Selecione o tipo e quantidade</p>
       </div>
 
