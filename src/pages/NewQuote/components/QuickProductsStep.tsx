@@ -30,8 +30,9 @@ export function QuickProductsStep({
 
   const handleProductSelected = (config: ProductConfig) => {
     // Converter formato do ProductNavigator para QuoteProduct
+    // Usar displayName se disponível (nome completo com linha), senão nome do produto
     const quoteProduct: QuoteProduct = {
-      name: config.product.name,
+      name: config.displayName || config.product.name,
       sku: config.product.sku,
       quantity: config.quantity,
       price: config.price,

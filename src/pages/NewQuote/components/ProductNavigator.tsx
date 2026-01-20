@@ -32,6 +32,7 @@ export interface ProductConfig {
   color?: string;
   attributes?: Record<string, string>;
   finishing?: FinishingOptions;
+  displayName?: string; // Nome completo para exibição (ex: "Boca Vazada - 25x35 cm")
 }
 
 type NavigationStep = 'line' | 'category' | 'subcategory' | 'product' | 'variation';
@@ -330,7 +331,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     setCurrentStep('variation');
   };
 
-  const handleVariationSelect = (variation: VariationWithProduct, quantity: number, finishing?: FinishingOptions) => {
+  const handleVariationSelect = (variation: VariationWithProduct, quantity: number, finishing?: FinishingOptions, displayName?: string) => {
     // Extrair atributos da variação
     const attributes: Record<string, string> = {};
     variation.attributes?.forEach((attr) => {
@@ -345,6 +346,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       color: attributes['Cor'] || attributes['cor'] || attributes['Color'],
       attributes,
       finishing,
+      displayName, // Nome completo para exibição
     });
     onClose();
   };
@@ -549,12 +551,13 @@ interface VariationSelectorProps {
   groupedProduct: GroupedProduct;
   variations: VariationWithProduct[];
   loading: boolean;
-  onSelect: (variation: VariationWithProduct, quantity: number, finishing?: FinishingOptions) => void;
+  onSelect: (variation: VariationWithProduct, quantity: number, finishing?: FinishingOptions, displayName?: string) => void;
   lineName?: string | null;
 }
 
 function VariationSelector({ groupedProduct, variations, loading, onSelect, lineName }: VariationSelectorProps) {
   const [pendingVariation, setPendingVariation] = useState<VariationWithProduct | null>(null);
+  const [pendingModel, setPendingModel] = useState<string | undefined>(undefined);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
   const [finishing, setFinishing] = useState<FinishingOptions>({
     hotStamp: false,
@@ -564,11 +567,26 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     corCordao: 'nenhum',
   });
 
+  // Construir nome completo para exibição
+  const buildDisplayName = (variation: VariationWithProduct, modelName?: string) => {
+    // Se tem lineName e modelo, combinar os dois
+    if (lineName && modelName) {
+      return `${lineName} - ${modelName}`;
+    }
+    // Se só tem lineName, usar com o nome do produto
+    if (lineName) {
+      return `${lineName} - ${variation.parentProduct.name}`;
+    }
+    // Fallback: usar nome do produto pai
+    return variation.parentProduct.name;
+  };
+
   // Ao clicar em uma quantidade, adiciona direto ao pedido
-  const handleQuantityClick = (variation: VariationWithProduct) => {
+  const handleQuantityClick = (variation: VariationWithProduct, modelName?: string) => {
     // Se já tiver acabamentos selecionados, usa eles
     const hasFinishing = finishing.hotStamp || finishing.ilhos || finishing.furoPresente || finishing.cordao !== 'nenhum';
-    onSelect(variation, variation.quantity || 1000, hasFinishing ? finishing : undefined);
+    const displayName = buildDisplayName(variation, modelName);
+    onSelect(variation, variation.quantity || 1000, hasFinishing ? finishing : undefined, displayName);
   };
 
   // Para adicionar acabamento antes de selecionar
@@ -799,7 +817,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
                         <Button
                           key={variation.id}
                           variant="outline"
-                          onClick={() => handleQuantityClick(variation)}
+                          onClick={() => handleQuantityClick(variation, model)}
                           className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
                         >
                           <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
@@ -873,7 +891,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
                                 <Button
                                   key={variation.id}
                                   variant="outline"
-                                  onClick={() => handleQuantityClick(variation)}
+                                  onClick={() => handleQuantityClick(variation, paperType)}
                                   className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
                                 >
                                   <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
@@ -920,8 +938,10 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
           setFinishing(newFinishing);
           // Se tinha uma variação pendente, adiciona ao pedido com o acabamento
           if (pendingVariation) {
-            onSelect(pendingVariation, pendingVariation.quantity || 1000, newFinishing);
+            const displayName = buildDisplayName(pendingVariation, pendingModel);
+            onSelect(pendingVariation, pendingVariation.quantity || 1000, newFinishing, displayName);
             setPendingVariation(null);
+            setPendingModel(undefined);
           }
         }}
         initialFinishing={finishing}
