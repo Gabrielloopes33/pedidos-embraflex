@@ -716,41 +716,61 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
 
   // Extrair MODELO e QUANTIDADE para layout simplificado (2 critérios)
   const extractModelAndQuantity = (variation: VariationWithProduct) => {
-    // Buscar primeiro atributo que não seja quantidade (será o MODELO)
-    const modelAttr = variation.attributes?.find(
-      (attr) => {
-        const nameLower = attr.name.toLowerCase();
-        // Excluir atributos de quantidade
-        const isQuantity = nameLower === 'quantidade' ||
-                           nameLower === 'quantity' ||
-                           nameLower === 'qtd' ||
-                           nameLower === 'metros' ||
-                           nameLower === 'mts' ||
-                           nameLower.includes('metro');
-        return !isQuantity;
-      }
-    );
+    // Primeiro tentar encontrar explicitamente um atributo chamado "modelo" (ou variações)
+    const modelAttr = variation.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower.includes('modelo') || nameLower.includes('model');
+    })
+    // Se não existir no nível da variação, tentar buscar no produto pai (caso o atributo esteja definido lá)
+    || variation.parentProduct?.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower.includes('modelo') || nameLower.includes('model');
+    })
+    // Fallback: usar o primeiro atributo que não seja quantidade
+    || variation.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      const isQuantity = nameLower === 'quantidade' ||
+                         nameLower === 'quantity' ||
+                         nameLower === 'qtd' ||
+                         nameLower === 'metros' ||
+                         nameLower === 'mts' ||
+                         nameLower.includes('metro');
+      return !isQuantity;
+    });
 
     // Buscar atributo de quantidade
-    const quantityAttr = variation.attributes?.find(
-      (attr) => {
-        const nameLower = attr.name.toLowerCase();
-        return nameLower === 'quantidade' ||
-               nameLower === 'quantity' ||
-               nameLower === 'qtd' ||
-               nameLower === 'metros' ||
-               nameLower === 'mts' ||
-               nameLower.includes('metro');
-      }
-    );
+    // Buscar atributo de quantidade preferencialmente nas variações
+    const quantityAttr = variation.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower === 'quantidade' ||
+             nameLower === 'quantity' ||
+             nameLower === 'qtd' ||
+             nameLower === 'metros' ||
+             nameLower === 'mts' ||
+             nameLower.includes('metro');
+    }) || variation.parentProduct?.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower === 'quantidade' ||
+             nameLower === 'quantity' ||
+             nameLower === 'qtd' ||
+             nameLower === 'metros' ||
+             nameLower === 'mts' ||
+             nameLower.includes('metro');
+    });
 
     const quantityOption = quantityAttr?.option?.toString() || '';
     const quantityNumber = parseInt(quantityOption.replace(/\D/g, '') || '1000');
     const quantityLabel = quantityOption || quantityNumber.toString();
 
+    // modelAttr pode vir do product.attributes (com campo options) ou de variation.attributes (com option)
+    const modelOption = (modelAttr as any)?.option || // variação
+                        // se veio do product.attributes, pegar a primeira opção disponível
+                        ((modelAttr as any)?.options && (modelAttr as any).options[0]) ||
+                        'Padrão';
+
     return {
-      model: modelAttr?.option || 'Padrão',
-      modelName: modelAttr?.name || 'Modelo',
+      model: modelOption,
+      modelName: (modelAttr as any)?.name || 'Modelo',
       quantity: quantityNumber,
       quantityLabel: quantityLabel,
     };
