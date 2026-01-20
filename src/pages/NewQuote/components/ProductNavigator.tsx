@@ -42,6 +42,7 @@ interface GroupedProduct {
   sku: string;
   products: WooCommerceProduct[];
   paperTypes: string[]; // Laminado, Verniz, Klabin, etc.
+  model?: string; // opcional: usado para grupos criados por Modelo (ex: sacolas plásticas)
 }
 
 // Interface para variação com informação do produto pai
@@ -225,6 +226,53 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
         }
       }
     });
+
+    // SPECIAL CASE: Sacolas plásticas / Boca Vazada - queremos separar por MODELO (atributo)
+    const isPlasticCategory = (selectedCategory?.name || '').toLowerCase().includes('plástic') || (selectedCategory?.name || '').toLowerCase().includes('plastico') || (selectedCategory?.name || '').toLowerCase().includes('sacola');
+    const isBocaVazadaLine = (selectedLine?.name || '').toLowerCase().includes('boca vaz') || (selectedLine?.name || '').toLowerCase().includes('boca-vaz');
+
+    if (isPlasticCategory && isBocaVazadaLine) {
+      // Construir grupos por model (cada opção do atributo Modelo vira um grupo separado)
+      const modelGroups: GroupedProduct[] = [];
+
+      lineProducts.forEach((product) => {
+        // Tentar encontrar atributo 'modelo' no produto
+        const modelAttr = product.attributes?.find((a) => {
+          const n = (a.name || '').toLowerCase();
+          return n.includes('modelo') || n.includes('model');
+        });
+
+        if (modelAttr && Array.isArray(modelAttr.options) && modelAttr.options.length > 0) {
+          modelAttr.options.forEach((opt) => {
+            modelGroups.push({
+              sku: `${sku}-${opt}`,
+              products: [product],
+              paperTypes: [paperType],
+              model: opt,
+            });
+          });
+        } else {
+          // sem atributo modelo, cair no comportamento padrão
+          const normalizedSku = (sku || `#${product.id}`).toLowerCase();
+          const existing = grouped.get(normalizedSku);
+          if (existing) {
+            existing.products.push(product);
+          } else {
+            grouped.set(normalizedSku, {
+              sku: sku,
+              products: [product],
+              paperTypes: [paperType]
+            });
+          }
+        }
+      });
+
+      // Se encontramos grupos por modelo, retornar eles (senão, retornar agrupamento por SKU)
+      if (modelGroups.length > 0) {
+        return modelGroups;
+      }
+
+    }
 
     return Array.from(grouped.values());
   })();
@@ -556,6 +604,34 @@ interface VariationSelectorProps {
 }
 
 function VariationSelector({ groupedProduct, variations, loading, onSelect, lineName }: VariationSelectorProps) {
+  // Filtrar variações pelo modelo definido no grupo (se houver)
+  const filteredVariations = groupedProduct.model
+    ? variations.filter((v) => {
+        // Procurar atributo de modelo na variação
+        const varModelAttr = v.attributes?.find((a) => {
+          const n = (a.name || '').toLowerCase();
+          return n.includes('modelo') || n.includes('model');
+        });
+
+        const varModel = varModelAttr?.option;
+        if (varModel) return varModel === groupedProduct.model;
+
+        // Se variação não tem, checar produto pai (alguns setups colocam o modelo no product.attributes)
+        const prodModelAttr = v.parentProduct?.attributes?.find((a) => {
+          const n = (a.name || '').toLowerCase();
+          return n.includes('modelo') || n.includes('model');
+        });
+
+        if (prodModelAttr && Array.isArray((prodModelAttr as any).options)) {
+          // comparar com as opções disponíveis
+          return (prodModelAttr as any).options.includes(groupedProduct.model!);
+        }
+
+        return false;
+      })
+    : variations;
+
+  // Usar filteredVariations no lugar de variations nas lógicas abaixo
   const [pendingVariation, setPendingVariation] = useState<VariationWithProduct | null>(null);
   const [pendingModel, setPendingModel] = useState<string | undefined>(undefined);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
@@ -607,10 +683,10 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   // Se 3+ critérios → layout completo (como sacola de papel)
   const uniqueAttributeNames = (() => {
     const names = new Set<string>();
-    variations.forEach((variation) => {
+    filteredVariations.forEach((variation) => {
       variation.attributes?.forEach((attr) => {
         // Normalizar nomes para evitar duplicatas
-        const normalizedName = attr.name.toLowerCase().trim();
+        const normalizedName = (attr.name || '').toLowerCase().trim();
         names.add(normalizedName);
       });
     });
@@ -618,7 +694,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   })();
 
   // Verificar se tem múltiplos paperTypes (indica produto com hierarquia tipo papel)
-  const uniquePaperTypes = [...new Set(variations.map(v => v.paperType))];
+  const uniquePaperTypes = [...new Set(filteredVariations.map(v => v.paperType))];
 
   // Usar layout simplificado se:
   // - Tem exatamente 2 tipos de atributos (ex: MODELO + QUANTIDADE)
@@ -626,7 +702,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   const useSimplifiedLayout = uniqueAttributeNames.length <= 2 && uniquePaperTypes.length === 1;
 
   // Agrupar variações: primeiro por tipo de papel, depois por cor
-  const groupedByPaper = variations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
+  const groupedByPaper = filteredVariations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
     const paperType = variation.paperType;
 
     if (!acc[paperType]) {
