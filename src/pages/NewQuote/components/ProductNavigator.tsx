@@ -696,10 +696,13 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   // Verificar se tem múltiplos paperTypes (indica produto com hierarquia tipo papel)
   const uniquePaperTypes = [...new Set(filteredVariations.map(v => v.paperType))];
 
-  // Usar layout simplificado se:
-  // - Tem exatamente 2 tipos de atributos (ex: MODELO + QUANTIDADE)
-  // - OU tem apenas 1 paperType E 2 ou menos tipos de atributos
-  const useSimplifiedLayout = uniqueAttributeNames.length <= 2 && uniquePaperTypes.length === 1;
+  // Determinar qual layout usar baseado no número de critérios:
+  // - 2 critérios → layout simplificado (MODELO + QUANTIDADE)
+  // - 3 critérios → layout padrão (TIPO_PAPEL + COR + QUANTIDADE)
+  // - 4 critérios → layout completo (ESPESSURA + COR + QUANTIDADE, modelo já filtrado)
+  const numCriteria = uniqueAttributeNames.length;
+  const useSimplifiedLayout = numCriteria <= 2 && uniquePaperTypes.length === 1;
+  const useFourCriteriaLayout = numCriteria >= 3 && groupedProduct.model; // Se tem modelo filtrado, são 4 critérios originais
 
   // Agrupar variações: primeiro por tipo de papel, depois por cor
   const groupedByPaper = filteredVariations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
@@ -852,11 +855,78 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     };
   };
 
+  // Extrair ESPESSURA, COR e QUANTIDADE para layout de 4 critérios
+  const extractFourCriteria = (variation: VariationWithProduct) => {
+    // Buscar ESPESSURA
+    const thicknessAttr = variation.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower.includes('espessura') || nameLower.includes('thickness') || nameLower.includes('gramatura');
+    });
+
+    // Buscar COR DE IMPRESSÃO
+    const colorAttr = variation.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower === 'cor' ||
+             nameLower === 'color' ||
+             nameLower.includes('cor de impressão') ||
+             nameLower.includes('cor de impressao') ||
+             nameLower.includes('tipo de impressão') ||
+             nameLower.includes('tipo de impressao') ||
+             nameLower.includes('impressao');
+    });
+
+    // Buscar QUANTIDADE
+    const quantityAttr = variation.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower === 'quantidade' ||
+             nameLower === 'quantity' ||
+             nameLower === 'qtd' ||
+             nameLower === 'metros' ||
+             nameLower === 'mts' ||
+             nameLower.includes('metro');
+    });
+
+    const quantityOption = quantityAttr?.option?.toString() || '';
+    const quantityNumber = parseInt(quantityOption.replace(/\D/g, '') || '1000');
+    const quantityLabel = quantityOption || quantityNumber.toString();
+
+    return {
+      thickness: thicknessAttr?.option || 'Padrão',
+      color: colorAttr?.option || 'Padrão',
+      quantity: quantityNumber,
+      quantityLabel: quantityLabel,
+    };
+  };
+
+  // Para layout de 4 critérios: agrupar por ESPESSURA → COR → QUANTIDADE
+  const groupedByThickness = (() => {
+    if (!useFourCriteriaLayout) return {};
+
+    return filteredVariations.reduce((acc: Record<string, Record<string, (VariationWithProduct & { quantity: number; quantityLabel: string; color: string })[]>>, variation) => {
+      const { thickness, color, quantity, quantityLabel } = extractFourCriteria(variation);
+
+      if (!acc[thickness]) {
+        acc[thickness] = {};
+      }
+      if (!acc[thickness][color]) {
+        acc[thickness][color] = [];
+      }
+      acc[thickness][color].push({
+        ...variation,
+        quantity,
+        quantityLabel,
+        color,
+      });
+
+      return acc;
+    }, {});
+  })();
+
   // Para layout simplificado: agrupar por MODELO
   const groupedByModel = (() => {
     if (!useSimplifiedLayout) return {};
 
-    return variations.reduce((acc: Record<string, (VariationWithProduct & { quantity: number; quantityLabel: string })[]>, variation) => {
+    return filteredVariations.reduce((acc: Record<string, (VariationWithProduct & { quantity: number; quantityLabel: string })[]>, variation) => {
       const { model, quantity, quantityLabel } = extractModelAndQuantity(variation);
 
       if (!acc[model]) {
@@ -887,8 +957,67 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
         <p className="text-sm text-muted-foreground">Selecione o tipo e quantidade</p>
       </div>
 
-      {/* LAYOUT SIMPLIFICADO: Para produtos com 2 critérios (MODELO + QUANTIDADE) */}
-      {useSimplifiedLayout ? (
+      {/* LAYOUT DE 4 CRITÉRIOS: ESPESSURA → COR → QUANTIDADE (modelo já filtrado) */}
+      {useFourCriteriaLayout ? (
+        <div className="space-y-6">
+          {Object.keys(groupedByThickness).map((thickness) => {
+            const colorGroups = groupedByThickness[thickness];
+            const colors = Object.keys(colorGroups);
+
+            return (
+              <div key={thickness} className="border rounded-lg overflow-hidden">
+                {/* Header da espessura */}
+                <div className="bg-primary/10 px-4 py-3 border-b">
+                  <h4 className="font-semibold text-base text-center">Espessura: {thickness}</h4>
+                </div>
+
+                {/* Cores e quantidades */}
+                <div className="p-4 space-y-4">
+                  {colors.map((color) => {
+                    const colorVariations = colorGroups[color].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+                    const count = colorVariations.length;
+                    const gridCols = count <= 2 ? 'grid-cols-2' : 'grid-cols-3';
+
+                    return (
+                      <div
+                        key={`${thickness}-${color}`}
+                        className={`rounded-lg p-3 ${getColorBackground(color)}`}
+                      >
+                        {/* Título da cor */}
+                        <h5 className={`text-sm text-center mb-2 ${getColorTitle(color)}`}>
+                          {color.toUpperCase()}
+                        </h5>
+
+                        {/* Grid de quantidades e preços */}
+                        <div className={`grid ${gridCols} gap-2`}>
+                          {colorVariations.map((variation) => {
+                            const price = parseFloat(variation.price) || 0;
+                            // Construir nome para exibição: Modelo - Espessura
+                            const displayModel = `${groupedProduct.model} - ${thickness}`;
+
+                            return (
+                              <Button
+                                key={variation.id}
+                                variant="outline"
+                                onClick={() => handleQuantityClick(variation, displayModel)}
+                                className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
+                              >
+                                <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
+                                <span className="text-xs">{formatCurrency(price)}</span>
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : useSimplifiedLayout ? (
+        /* LAYOUT SIMPLIFICADO: Para produtos com 2 critérios (MODELO + QUANTIDADE) */
         <div className="space-y-4">
           {Object.keys(groupedByModel).map((model) => {
             const modelVariations = groupedByModel[model].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
