@@ -584,6 +584,29 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     }).format(value);
   };
 
+  // DETECÇÃO AUTOMÁTICA: Contar quantos tipos de atributos diferentes existem nas variações
+  // Se 2 critérios → layout simplificado (como sacola plástica)
+  // Se 3+ critérios → layout completo (como sacola de papel)
+  const uniqueAttributeNames = (() => {
+    const names = new Set<string>();
+    variations.forEach((variation) => {
+      variation.attributes?.forEach((attr) => {
+        // Normalizar nomes para evitar duplicatas
+        const normalizedName = attr.name.toLowerCase().trim();
+        names.add(normalizedName);
+      });
+    });
+    return Array.from(names);
+  })();
+
+  // Verificar se tem múltiplos paperTypes (indica produto com hierarquia tipo papel)
+  const uniquePaperTypes = [...new Set(variations.map(v => v.paperType))];
+
+  // Usar layout simplificado se:
+  // - Tem exatamente 2 tipos de atributos (ex: MODELO + QUANTIDADE)
+  // - OU tem apenas 1 paperType E 2 ou menos tipos de atributos
+  const useSimplifiedLayout = uniqueAttributeNames.length <= 2 && uniquePaperTypes.length === 1;
+
   // Agrupar variações: primeiro por tipo de papel, depois por cor
   const groupedByPaper = variations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
     const paperType = variation.paperType;
@@ -673,6 +696,68 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     };
   };
 
+  // Extrair MODELO e QUANTIDADE para layout simplificado (2 critérios)
+  const extractModelAndQuantity = (variation: VariationWithProduct) => {
+    // Buscar primeiro atributo que não seja quantidade (será o MODELO)
+    const modelAttr = variation.attributes?.find(
+      (attr) => {
+        const nameLower = attr.name.toLowerCase();
+        // Excluir atributos de quantidade
+        const isQuantity = nameLower === 'quantidade' ||
+                           nameLower === 'quantity' ||
+                           nameLower === 'qtd' ||
+                           nameLower === 'metros' ||
+                           nameLower === 'mts' ||
+                           nameLower.includes('metro');
+        return !isQuantity;
+      }
+    );
+
+    // Buscar atributo de quantidade
+    const quantityAttr = variation.attributes?.find(
+      (attr) => {
+        const nameLower = attr.name.toLowerCase();
+        return nameLower === 'quantidade' ||
+               nameLower === 'quantity' ||
+               nameLower === 'qtd' ||
+               nameLower === 'metros' ||
+               nameLower === 'mts' ||
+               nameLower.includes('metro');
+      }
+    );
+
+    const quantityOption = quantityAttr?.option?.toString() || '';
+    const quantityNumber = parseInt(quantityOption.replace(/\D/g, '') || '1000');
+    const quantityLabel = quantityOption || quantityNumber.toString();
+
+    return {
+      model: modelAttr?.option || 'Padrão',
+      modelName: modelAttr?.name || 'Modelo',
+      quantity: quantityNumber,
+      quantityLabel: quantityLabel,
+    };
+  };
+
+  // Para layout simplificado: agrupar por MODELO
+  const groupedByModel = (() => {
+    if (!useSimplifiedLayout) return {};
+
+    return variations.reduce((acc: Record<string, (VariationWithProduct & { quantity: number; quantityLabel: string })[]>, variation) => {
+      const { model, quantity, quantityLabel } = extractModelAndQuantity(variation);
+
+      if (!acc[model]) {
+        acc[model] = [];
+      }
+      acc[model].push({
+        ...variation,
+        quantity,
+        quantityLabel,
+      });
+
+      return acc;
+    }, {});
+  })();
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -688,83 +773,125 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
         <p className="text-sm text-muted-foreground">Selecione o tipo e quantidade</p>
       </div>
 
-      {/* Exibir por tipo de papel */}
-      <div className="space-y-6">
-        {paperTypes.map((paperType) => {
-          const paperVariations = groupedByPaper[paperType];
+      {/* LAYOUT SIMPLIFICADO: Para produtos com 2 critérios (MODELO + QUANTIDADE) */}
+      {useSimplifiedLayout ? (
+        <div className="space-y-4">
+          {Object.keys(groupedByModel).map((model) => {
+            const modelVariations = groupedByModel[model].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+            const count = modelVariations.length;
+            // Se tem 2 ou menos, usa 2 colunas; se tem 3+, usa 3 colunas
+            const gridCols = count <= 2 ? 'grid-cols-2' : 'grid-cols-3';
 
-          // Agrupar por cor dentro deste tipo de papel
-          const byColor = paperVariations.reduce((acc: Record<string, (VariationWithProduct & { quantityLabel?: string })[]>, variation) => {
-            const { color, quantity, quantityLabel } = extractColorAndQuantity(variation);
+            return (
+              <div key={model} className="border rounded-lg overflow-hidden">
+                {/* Header do modelo */}
+                <div className="bg-muted/50 px-4 py-3 border-b">
+                  <h4 className="font-semibold text-base text-center">{model}</h4>
+                </div>
 
-            if (!acc[color]) {
-              acc[color] = [];
-            }
-            acc[color].push({
-              ...variation,
-              quantity,
-              color,
-              quantityLabel,
-            });
-
-            return acc;
-          }, {});
-
-          const colors = Object.keys(byColor);
-
-          return (
-            <div key={paperType} className="border rounded-lg overflow-hidden">
-              {/* Header do tipo de papel */}
-              <div className="bg-muted/50 px-4 py-3 border-b">
-                <h4 className="font-semibold text-base">{paperType}</h4>
-              </div>
-
-              {/* Cores e quantidades */}
-              <div className="p-4 space-y-4">
-                {colors.map((color) => (
-                  <div
-                    key={`${paperType}-${color}`}
-                    className={`rounded-lg p-3 ${getColorBackground(color)}`}
-                  >
-                    {/* Título da cor */}
-                    <h5 className={`text-sm text-center mb-2 ${getColorTitle(color)}`}>
-                      {color.toUpperCase()}
-                    </h5>
-
-                    {/* Grid de quantidades e preços - ajusta colunas baseado na quantidade */}
-                    {(() => {
-                      const sortedVariations = byColor[color].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
-                      const count = sortedVariations.length;
-                      // Se tem 2 ou menos, usa 2 colunas; se tem 3+, usa 3 colunas
-                      const gridCols = count <= 2 ? 'grid-cols-2' : 'grid-cols-3';
+                {/* Grid de quantidades e preços */}
+                <div className="p-4">
+                  <div className={`grid ${gridCols} gap-2`}>
+                    {modelVariations.map((variation) => {
+                      const price = parseFloat(variation.price) || 0;
 
                       return (
-                        <div className={`grid ${gridCols} gap-2`}>
-                          {sortedVariations.map((variation) => {
-                            const price = parseFloat(variation.price) || 0;
-
-                            return (
-                              <Button
-                                key={variation.id}
-                                variant="outline"
-                                onClick={() => handleQuantityClick(variation)}
-                                className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
-                              >
-                                <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
-                                <span className="text-xs">{formatCurrency(price)}</span>
-                              </Button>
-                            );
-                          })}
-                        </div>
+                        <Button
+                          key={variation.id}
+                          variant="outline"
+                          onClick={() => handleQuantityClick(variation)}
+                          className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
+                        >
+                          <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
+                          <span className="text-xs">{formatCurrency(price)}</span>
+                        </Button>
                       );
-                    })()}
+                    })}
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* LAYOUT COMPLETO: Para produtos com 3+ critérios (como sacola de papel) */
+        <div className="space-y-6">
+          {paperTypes.map((paperType) => {
+            const paperVariations = groupedByPaper[paperType];
+
+            // Agrupar por cor dentro deste tipo de papel
+            const byColor = paperVariations.reduce((acc: Record<string, (VariationWithProduct & { quantityLabel?: string })[]>, variation) => {
+              const { color, quantity, quantityLabel } = extractColorAndQuantity(variation);
+
+              if (!acc[color]) {
+                acc[color] = [];
+              }
+              acc[color].push({
+                ...variation,
+                quantity,
+                color,
+                quantityLabel,
+              });
+
+              return acc;
+            }, {});
+
+            const colors = Object.keys(byColor);
+
+            return (
+              <div key={paperType} className="border rounded-lg overflow-hidden">
+                {/* Header do tipo de papel */}
+                <div className="bg-muted/50 px-4 py-3 border-b">
+                  <h4 className="font-semibold text-base">{paperType}</h4>
+                </div>
+
+                {/* Cores e quantidades */}
+                <div className="p-4 space-y-4">
+                  {colors.map((color) => (
+                    <div
+                      key={`${paperType}-${color}`}
+                      className={`rounded-lg p-3 ${getColorBackground(color)}`}
+                    >
+                      {/* Título da cor */}
+                      <h5 className={`text-sm text-center mb-2 ${getColorTitle(color)}`}>
+                        {color.toUpperCase()}
+                      </h5>
+
+                      {/* Grid de quantidades e preços - ajusta colunas baseado na quantidade */}
+                      {(() => {
+                        const sortedVariations = byColor[color].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+                        const count = sortedVariations.length;
+                        // Se tem 2 ou menos, usa 2 colunas; se tem 3+, usa 3 colunas
+                        const gridCols = count <= 2 ? 'grid-cols-2' : 'grid-cols-3';
+
+                        return (
+                          <div className={`grid ${gridCols} gap-2`}>
+                            {sortedVariations.map((variation) => {
+                              const price = parseFloat(variation.price) || 0;
+
+                              return (
+                                <Button
+                                  key={variation.id}
+                                  variant="outline"
+                                  onClick={() => handleQuantityClick(variation)}
+                                  className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
+                                >
+                                  <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
+                                  <span className="text-xs">{formatCurrency(price)}</span>
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Botão para configurar acabamentos (opcional, antes de selecionar) - apenas para sacola de PAPEL (SKU começa com k-) */}
       {groupedProduct.sku.toLowerCase().startsWith('k-') && (
