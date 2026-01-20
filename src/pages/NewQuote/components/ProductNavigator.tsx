@@ -228,15 +228,50 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     });
 
     // SPECIAL CASE: Sacolas plásticas / Boca Vazada - queremos separar por MODELO (atributo)
-    const isPlasticCategory = (selectedCategory?.name || '').toLowerCase().includes('plástic') || (selectedCategory?.name || '').toLowerCase().includes('plastico') || (selectedCategory?.name || '').toLowerCase().includes('sacola');
-    const isBocaVazadaLine = (selectedLine?.name || '').toLowerCase().includes('boca vaz') || (selectedLine?.name || '').toLowerCase().includes('boca-vaz');
+    const isPlasticCategory = (selectedCategory?.name || '').toLowerCase().includes('plástic') ||
+                              (selectedCategory?.name || '').toLowerCase().includes('plastico');
 
-    if (isPlasticCategory && isBocaVazadaLine) {
+    // Verificar se é Boca Vazada pela linha OU pelo nome do produto
+    const isBocaVazadaLine = (selectedLine?.name || '').toLowerCase().includes('boca vaz') ||
+                             (selectedLine?.name || '').toLowerCase().includes('boca-vaz');
+
+    // Também verificar se algum produto tem "Boca Vazada" no nome (para quando não há linha separada)
+    const hasBocaVazadaProduct = lineProducts.some((p) =>
+      (p.name || '').toLowerCase().includes('boca vaz') ||
+      (p.name || '').toLowerCase().includes('boca-vaz')
+    );
+
+    if (isPlasticCategory && (isBocaVazadaLine || hasBocaVazadaProduct)) {
       // Construir grupos por model (cada opção do atributo Modelo vira um grupo separado)
       const modelGroups: GroupedProduct[] = [];
 
       lineProducts.forEach((product) => {
-        // Extrair SKU e paperType para este produto específico
+        // Verificar se este produto específico é Boca Vazada (importante se a categoria tem outros produtos)
+        const isThisProductBocaVazada = (product.name || '').toLowerCase().includes('boca vaz') ||
+                                        (product.name || '').toLowerCase().includes('boca-vaz');
+
+        // Se não é Boca Vazada, adicionar ao agrupamento normal por SKU
+        if (!isThisProductBocaVazada) {
+          let sku = product.sku;
+          if (!sku) {
+            const nameMatch = product.name.match(/^([kK]-\d+)/);
+            sku = nameMatch ? nameMatch[1] : `#${product.id}`;
+          }
+          const normalizedSku = sku.toLowerCase();
+          const existing = grouped.get(normalizedSku);
+          if (existing) {
+            existing.products.push(product);
+          } else {
+            grouped.set(normalizedSku, {
+              sku: sku,
+              products: [product],
+              paperTypes: ['Padrão']
+            });
+          }
+          return; // pular para próximo produto
+        }
+
+        // Extrair SKU e paperType para este produto específico (Boca Vazada)
         let productSku = product.sku;
         if (!productSku) {
           const nameMatch = product.name.match(/^([kK]-\d+)/);
@@ -254,11 +289,36 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           productPaperType = `Klabin - ${productPaperType}`;
         }
 
-        // Tentar encontrar atributo 'modelo' no produto
+        // Tentar encontrar atributo 'modelo' no produto (pode ter vários nomes)
+        // Excluir explicitamente atributos que NÃO são modelo
         const modelAttr = product.attributes?.find((a) => {
-          const n = (a.name || '').toLowerCase();
-          return n.includes('modelo') || n.includes('model');
+          const n = (a.name || '').toLowerCase().trim();
+
+          // Excluir atributos conhecidos que não são modelo
+          const isNotModel = n.includes('quantidade') ||
+                             n.includes('quantity') ||
+                             n.includes('qtd') ||
+                             n.includes('cor') ||
+                             n.includes('color') ||
+                             n.includes('impressão') ||
+                             n.includes('impressao') ||
+                             n.includes('espessura') ||
+                             n.includes('thickness') ||
+                             n.includes('gramatura');
+
+          if (isNotModel) return false;
+
+          // Aceitar atributos que parecem ser modelo
+          return n.includes('modelo') ||
+                 n.includes('model') ||
+                 n.includes('tamanho') ||
+                 n.includes('medida') ||
+                 n.includes('dimensão') ||
+                 n.includes('dimensao') ||
+                 n.includes('size') ||
+                 n === 'modelo'; // match exato
         });
+
 
         if (modelAttr && Array.isArray(modelAttr.options) && modelAttr.options.length > 0) {
           modelAttr.options.forEach((opt) => {
@@ -569,11 +629,19 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
                 // Verificar se é sacola plástica (não tem SKU k-XXX)
                 const isPlasticBag = !grouped.sku.toLowerCase().startsWith('k-');
 
-                // Para sacolas plásticas: usar o nome do produto (medidas)
-                // Para sacolas de papel: usar o SKU
-                const displayName = isPlasticBag
-                  ? firstProduct.name // Ex: "15x25/20x30 cm"
-                  : grouped.sku;      // Ex: "k-034"
+                // Para produtos com modelo específico (ex: Boca Vazada separada por modelo)
+                // Mostrar o modelo como nome principal
+                let displayName: string;
+                if (grouped.model) {
+                  // Se tem modelo, mostrar apenas o modelo (ex: "25x35cm")
+                  displayName = grouped.model;
+                } else if (isPlasticBag) {
+                  // Para sacolas plásticas sem modelo: usar o nome do produto
+                  displayName = firstProduct.name;
+                } else {
+                  // Para sacolas de papel: usar o SKU
+                  displayName = grouped.sku;
+                }
 
                 return (
                   <Card
@@ -632,22 +700,38 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
         });
 
         const varModel = varModelAttr?.option;
-        if (varModel) return varModel === groupedProduct.model;
+        // Comparação case-insensitive e com trim
+        const targetModel = (groupedProduct.model || '').toLowerCase().trim();
+        if (varModel) {
+          const match = (varModel || '').toLowerCase().trim() === targetModel;
+          return match;
+        }
 
-        // Se variação não tem, checar produto pai (alguns setups colocam o modelo no product.attributes)
+        // Se variação não tem atributo modelo direto, verificar se o modelo do grupo
+        // está presente nas opções do produto pai (produto variável)
         const prodModelAttr = v.parentProduct?.attributes?.find((a) => {
           const n = (a.name || '').toLowerCase();
           return n.includes('modelo') || n.includes('model');
         });
 
         if (prodModelAttr && Array.isArray((prodModelAttr as any).options)) {
-          // comparar com as opções disponíveis
-          return (prodModelAttr as any).options.includes(groupedProduct.model!);
+          // comparar com as opções disponíveis (case-insensitive)
+          const options = (prodModelAttr as any).options.map((o: string) => (o || '').toLowerCase().trim());
+          return options.includes(targetModel);
         }
 
         return false;
       })
     : variations;
+
+  // Debug: log das variações filtradas
+  console.log('🔍 VariationSelector - Modelo do grupo:', groupedProduct.model);
+  console.log('   Total variações:', variations.length);
+  console.log('   Variações filtradas:', filteredVariations.length);
+  if (filteredVariations.length === 0 && groupedProduct.model) {
+    console.log('   ⚠️ NENHUMA variação encontrada! Atributos da primeira variação:',
+      variations[0]?.attributes?.map(a => ({ name: a.name, option: a.option })));
+  }
 
   // Usar filteredVariations no lugar de variations nas lógicas abaixo
   const [pendingVariation, setPendingVariation] = useState<VariationWithProduct | null>(null);
