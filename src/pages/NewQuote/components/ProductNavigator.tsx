@@ -236,6 +236,24 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       const modelGroups: GroupedProduct[] = [];
 
       lineProducts.forEach((product) => {
+        // Extrair SKU e paperType para este produto específico
+        let productSku = product.sku;
+        if (!productSku) {
+          const nameMatch = product.name.match(/^([kK]-\d+)/);
+          productSku = nameMatch ? nameMatch[1] : `#${product.id}`;
+        }
+
+        const productName = product.name;
+        let productPaperType = 'Padrão';
+        if (productName.toLowerCase().includes('laminado')) {
+          productPaperType = 'Laminado';
+        } else if (productName.toLowerCase().includes('verniz')) {
+          productPaperType = 'Verniz';
+        }
+        if (productName.toLowerCase().includes('klabin')) {
+          productPaperType = `Klabin - ${productPaperType}`;
+        }
+
         // Tentar encontrar atributo 'modelo' no produto
         const modelAttr = product.attributes?.find((a) => {
           const n = (a.name || '').toLowerCase();
@@ -245,23 +263,23 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
         if (modelAttr && Array.isArray(modelAttr.options) && modelAttr.options.length > 0) {
           modelAttr.options.forEach((opt) => {
             modelGroups.push({
-              sku: `${sku}-${opt}`,
+              sku: `${productSku}-${opt}`,
               products: [product],
-              paperTypes: [paperType],
+              paperTypes: [productPaperType],
               model: opt,
             });
           });
         } else {
           // sem atributo modelo, cair no comportamento padrão
-          const normalizedSku = (sku || `#${product.id}`).toLowerCase();
+          const normalizedSku = (productSku || `#${product.id}`).toLowerCase();
           const existing = grouped.get(normalizedSku);
           if (existing) {
             existing.products.push(product);
           } else {
             grouped.set(normalizedSku, {
-              sku: sku,
+              sku: productSku,
               products: [product],
-              paperTypes: [paperType]
+              paperTypes: [productPaperType]
             });
           }
         }
