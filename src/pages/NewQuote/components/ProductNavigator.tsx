@@ -63,6 +63,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
   const [currentStep, setCurrentStep] = useState<NavigationStep>('category');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null); // Sacola de Papel, Caixa, etc.
   const [selectedLine, setSelectedLine] = useState<Category | null>(null); // Linha Premium, Boca Vazada
+  const [selectedPlasticProduct, setSelectedPlasticProduct] = useState<WooCommerceProduct | null>(null); // Para sacolas plásticas: Boca Vazada, Alça Fita, etc.
   const [selectedGroupedProduct, setSelectedGroupedProduct] = useState<GroupedProduct | null>(null);
   const [breadcrumb, setBreadcrumb] = useState<string[]>(['Escolha a Categoria']);
 
@@ -175,9 +176,55 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     return result;
   })();
 
+  // Para sacolas plásticas: lista de produtos únicos (Boca Vazada, Alça Fita, Alça Camiseta, etc.)
+  const plasticProducts = (() => {
+    if (!allProducts || allProducts.length === 0 || !selectedCategory) return [];
+
+    // Verificar se é categoria de sacolas plásticas
+    const isPlasticCategory = selectedCategory.name.toLowerCase().includes('plástic') ||
+                              selectedCategory.name.toLowerCase().includes('plastico');
+    if (!isPlasticCategory) return [];
+
+    // Filtrar produtos da categoria
+    const categoryProducts = allProducts.filter((product: WooCommerceProduct) =>
+      product.categories?.some(cat => cat.id === selectedCategory.id)
+    );
+
+    // Retornar produtos únicos (cada produto é um tipo: Boca Vazada, Alça Fita, etc.)
+    console.log('📦 Produtos plásticos encontrados:', categoryProducts.map(p => p.name));
+    return categoryProducts;
+  })();
+
   // Filtrar produtos da linha selecionada (ou categoria, se não houver linha) e agrupar por SKU
   const groupedProducts: GroupedProduct[] = (() => {
     if (!allProducts) return [];
+
+    // CASO ESPECIAL: Sacola plástica selecionada - mostrar apenas os modelos desse produto
+    if (selectedPlasticProduct) {
+      const product = selectedPlasticProduct;
+      const modelAttr = product.attributes?.find((a) => {
+        const n = (a.name || '').toLowerCase().trim();
+        return n.includes('modelo') || n.includes('model') || n.includes('tamanho') || n.includes('medida');
+      });
+
+      if (modelAttr && Array.isArray(modelAttr.options) && modelAttr.options.length > 0) {
+        // Criar um grupo para cada modelo/tamanho
+        return modelAttr.options.map((opt) => ({
+          sku: `${product.sku || product.id}-${opt}`,
+          products: [product],
+          paperTypes: ['Padrão'],
+          model: opt,
+        }));
+      }
+
+      // Sem atributo modelo - retornar produto único
+      return [{
+        sku: product.sku || `#${product.id}`,
+        products: [product],
+        paperTypes: ['Padrão'],
+      }];
+    }
+
     // Se não tem linha nem categoria selecionada, não mostrar nada
     if (!selectedLine && !selectedCategory) return [];
 
@@ -383,6 +430,17 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
   const handleCategorySelect = (category: Category) => {
     setSelectedCategory(category);
 
+    // Verificar se é categoria de sacolas plásticas
+    const isPlasticCategory = category.name.toLowerCase().includes('plástic') ||
+                              category.name.toLowerCase().includes('plastico');
+
+    if (isPlasticCategory) {
+      // Sacolas plásticas - mostrar lista de produtos (Boca Vazada, Alça Fita, etc.)
+      setBreadcrumb(['Escolha a Categoria', category.name, 'Escolha o Tipo']);
+      setCurrentStep('subcategory');
+      return;
+    }
+
     // Verificar se há linhas disponíveis para esta categoria
     const lines = getLinesForCategory(category);
 
@@ -396,6 +454,13 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       setBreadcrumb(['Escolha a Categoria', category.name, 'Escolha a Linha']);
       setCurrentStep('line');
     }
+  };
+
+  // Para sacolas plásticas: selecionar o tipo (Boca Vazada, Alça Fita, etc.)
+  const handlePlasticProductSelect = (product: WooCommerceProduct) => {
+    setSelectedPlasticProduct(product);
+    setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', product.name, 'Escolha o Tamanho']);
+    setCurrentStep('product');
   };
 
   const handleLineSelect = (line: Category) => {
@@ -412,8 +477,8 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     setBreadcrumb([
       'Escolha a Categoria',
       selectedCategory?.name,
-      selectedLine?.name,
-      grouped.sku,
+      selectedPlasticProduct?.name || selectedLine?.name,
+      grouped.model || grouped.sku,
     ].filter(Boolean) as string[]);
     setCurrentStep('variation');
   };
@@ -442,10 +507,15 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     if (currentStep === 'variation') {
       setSelectedGroupedProduct(null);
       setCurrentStep('product');
-      setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', selectedLine?.name || '', 'Produtos'].filter(Boolean));
+      setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', selectedPlasticProduct?.name || selectedLine?.name || '', 'Escolha o Tamanho'].filter(Boolean));
     } else if (currentStep === 'product') {
-      // Se não tinha linha (pulou direto da categoria), voltar para categoria
-      if (!selectedLine) {
+      // Se veio de sacola plástica, voltar para seleção de tipo
+      if (selectedPlasticProduct) {
+        setSelectedPlasticProduct(null);
+        setCurrentStep('subcategory');
+        setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', 'Escolha o Tipo']);
+      } else if (!selectedLine) {
+        // Se não tinha linha (pulou direto da categoria), voltar para categoria
         setSelectedCategory(null);
         setCurrentStep('category');
         setBreadcrumb(['Escolha a Categoria']);
@@ -454,6 +524,11 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
         setCurrentStep('line');
         setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', 'Escolha a Linha']);
       }
+    } else if (currentStep === 'subcategory') {
+      // Voltar de seleção de tipo de sacola plástica para categorias
+      setSelectedCategory(null);
+      setCurrentStep('category');
+      setBreadcrumb(['Escolha a Categoria']);
     } else if (currentStep === 'line') {
       setSelectedCategory(null);
       setCurrentStep('category');
@@ -563,6 +638,42 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
                 >
                   <CardContent className="p-6">
                     <h3 className="text-xl font-semibold text-center">{line.name}</h3>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Step 2b: Escolha do Tipo de Sacola Plástica (Boca Vazada, Alça Fita, Alça Camiseta, etc.) */}
+        {currentStep === 'subcategory' && (
+          <div className="space-y-4">
+            {loadingProducts ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">Carregando tipos...</p>
+              </div>
+            ) : productsError ? (
+              <div className="text-center py-12">
+                <p className="text-destructive mb-4">Erro ao carregar tipos</p>
+                <p className="text-sm text-muted-foreground">{String(productsError)}</p>
+              </div>
+            ) : plasticProducts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Nenhum tipo encontrado</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Verifique os produtos no WooCommerce
+                </p>
+              </div>
+            ) : (
+              plasticProducts.map((product: WooCommerceProduct) => (
+                <Card
+                  key={product.id}
+                  onClick={() => handlePlasticProductSelect(product)}
+                  className="cursor-pointer hover:bg-accent transition-colors touch-manipulation"
+                >
+                  <CardContent className="p-6">
+                    <h3 className="text-xl font-semibold text-center">{product.name}</h3>
                   </CardContent>
                 </Card>
               ))
