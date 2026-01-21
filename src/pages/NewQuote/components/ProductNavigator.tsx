@@ -99,7 +99,12 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           catName.includes('uncategorized') ||
           catName.includes('sem categoria') ||
           catName.includes('linha ') ||  // Linha Premium, Linha Econômica, etc.
-          catName.includes('boca vazada') ||  // Subcategoria de sacolas plásticas
+          // Subcategorias de sacolas plásticas (tipos de sacola)
+          catName.includes('boca vazada') ||
+          catName.includes('alça fita') ||
+          catName.includes('alça camiseta') ||
+          catName.includes('ala fita') ||  // variação sem acento
+          catName.includes('ala camiseta') ||
           catName.match(/^\d+\s*unidades?$/) ||  // 50 unidades, 100 unidades, etc.
           catName.match(/^[pmg]$/) ||  // P, M, G (tamanhos)
           // Categorias de segmento/nicho
@@ -227,31 +232,32 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       }
     });
 
-    // SPECIAL CASE: Sacolas plásticas / Boca Vazada - queremos separar por MODELO (atributo)
+    // SPECIAL CASE: Sacolas plásticas - queremos separar por MODELO (atributo)
+    // Isso funciona para qualquer tipo: Boca Vazada, Alça Camiseta, Alça Fita, etc.
     const isPlasticCategory = (selectedCategory?.name || '').toLowerCase().includes('plástic') ||
                               (selectedCategory?.name || '').toLowerCase().includes('plastico');
 
-    // Verificar se é Boca Vazada pela linha OU pelo nome do produto
-    const isBocaVazadaLine = (selectedLine?.name || '').toLowerCase().includes('boca vaz') ||
-                             (selectedLine?.name || '').toLowerCase().includes('boca-vaz');
+    // Verificar se algum produto tem atributo "Modelo" (indica que deve ser separado por tamanho)
+    const hasModelAttribute = lineProducts.some((p) => {
+      return p.attributes?.some((a) => {
+        const n = (a.name || '').toLowerCase().trim();
+        return n.includes('modelo') || n.includes('model') || n.includes('tamanho') || n.includes('medida');
+      });
+    });
 
-    // Também verificar se algum produto tem "Boca Vazada" no nome (para quando não há linha separada)
-    const hasBocaVazadaProduct = lineProducts.some((p) =>
-      (p.name || '').toLowerCase().includes('boca vaz') ||
-      (p.name || '').toLowerCase().includes('boca-vaz')
-    );
-
-    if (isPlasticCategory && (isBocaVazadaLine || hasBocaVazadaProduct)) {
+    if (isPlasticCategory && hasModelAttribute) {
       // Construir grupos por model (cada opção do atributo Modelo vira um grupo separado)
       const modelGroups: GroupedProduct[] = [];
 
       lineProducts.forEach((product) => {
-        // Verificar se este produto específico é Boca Vazada (importante se a categoria tem outros produtos)
-        const isThisProductBocaVazada = (product.name || '').toLowerCase().includes('boca vaz') ||
-                                        (product.name || '').toLowerCase().includes('boca-vaz');
+        // Verificar se este produto tem atributo "Modelo" (deve ser separado por tamanho)
+        const productModelAttr = product.attributes?.find((a) => {
+          const n = (a.name || '').toLowerCase().trim();
+          return n.includes('modelo') || n.includes('model') || n.includes('tamanho') || n.includes('medida');
+        });
 
-        // Se não é Boca Vazada, adicionar ao agrupamento normal por SKU
-        if (!isThisProductBocaVazada) {
+        // Se não tem atributo Modelo, adicionar ao agrupamento normal por SKU
+        if (!productModelAttr || !Array.isArray(productModelAttr.options) || productModelAttr.options.length === 0) {
           let sku = product.sku;
           if (!sku) {
             const nameMatch = product.name.match(/^([kK]-\d+)/);
@@ -271,7 +277,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           return; // pular para próximo produto
         }
 
-        // Extrair SKU e paperType para este produto específico (Boca Vazada)
+        // Extrair SKU e paperType para este produto (tem atributo Modelo)
         let productSku = product.sku;
         if (!productSku) {
           const nameMatch = product.name.match(/^([kK]-\d+)/);
@@ -289,60 +295,15 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           productPaperType = `Klabin - ${productPaperType}`;
         }
 
-        // Tentar encontrar atributo 'modelo' no produto (pode ter vários nomes)
-        // Excluir explicitamente atributos que NÃO são modelo
-        const modelAttr = product.attributes?.find((a) => {
-          const n = (a.name || '').toLowerCase().trim();
-
-          // Excluir atributos conhecidos que não são modelo
-          const isNotModel = n.includes('quantidade') ||
-                             n.includes('quantity') ||
-                             n.includes('qtd') ||
-                             n.includes('cor') ||
-                             n.includes('color') ||
-                             n.includes('impressão') ||
-                             n.includes('impressao') ||
-                             n.includes('espessura') ||
-                             n.includes('thickness') ||
-                             n.includes('gramatura');
-
-          if (isNotModel) return false;
-
-          // Aceitar atributos que parecem ser modelo
-          return n.includes('modelo') ||
-                 n.includes('model') ||
-                 n.includes('tamanho') ||
-                 n.includes('medida') ||
-                 n.includes('dimensão') ||
-                 n.includes('dimensao') ||
-                 n.includes('size') ||
-                 n === 'modelo'; // match exato
-        });
-
-
-        if (modelAttr && Array.isArray(modelAttr.options) && modelAttr.options.length > 0) {
-          modelAttr.options.forEach((opt) => {
-            modelGroups.push({
-              sku: `${productSku}-${opt}`,
-              products: [product],
-              paperTypes: [productPaperType],
-              model: opt,
-            });
+        // Usar o atributo modelo já encontrado (productModelAttr) para criar os grupos
+        productModelAttr.options.forEach((opt) => {
+          modelGroups.push({
+            sku: `${productSku}-${opt}`,
+            products: [product],
+            paperTypes: [productPaperType],
+            model: opt,
           });
-        } else {
-          // sem atributo modelo, cair no comportamento padrão
-          const normalizedSku = (productSku || `#${product.id}`).toLowerCase();
-          const existing = grouped.get(normalizedSku);
-          if (existing) {
-            existing.products.push(product);
-          } else {
-            grouped.set(normalizedSku, {
-              sku: productSku,
-              products: [product],
-              paperTypes: [productPaperType]
-            });
-          }
-        }
+        });
       });
 
       // Se encontramos grupos por modelo, retornar eles (senão, retornar agrupamento por SKU)
