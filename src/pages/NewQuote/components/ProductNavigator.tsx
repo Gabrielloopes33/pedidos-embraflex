@@ -176,22 +176,26 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     return result;
   })();
 
-  // Para sacolas plásticas: lista de produtos únicos (Boca Vazada, Alça Fita, Alça Camiseta, etc.)
-  const plasticProducts = (() => {
+  // Lista de produtos com atributo "Modelo" para a categoria selecionada
+  // Usado para categorias como Sacolas Plásticas, Acessórios (Tags), etc.
+  const productsWithModels = (() => {
     if (!allProducts || allProducts.length === 0 || !selectedCategory) return [];
 
-    // Verificar se é categoria de sacolas plásticas
-    const isPlasticCategory = selectedCategory.name.toLowerCase().includes('plástic') ||
-                              selectedCategory.name.toLowerCase().includes('plastico');
-    if (!isPlasticCategory) return [];
+    // Filtrar produtos da categoria que têm atributo "Modelo"
+    const categoryProducts = allProducts.filter((product: WooCommerceProduct) => {
+      // Verificar se pertence à categoria
+      const belongsToCategory = product.categories?.some(cat => cat.id === selectedCategory.id);
+      if (!belongsToCategory) return false;
 
-    // Filtrar produtos da categoria
-    const categoryProducts = allProducts.filter((product: WooCommerceProduct) =>
-      product.categories?.some(cat => cat.id === selectedCategory.id)
-    );
+      // Verificar se tem atributo "Modelo" com múltiplas opções
+      const modelAttr = product.attributes?.find((a) => {
+        const n = (a.name || '').toLowerCase().trim();
+        return n.includes('modelo') || n.includes('model') || n.includes('tamanho') || n.includes('medida');
+      });
+      return modelAttr && Array.isArray(modelAttr.options) && modelAttr.options.length > 1;
+    });
 
-    // Retornar produtos únicos (cada produto é um tipo: Boca Vazada, Alça Fita, etc.)
-    console.log('📦 Produtos plásticos encontrados:', categoryProducts.map(p => p.name));
+    console.log('📦 Produtos com modelos encontrados:', categoryProducts.map(p => p.name));
     return categoryProducts;
   })();
 
@@ -430,13 +434,24 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
   const handleCategorySelect = (category: Category) => {
     setSelectedCategory(category);
 
-    // Verificar se é categoria de sacolas plásticas
-    const isPlasticCategory = category.name.toLowerCase().includes('plástic') ||
-                              category.name.toLowerCase().includes('plastico');
+    // Buscar produtos desta categoria
+    const categoryProducts = allProducts?.filter((product: WooCommerceProduct) =>
+      product.categories?.some(cat => cat.id === category.id)
+    ) || [];
 
-    if (isPlasticCategory) {
-      // Sacolas plásticas - mostrar lista de produtos (Boca Vazada, Alça Fita, etc.)
-      setBreadcrumb(['Escolha a Categoria', category.name, 'Escolha o Tipo']);
+    // Verificar se os produtos têm atributo "Modelo" com múltiplas opções
+    // Se tiverem, precisamos mostrar primeiro a lista de produtos, depois os modelos
+    const hasProductsWithModels = categoryProducts.some((product: WooCommerceProduct) => {
+      const modelAttr = product.attributes?.find((a) => {
+        const n = (a.name || '').toLowerCase().trim();
+        return n.includes('modelo') || n.includes('model') || n.includes('tamanho') || n.includes('medida');
+      });
+      return modelAttr && Array.isArray(modelAttr.options) && modelAttr.options.length > 1;
+    });
+
+    if (hasProductsWithModels) {
+      // Categoria com produtos que têm modelos - mostrar lista de produtos primeiro
+      setBreadcrumb(['Escolha a Categoria', category.name, 'Escolha o Produto']);
       setCurrentStep('subcategory');
       return;
     }
@@ -658,7 +673,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
                 <p className="text-destructive mb-4">Erro ao carregar tipos</p>
                 <p className="text-sm text-muted-foreground">{String(productsError)}</p>
               </div>
-            ) : plasticProducts.length === 0 ? (
+            ) : productsWithModels.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">Nenhum tipo encontrado</p>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -666,7 +681,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
                 </p>
               </div>
             ) : (
-              plasticProducts.map((product: WooCommerceProduct) => (
+              productsWithModels.map((product: WooCommerceProduct) => (
                 <Card
                   key={product.id}
                   onClick={() => handlePlasticProductSelect(product)}
