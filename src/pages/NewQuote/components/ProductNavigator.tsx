@@ -962,11 +962,15 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
         const nameLower = attr.name.toLowerCase();
         return nameLower === 'cor' ||
                nameLower === 'color' ||
+               nameLower === 'impressões' ||
+               nameLower === 'impressoes' ||
                nameLower.includes('cor de impressão') ||
                nameLower.includes('cor de impressao') ||
                nameLower.includes('tipo de impressão') ||
                nameLower.includes('tipo de impressao') ||
-               nameLower.includes('impressao');
+               nameLower.includes('impressão') ||
+               nameLower.includes('impressao') ||
+               nameLower.includes('impress');
       }
     );
 
@@ -1065,16 +1069,20 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
       return nameLower.includes('espessura') || nameLower.includes('thickness') || nameLower.includes('gramatura');
     });
 
-    // Buscar COR DE IMPRESSÃO
+    // Buscar COR DE IMPRESSÃO / IMPRESSÕES
     const colorAttr = variation.attributes?.find((attr) => {
       const nameLower = (attr.name || '').toLowerCase();
       return nameLower === 'cor' ||
              nameLower === 'color' ||
+             nameLower === 'impressões' ||
+             nameLower === 'impressoes' ||
              nameLower.includes('cor de impressão') ||
              nameLower.includes('cor de impressao') ||
              nameLower.includes('tipo de impressão') ||
              nameLower.includes('tipo de impressao') ||
-             nameLower.includes('impressao');
+             nameLower.includes('impressão') ||
+             nameLower.includes('impressao') ||
+             nameLower.includes('impress');
     });
 
     // Buscar QUANTIDADE
