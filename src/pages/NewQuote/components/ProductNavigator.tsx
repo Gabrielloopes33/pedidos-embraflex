@@ -887,11 +887,24 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
 
   // Determinar qual layout usar baseado no número de critérios:
   // - 2 critérios → layout simplificado (MODELO + QUANTIDADE)
-  // - 3 critérios → layout padrão (TIPO_PAPEL + COR + QUANTIDADE)
+  // - 3 critérios com modelo filtrado → layout COR → QUANTIDADE (como TAGS)
   // - 4 critérios → layout completo (ESPESSURA + COR + QUANTIDADE, modelo já filtrado)
   const numCriteria = uniqueAttributeNames.length;
-  const useSimplifiedLayout = numCriteria <= 2 && uniquePaperTypes.length === 1;
-  const useFourCriteriaLayout = numCriteria >= 3 && groupedProduct.model; // Se tem modelo filtrado, são 4 critérios originais
+  const useSimplifiedLayout = numCriteria <= 2 && uniquePaperTypes.length === 1 && !groupedProduct.model;
+
+  // Verificar se tem espessura nas variações
+  const hasThickness = filteredVariations.some((v) => {
+    return v.attributes?.some((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower.includes('espessura') || nameLower.includes('thickness') || nameLower.includes('gramatura');
+    });
+  });
+
+  // Layout de 3 critérios: COR → QUANTIDADE (quando tem modelo filtrado mas NÃO tem espessura)
+  const useThreeCriteriaLayout = groupedProduct.model && !hasThickness;
+
+  // Layout de 4 critérios: ESPESSURA → COR → QUANTIDADE (quando tem modelo filtrado E tem espessura)
+  const useFourCriteriaLayout = groupedProduct.model && hasThickness;
 
   // Agrupar variações: primeiro por tipo de papel, depois por cor
   const groupedByPaper = filteredVariations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
@@ -1111,6 +1124,27 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     }, {});
   })();
 
+  // Para layout de 3 critérios (modelo já filtrado, sem espessura): agrupar por COR → QUANTIDADE
+  const groupedByColor = (() => {
+    if (!useThreeCriteriaLayout) return {};
+
+    return filteredVariations.reduce((acc: Record<string, (VariationWithProduct & { quantity: number; quantityLabel: string; color: string })[]>, variation) => {
+      const { color, quantity, quantityLabel } = extractFourCriteria(variation); // Reutiliza a função
+
+      if (!acc[color]) {
+        acc[color] = [];
+      }
+      acc[color].push({
+        ...variation,
+        quantity,
+        quantityLabel,
+        color,
+      });
+
+      return acc;
+    }, {});
+  })();
+
   // Para layout simplificado: agrupar por MODELO
   const groupedByModel = (() => {
     if (!useSimplifiedLayout) return {};
@@ -1200,6 +1234,53 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : useThreeCriteriaLayout ? (
+        /* LAYOUT DE 3 CRITÉRIOS: COR DE IMPRESSÃO → QUANTIDADE (modelo já filtrado, sem espessura) */
+        /* Usado para produtos como TAGS que têm: Modelo + Cor de Impressão (4x1, 4x4) + Quantidade */
+        <div className="space-y-4">
+          {Object.keys(groupedByColor).map((color) => {
+            const colorVariations = groupedByColor[color].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+            const count = colorVariations.length;
+            const gridCols = count <= 2 ? 'grid-cols-2' : 'grid-cols-3';
+
+            return (
+              <div
+                key={color}
+                className={`border rounded-lg overflow-hidden ${getColorBackground(color)}`}
+              >
+                {/* Header da cor de impressão */}
+                <div className="bg-primary/10 px-4 py-3 border-b">
+                  <h4 className={`font-semibold text-base text-center ${getColorTitle(color)}`}>
+                    {color.toUpperCase()}
+                  </h4>
+                </div>
+
+                {/* Grid de quantidades e preços */}
+                <div className="p-4">
+                  <div className={`grid ${gridCols} gap-2`}>
+                    {colorVariations.map((variation) => {
+                      const price = parseFloat(variation.price) || 0;
+                      // Nome para exibição: Modelo - Cor
+                      const displayModel = `${groupedProduct.model} - ${color}`;
+
+                      return (
+                        <Button
+                          key={variation.id}
+                          variant="outline"
+                          onClick={() => handleQuantityClick(variation, displayModel)}
+                          className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
+                        >
+                          <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
+                          <span className="text-xs">{formatCurrency(price)}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );
