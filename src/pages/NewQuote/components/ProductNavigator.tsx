@@ -1,4 +1,7 @@
 // ProductNavigator - Navegação hierárquica de produtos (Categoria → Subcategoria → Produto → Variações)
+// v2.1 - Suporte a atributo PAPEL para divisão extra
+console.log('🚀 ProductNavigator v2.1 carregado - com suporte a atributo PAPEL');
+
 import { useState } from 'react';
 import { Button } from '@/componentes/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
@@ -94,9 +97,19 @@ const extractPaperAttributeValue = (
   variation?: WooCommerceProductVariation
 ) => {
   const variationAttributes = variation?.attributes || [];
+
+  // Debug: mostrar todos os atributos da variação
+  console.log(`🔍 extractPaperAttributeValue - Variação ${variation?.id}:`, {
+    variationAttributeNames: variationAttributes.map(a => a.name),
+  });
+
   for (const attr of variationAttributes) {
-    if (isPaperAttributeName(attr.name)) {
+    const isPaper = isPaperAttributeName(attr.name);
+    console.log(`   Atributo "${attr.name}" = "${attr.option}" -> isPaper: ${isPaper}`);
+
+    if (isPaper) {
       const normalized = normalizePaperValue(attr.option);
+      console.log(`   ✅ ENCONTRADO! Valor normalizado: "${normalized}"`);
       if (normalized) {
         return normalized;
       }
@@ -418,6 +431,14 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
         return variations.map((variation: WooCommerceProductVariation) => {
           const paperAttribute = extractPaperAttributeValue(product, variation);
           const fallbackPaperType = inferPaperTypeFromName(product.name);
+
+          // Debug: log detalhado da extração do atributo papel
+          console.log(`📄 Variação ${variation.id} do produto ${product.id}:`, {
+            variationAttributes: variation.attributes,
+            extractedPaperAttribute: paperAttribute,
+            fallbackPaperType,
+          });
+
           return {
             ...variation,
             parentProduct: product,
