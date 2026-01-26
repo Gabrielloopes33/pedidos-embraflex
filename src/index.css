@@ -8,22 +8,26 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Embraflex Brand Colors */
+    /* Verde Embraflex: #2ac1aa → HSL 171 64% 46% */
+    /* Azul Escuro: #112138 → HSL 215 53% 14% */
+
+    --background: 170 30% 98%;
+    --foreground: 215 53% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 215 53% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 215 53% 14%;
 
-    --primary: 221 83% 53%;
+    --primary: 171 64% 46%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 221 83% 45%;
+    --primary-hover: 171 64% 38%;
 
-    --secondary: 142 71% 45%;
+    --secondary: 215 53% 14%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-hover: 142 71% 38%;
+    --secondary-hover: 215 53% 20%;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -31,62 +35,63 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --muted: 210 16% 93%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 170 15% 93%;
+    --muted-foreground: 215 20% 40%;
 
-    --accent: 210 16% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 170 20% 96%;
+    --accent-foreground: 215 53% 14%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border: 170 20% 88%;
+    --input: 170 20% 88%;
+    --ring: 171 64% 46%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 221 83% 53%;
+    --sidebar-background: 215 53% 14%;
+    --sidebar-foreground: 170 30% 98%;
+    --sidebar-primary: 171 64% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-accent: 215 45% 20%;
+    --sidebar-accent-foreground: 170 30% 98%;
+    --sidebar-border: 215 45% 20%;
+    --sidebar-ring: 171 64% 46%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(221 83% 45%));
+    --gradient-primary: linear-gradient(135deg, hsl(171 64% 46%), hsl(171 64% 38%));
     --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 71% 38%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 20% 99%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(170 30% 99%));
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.1), 0 2px 4px -1px hsl(222 47% 11% / 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.1), 0 4px 6px -2px hsl(222 47% 11% / 0.05);
-    --shadow-primary: 0 10px 30px -10px hsl(221 83% 53% / 0.3);
+    --shadow-sm: 0 1px 2px 0 hsl(215 53% 14% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(215 53% 14% / 0.1), 0 2px 4px -1px hsl(215 53% 14% / 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(215 53% 14% / 0.1), 0 4px 6px -2px hsl(215 53% 14% / 0.05);
+    --shadow-primary: 0 10px 30px -10px hsl(171 64% 46% / 0.3);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 20% 98%;
+    /* Embraflex Dark Theme */
+    --background: 215 53% 11%;
+    --foreground: 170 30% 98%;
 
-    --card: 217 33% 17%;
-    --card-foreground: 210 20% 98%;
+    --card: 215 45% 16%;
+    --card-foreground: 170 30% 98%;
 
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 215 45% 16%;
+    --popover-foreground: 170 30% 98%;
 
-    --primary: 221 83% 53%;
+    --primary: 171 64% 46%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 221 83% 60%;
+    --primary-hover: 171 64% 54%;
 
-    --secondary: 142 71% 45%;
+    --secondary: 171 50% 30%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-hover: 142 71% 52%;
+    --secondary-hover: 171 50% 38%;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -94,29 +99,29 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 215 45% 18%;
+    --muted-foreground: 170 15% 65%;
 
-    --accent: 217 33% 22%;
-    --accent-foreground: 210 20% 98%;
+    --accent: 215 45% 22%;
+    --accent-foreground: 170 30% 98%;
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 20% 98%;
+    --destructive-foreground: 170 30% 98%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 221 83% 53%;
+    --border: 215 45% 20%;
+    --input: 215 45% 20%;
+    --ring: 171 64% 46%;
 
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 221 83% 53%;
+    --sidebar-background: 215 53% 8%;
+    --sidebar-foreground: 170 30% 98%;
+    --sidebar-primary: 171 64% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 15%;
-    --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 217 33% 15%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-accent: 215 45% 15%;
+    --sidebar-accent-foreground: 170 30% 98%;
+    --sidebar-border: 215 45% 15%;
+    --sidebar-ring: 171 64% 46%;
 
-    --shadow-primary: 0 10px 30px -10px hsl(221 83% 53% / 0.5);
+    --shadow-primary: 0 10px 30px -10px hsl(171 64% 46% / 0.5);
   }
 }
 
