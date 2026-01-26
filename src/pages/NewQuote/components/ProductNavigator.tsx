@@ -949,6 +949,13 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   }, {});
   const hasPaperAttribute = filteredVariations.some((variation) => !!variation.paperAttribute);
 
+  // Debug: log dos atributos de papel encontrados
+  console.log('📄 VariationSelector - hasPaperAttribute:', hasPaperAttribute);
+  if (hasPaperAttribute) {
+    const paperValues = filteredVariations.map((v) => v.paperAttribute).filter(Boolean);
+    console.log('   Valores de papel encontrados:', [...new Set(paperValues)]);
+  }
+
   const groupedByPaperAttribute = (() => {
     if (!hasPaperAttribute) return {} as Record<string, VariationWithProduct[]>;
 
@@ -1450,26 +1457,44 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
             );
           })}
         </div>
-      ) : (
-        /* LAYOUT COMPLETO: Para produtos com 3+ critérios (como sacola de papel) */
+      ) : hasPaperAttribute ? (
+        /* LAYOUT COM ATRIBUTO PAPEL: Agrupa por valor do atributo PAPEL → COR → QUANTIDADE */
+        /* Usado para sacolas de papel que têm variações com atributo PAPEL (ex: Kraft, Offset, etc.) */
         <div className="space-y-6">
-          {paperTypes.map((paperType) => {
-            const baseVariations = groupedByPaper[paperType] || [];
-            const paperAttributeVariations = groupedByPaperAttribute[paperType] || [];
+          {Object.keys(groupedByPaperAttribute).map((paperAttrValue) => {
+            const paperVariations = groupedByPaperAttribute[paperAttrValue] || [];
 
             return (
-              <div key={paperType} className="border rounded-lg overflow-hidden">
-                {/* Header do tipo de papel */}
-                <div className="bg-muted/50 px-4 py-3 border-b">
-                  <h4 className="font-semibold text-base">
-                    {hasPaperAttribute ? `Papel: ${paperType}` : paperType}
+              <div key={paperAttrValue} className="border rounded-lg overflow-hidden">
+                {/* Header do tipo de papel (atributo) */}
+                <div className="bg-amber-100 dark:bg-amber-900/30 px-4 py-3 border-b">
+                  <h4 className="font-semibold text-base text-amber-800 dark:text-amber-200">
+                    📄 Papel: {paperAttrValue}
                   </h4>
                 </div>
 
                 <div className="p-4 space-y-4">
-                  {hasPaperAttribute
-                    ? renderColorSections(paperAttributeVariations, paperType)
-                    : renderColorSections(baseVariations, paperType)}
+                  {renderColorSections(paperVariations, paperAttrValue)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* LAYOUT COMPLETO: Para produtos com 3+ critérios (como sacola de papel sem atributo PAPEL) */
+        <div className="space-y-6">
+          {paperTypes.map((paperType) => {
+            const baseVariations = groupedByPaper[paperType] || [];
+
+            return (
+              <div key={paperType} className="border rounded-lg overflow-hidden">
+                {/* Header do tipo de papel (inferido do nome) */}
+                <div className="bg-muted/50 px-4 py-3 border-b">
+                  <h4 className="font-semibold text-base">{paperType}</h4>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {renderColorSections(baseVariations, paperType)}
                 </div>
               </div>
             );
