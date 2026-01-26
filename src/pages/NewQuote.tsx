@@ -170,7 +170,7 @@ export default function NewQuote() {
 
           {/* Navigation Buttons (inline no conteúdo) */}
           <div className="mt-8 space-y-4">
-            {/* Botão Próximo nas etapas 1 e 3 (não na seleção de produtos que avança automaticamente) */}
+            {/* Botão Próximo nas etapas 1, 2 e 3 */}
             {wizard.currentStep === 1 && (
               <Button
                 size="lg"
@@ -179,6 +179,17 @@ export default function NewQuote() {
                 className="w-full h-14 text-lg font-semibold touch-manipulation"
               >
                 Próximo: Selecionar Produtos
+              </Button>
+            )}
+
+            {wizard.currentStep === 2 && (
+              <Button
+                size="lg"
+                onClick={wizard.nextStep}
+                disabled={!wizard.isStep2Valid()}
+                className="w-full h-14 text-lg font-semibold touch-manipulation"
+              >
+                Próximo: Dados do Cliente
               </Button>
             )}
 
