@@ -949,8 +949,25 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   }, {});
   const hasPaperAttribute = filteredVariations.some((variation) => !!variation.paperAttribute);
 
+  const groupedByPaperAttribute = (() => {
+    if (!hasPaperAttribute) return {} as Record<string, VariationWithProduct[]>;
+
+    return filteredVariations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
+      const paperAttr = variation.paperAttribute || 'Papel Padrão';
+
+      if (!acc[paperAttr]) {
+        acc[paperAttr] = [];
+      }
+
+      acc[paperAttr].push(variation);
+      return acc;
+    }, {} as Record<string, VariationWithProduct[]>);
+  })();
+
   // Para cada tipo de papel, agrupar por cor
-  const paperTypes = Object.keys(groupedByPaper);
+  const paperTypes = hasPaperAttribute
+    ? Object.keys(groupedByPaperAttribute)
+    : Object.keys(groupedByPaper);
 
   // Cores de fundo para cada tipo de impressão
   const getColorBackground = (color: string) => {
@@ -1438,6 +1455,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
         <div className="space-y-6">
           {paperTypes.map((paperType) => {
             const baseVariations = groupedByPaper[paperType] || [];
+            const paperAttributeVariations = groupedByPaperAttribute[paperType] || [];
 
             return (
               <div key={paperType} className="border rounded-lg overflow-hidden">
@@ -1449,7 +1467,9 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
                 </div>
 
                 <div className="p-4 space-y-4">
-                  {renderColorSections(baseVariations, paperType)}
+                  {hasPaperAttribute
+                    ? renderColorSections(paperAttributeVariations, paperType)
+                    : renderColorSections(baseVariations, paperType)}
                 </div>
               </div>
             );
