@@ -821,6 +821,8 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   }
 
   // Usar filteredVariations no lugar de variations nas lógicas abaixo
+  const isPaperBagGroup = groupedProduct.sku.toLowerCase().startsWith('k-');
+
   const [pendingVariation, setPendingVariation] = useState<VariationWithProduct | null>(null);
   const [pendingModel, setPendingModel] = useState<string | undefined>(undefined);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
@@ -852,12 +854,6 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     const hasFinishing = finishing.hotStamp || finishing.ilhos || finishing.furoPresente || finishing.cordao !== 'nenhum';
     const displayName = buildDisplayName(variation, modelName);
     onSelect(variation, variation.quantity || 1000, hasFinishing ? finishing : undefined, displayName);
-  };
-
-  // Para adicionar acabamento antes de selecionar
-  const handleFinishingClick = (variation: VariationWithProduct) => {
-    setPendingVariation(variation);
-    setShowFinishingModal(true);
   };
 
   const formatCurrency = (value: number) => {
@@ -918,8 +914,60 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     return acc;
   }, {});
 
+  const getPaperAttributeValue = (variation: VariationWithProduct) => {
+    const variationAttr = variation.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower.includes('papel');
+    });
+
+    if (variationAttr && typeof variationAttr.option === 'string') {
+      return variationAttr.option;
+    }
+
+    const productAttr = variation.parentProduct?.attributes?.find((attr) => {
+      const nameLower = (attr.name || '').toLowerCase();
+      return nameLower.includes('papel');
+    });
+
+    if (productAttr) {
+      const productAttrAny = productAttr as any;
+      if (Array.isArray(productAttrAny.options) && productAttrAny.options.length > 0) {
+        return productAttrAny.options[0];
+      }
+      if (typeof productAttrAny.option === 'string') {
+        return productAttrAny.option;
+      }
+    }
+
+    return null;
+  };
+
+  const hasPaperAttribute = isPaperBagGroup && filteredVariations.some((variation) => !!getPaperAttributeValue(variation));
+
+  const groupedByPaperAttribute = (() => {
+    if (!hasPaperAttribute) return {} as Record<string, Record<string, VariationWithProduct[]>>;
+
+    return filteredVariations.reduce((acc: Record<string, Record<string, VariationWithProduct[]>>, variation) => {
+      const paperType = variation.paperType;
+      const attrValue = getPaperAttributeValue(variation) || 'Papel Padrão';
+
+      if (!acc[paperType]) {
+        acc[paperType] = {};
+      }
+
+      if (!acc[paperType][attrValue]) {
+        acc[paperType][attrValue] = [];
+      }
+
+      acc[paperType][attrValue].push(variation);
+      return acc;
+    }, {} as Record<string, Record<string, VariationWithProduct[]>>);
+  })();
+
   // Para cada tipo de papel, agrupar por cor
-  const paperTypes = Object.keys(groupedByPaper);
+  const paperTypes = hasPaperAttribute
+    ? Object.keys(groupedByPaperAttribute)
+    : Object.keys(groupedByPaper);
 
   // Cores de fundo para cada tipo de impressão
   const getColorBackground = (color: string) => {
@@ -955,6 +1003,72 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     return 'text-foreground font-bold';
   };
 
+  const renderColorSections = (variationsList: VariationWithProduct[], paperLabel: string) => {
+    if (!variationsList || variationsList.length === 0) {
+      return (
+        <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+          Nenhuma variação disponível
+        </div>
+      );
+    }
+
+    const byColor = variationsList.reduce((acc: Record<string, (VariationWithProduct & { quantity?: number; quantityLabel?: string })[]>, variation) => {
+      const { color, quantity, quantityLabel } = extractColorAndQuantity(variation);
+
+      if (!acc[color]) {
+        acc[color] = [];
+      }
+      acc[color].push({
+        ...variation,
+        quantity,
+        quantityLabel,
+      });
+
+      return acc;
+    }, {});
+
+    const colors = Object.keys(byColor);
+
+    return (
+      <div className="space-y-4">
+        {colors.map((color) => {
+          const sortedVariations = byColor[color].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+          const count = sortedVariations.length;
+          const gridCols = count <= 2 ? 'grid-cols-2' : 'grid-cols-3';
+
+          return (
+            <div
+              key={`${paperLabel}-${color}`}
+              className={`rounded-lg p-3 ${getColorBackground(color)}`}
+            >
+              <h5 className={`text-sm text-center mb-2 ${getColorTitle(color)}`}>
+                {color.toUpperCase()}
+              </h5>
+
+              <div className={`grid ${gridCols} gap-2`}>
+                {sortedVariations.map((variation) => {
+                  const price = parseFloat(variation.price) || 0;
+
+                  return (
+                    <Button
+                      key={variation.id}
+                      variant="outline"
+                      onClick={() => handleQuantityClick(variation, paperLabel)}
+                      className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
+                      <span className="text-xs">{formatCurrency(price)}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Extrair cor e quantidade de uma variação
   const extractColorAndQuantity = (variation: VariationWithProduct) => {
     const colorAttr = variation.attributes?.find(
@@ -988,7 +1102,8 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     );
 
     // Extrair valor numérico para ordenação e manter label original para exibição
-    const quantityOption = quantityAttr?.option?.toString() || '';
+    const quantityAttrAny = quantityAttr as any;
+    const quantityOption = quantityAttrAny?.option?.toString() || '';
     const quantityNumber = parseInt(quantityOption.replace(/\D/g, '') || '1000');
     const quantityLabel = quantityOption || quantityNumber.toString();
 
@@ -1043,7 +1158,8 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
              nameLower.includes('metro');
     });
 
-    const quantityOption = quantityAttr?.option?.toString() || '';
+    const quantityAttrAny = quantityAttr as any;
+    const quantityOption = quantityAttrAny?.option?.toString() || '';
     const quantityNumber = parseInt(quantityOption.replace(/\D/g, '') || '1000');
     const quantityLabel = quantityOption || quantityNumber.toString();
 
@@ -1338,26 +1454,8 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
         /* LAYOUT COMPLETO: Para produtos com 3+ critérios (como sacola de papel) */
         <div className="space-y-6">
           {paperTypes.map((paperType) => {
-            const paperVariations = groupedByPaper[paperType];
-
-            // Agrupar por cor dentro deste tipo de papel
-            const byColor = paperVariations.reduce((acc: Record<string, (VariationWithProduct & { quantityLabel?: string })[]>, variation) => {
-              const { color, quantity, quantityLabel } = extractColorAndQuantity(variation);
-
-              if (!acc[color]) {
-                acc[color] = [];
-              }
-              acc[color].push({
-                ...variation,
-                quantity,
-                color,
-                quantityLabel,
-              });
-
-              return acc;
-            }, {});
-
-            const colors = Object.keys(byColor);
+            const paperAttributeGroups = hasPaperAttribute ? groupedByPaperAttribute[paperType] : null;
+            const baseVariations = groupedByPaper[paperType] || [];
 
             return (
               <div key={paperType} className="border rounded-lg overflow-hidden">
@@ -1366,47 +1464,19 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
                   <h4 className="font-semibold text-base">{paperType}</h4>
                 </div>
 
-                {/* Cores e quantidades */}
                 <div className="p-4 space-y-4">
-                  {colors.map((color) => (
-                    <div
-                      key={`${paperType}-${color}`}
-                      className={`rounded-lg p-3 ${getColorBackground(color)}`}
-                    >
-                      {/* Título da cor */}
-                      <h5 className={`text-sm text-center mb-2 ${getColorTitle(color)}`}>
-                        {color.toUpperCase()}
-                      </h5>
-
-                      {/* Grid de quantidades e preços - ajusta colunas baseado na quantidade */}
-                      {(() => {
-                        const sortedVariations = byColor[color].sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
-                        const count = sortedVariations.length;
-                        // Se tem 2 ou menos, usa 2 colunas; se tem 3+, usa 3 colunas
-                        const gridCols = count <= 2 ? 'grid-cols-2' : 'grid-cols-3';
-
-                        return (
-                          <div className={`grid ${gridCols} gap-2`}>
-                            {sortedVariations.map((variation) => {
-                              const price = parseFloat(variation.price) || 0;
-
-                              return (
-                                <Button
-                                  key={variation.id}
-                                  variant="outline"
-                                  onClick={() => handleQuantityClick(variation, paperType)}
-                                  className="h-20 flex flex-col items-center justify-center gap-1 text-center touch-manipulation hover:bg-primary hover:text-primary-foreground transition-colors"
-                                >
-                                  <span className="text-xl font-bold">{variation.quantityLabel || variation.quantity}</span>
-                                  <span className="text-xs">{formatCurrency(price)}</span>
-                                </Button>
-                              );
-                            })}
+                  {hasPaperAttribute && paperAttributeGroups
+                    ? Object.keys(paperAttributeGroups).map((paperAttr) => (
+                        <div key={`${paperType}-${paperAttr}`} className="border rounded-lg">
+                          <div className="px-3 py-2 border-b bg-muted/30 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Tipo de Papel: {paperAttr}
                           </div>
-                        );
-                      })()}
-                    </div>
-                  ))}
+                          <div className="p-3">
+                            {renderColorSections(paperAttributeGroups[paperAttr], `${paperType} - ${paperAttr}`)}
+                          </div>
+                        </div>
+                      ))
+                    : renderColorSections(baseVariations, paperType)}
                 </div>
               </div>
             );
@@ -1415,7 +1485,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
       )}
 
       {/* Botão para configurar acabamentos (opcional, antes de selecionar) - apenas para sacola de PAPEL (SKU começa com k-) */}
-      {groupedProduct.sku.toLowerCase().startsWith('k-') && (
+      {isPaperBagGroup && (
         <div className="pt-4 border-t">
           <Button
             variant="outline"
