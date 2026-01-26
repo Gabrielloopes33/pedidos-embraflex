@@ -49,6 +49,7 @@ interface GroupedProduct {
 interface VariationWithProduct extends WooCommerceProductVariation {
   parentProduct: WooCommerceProduct;
   paperType: string;
+  paperAttribute?: string | null;
 }
 
 interface Category {
@@ -58,6 +59,64 @@ interface Category {
   parent: number;
   count: number;
 }
+
+const normalizePaperValue = (value?: string | null) => {
+  if (value === undefined || value === null) return null;
+  const normalized = value.toString().trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const isPaperAttributeName = (name?: string) => {
+  if (!name) return false;
+  return name.toLowerCase().includes('papel');
+};
+
+const inferPaperTypeFromName = (name?: string) => {
+  if (!name) return 'Padrão';
+  const lowerName = name.toLowerCase();
+  let paperType = 'Padrão';
+
+  if (lowerName.includes('laminado')) {
+    paperType = 'Laminado';
+  } else if (lowerName.includes('verniz')) {
+    paperType = 'Verniz';
+  }
+
+  if (lowerName.includes('klabin')) {
+    paperType = `Klabin - ${paperType}`;
+  }
+
+  return paperType;
+};
+
+const extractPaperAttributeValue = (
+  product: WooCommerceProduct,
+  variation?: WooCommerceProductVariation
+) => {
+  const variationAttributes = variation?.attributes || [];
+  for (const attr of variationAttributes) {
+    if (isPaperAttributeName(attr.name)) {
+      const normalized = normalizePaperValue(attr.option);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  }
+
+  const productAttributes = product.attributes || [];
+  for (const attr of productAttributes) {
+    if (isPaperAttributeName(attr.name)) {
+      if (Array.isArray(attr.options) && attr.options.length > 0) {
+        const normalized = normalizePaperValue(attr.options[0]);
+        if (normalized) {
+          return normalized;
+        }
+      }
+    }
+  }
+
+  return null;
+};
 
 export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProps) {
   const [currentStep, setCurrentStep] = useState<NavigationStep>('category');
@@ -252,21 +311,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       const normalizedSku = sku.toLowerCase();
 
       // Extrair tipo de papel do nome (ex: "Duplex - Laminado", "Duplex Klabin - Verniz")
-      const name = product.name;
-      let paperType = 'Padrão';
-
-      // Detectar tipo de papel
-      if (name.toLowerCase().includes('laminado')) {
-        paperType = 'Laminado';
-      } else if (name.toLowerCase().includes('verniz')) {
-        paperType = 'Verniz';
-      }
-
-      // Detectar se é Klabin
-      const isKlabin = name.toLowerCase().includes('klabin');
-      if (isKlabin) {
-        paperType = `Klabin - ${paperType}`;
-      }
+      const paperType = inferPaperTypeFromName(product.name);
 
       if (!grouped.has(normalizedSku)) {
         grouped.set(normalizedSku, {
@@ -335,16 +380,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           productSku = nameMatch ? nameMatch[1] : `#${product.id}`;
         }
 
-        const productName = product.name;
-        let productPaperType = 'Padrão';
-        if (productName.toLowerCase().includes('laminado')) {
-          productPaperType = 'Laminado';
-        } else if (productName.toLowerCase().includes('verniz')) {
-          productPaperType = 'Verniz';
-        }
-        if (productName.toLowerCase().includes('klabin')) {
-          productPaperType = `Klabin - ${productPaperType}`;
-        }
+        const productPaperType = inferPaperTypeFromName(product.name);
 
         // Usar o atributo modelo já encontrado (productModelAttr) para criar os grupos
         productModelAttr.options.forEach((opt) => {
@@ -379,16 +415,16 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
 
         const variations = await getProductVariations(product.id);
 
-        // Extrair tipo de papel do nome do produto
-        const name = product.name;
-        let paperType = name.replace(/^[kK]-\d+\s*-?\s*/, '').trim();
-
-        // Adicionar informação do produto pai a cada variação
-        return variations.map((variation: WooCommerceProductVariation) => ({
-          ...variation,
-          parentProduct: product,
-          paperType,
-        }));
+        return variations.map((variation: WooCommerceProductVariation) => {
+          const paperAttribute = extractPaperAttributeValue(product, variation);
+          const fallbackPaperType = inferPaperTypeFromName(product.name);
+          return {
+            ...variation,
+            parentProduct: product,
+            paperAttribute,
+            paperType: paperAttribute || fallbackPaperType,
+          } as VariationWithProduct;
+        });
       });
 
       const results = await Promise.all(variationsPromises);
@@ -877,7 +913,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   })();
 
   // Verificar se tem múltiplos paperTypes (indica produto com hierarquia tipo papel)
-  const uniquePaperTypes = [...new Set(filteredVariations.map(v => v.paperType))];
+  const uniquePaperTypes = [...new Set(filteredVariations.map((v) => v.paperAttribute || v.paperType))];
 
   // Determinar qual layout usar baseado no número de critérios:
   // - 2 critérios → layout simplificado (MODELO + QUANTIDADE)
@@ -902,7 +938,7 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
 
   // Agrupar variações: primeiro por tipo de papel, depois por cor
   const groupedByPaper = filteredVariations.reduce((acc: Record<string, VariationWithProduct[]>, variation) => {
-    const paperType = variation.paperType;
+    const paperType = variation.paperAttribute || variation.paperType || 'Papel Padrão';
 
     if (!acc[paperType]) {
       acc[paperType] = [];
@@ -911,61 +947,10 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
 
     return acc;
   }, {});
-
-  const getPaperAttributeValue = (variation: VariationWithProduct) => {
-    const variationAttr = variation.attributes?.find((attr) => {
-      const nameLower = (attr.name || '').toLowerCase();
-      return nameLower.includes('papel');
-    });
-
-    if (variationAttr && typeof variationAttr.option === 'string') {
-      return variationAttr.option;
-    }
-
-    const productAttr = variation.parentProduct?.attributes?.find((attr) => {
-      const nameLower = (attr.name || '').toLowerCase();
-      return nameLower.includes('papel');
-    });
-
-    if (productAttr) {
-      const productAttrAny = productAttr as any;
-      if (Array.isArray(productAttrAny.options) && productAttrAny.options.length > 0) {
-        return productAttrAny.options[0];
-      }
-      if (typeof productAttrAny.option === 'string') {
-        return productAttrAny.option;
-      }
-    }
-
-    return null;
-  };
-
-  const hasPaperAttribute = isPaperBagGroup && filteredVariations.some((variation) => !!getPaperAttributeValue(variation));
-
-  const groupedByPaperAttribute = (() => {
-    if (!hasPaperAttribute) return {} as Record<string, Record<string, VariationWithProduct[]>>;
-
-    return filteredVariations.reduce((acc: Record<string, Record<string, VariationWithProduct[]>>, variation) => {
-      const paperType = variation.paperType;
-      const attrValue = getPaperAttributeValue(variation) || 'Papel Padrão';
-
-      if (!acc[paperType]) {
-        acc[paperType] = {};
-      }
-
-      if (!acc[paperType][attrValue]) {
-        acc[paperType][attrValue] = [];
-      }
-
-      acc[paperType][attrValue].push(variation);
-      return acc;
-    }, {} as Record<string, Record<string, VariationWithProduct[]>>);
-  })();
+  const hasPaperAttribute = filteredVariations.some((variation) => !!variation.paperAttribute);
 
   // Para cada tipo de papel, agrupar por cor
-  const paperTypes = hasPaperAttribute
-    ? Object.keys(groupedByPaperAttribute)
-    : Object.keys(groupedByPaper);
+  const paperTypes = Object.keys(groupedByPaper);
 
   // Cores de fundo para cada tipo de impressão
   const getColorBackground = (color: string) => {
@@ -1452,29 +1437,19 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
         /* LAYOUT COMPLETO: Para produtos com 3+ critérios (como sacola de papel) */
         <div className="space-y-6">
           {paperTypes.map((paperType) => {
-            const paperAttributeGroups = hasPaperAttribute ? groupedByPaperAttribute[paperType] : null;
             const baseVariations = groupedByPaper[paperType] || [];
 
             return (
               <div key={paperType} className="border rounded-lg overflow-hidden">
                 {/* Header do tipo de papel */}
                 <div className="bg-muted/50 px-4 py-3 border-b">
-                  <h4 className="font-semibold text-base">{paperType}</h4>
+                  <h4 className="font-semibold text-base">
+                    {hasPaperAttribute ? `Papel: ${paperType}` : paperType}
+                  </h4>
                 </div>
 
                 <div className="p-4 space-y-4">
-                  {hasPaperAttribute && paperAttributeGroups
-                    ? Object.keys(paperAttributeGroups).map((paperAttr) => (
-                        <div key={`${paperType}-${paperAttr}`} className="border rounded-lg">
-                          <div className="px-3 py-2 border-b bg-muted/30 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Tipo de Papel: {paperAttr}
-                          </div>
-                          <div className="p-3">
-                            {renderColorSections(paperAttributeGroups[paperAttr], `${paperType} - ${paperAttr}`)}
-                          </div>
-                        </div>
-                      ))
-                    : renderColorSections(baseVariations, paperType)}
+                  {renderColorSections(baseVariations, paperType)}
                 </div>
               </div>
             );
