@@ -169,8 +169,20 @@ export default function NewQuote() {
           </div>
 
           {/* Navigation Buttons (inline no conteúdo) */}
-          {wizard.currentStep > 1 && (
-            <div className="mt-8">
+          <div className="mt-8 space-y-4">
+            {/* Botão Próximo apenas na etapa 1 (Identificação do Cliente) */}
+            {wizard.currentStep === 1 && (
+              <Button
+                size="lg"
+                onClick={wizard.nextStep}
+                disabled={!wizard.isStep1Valid()}
+                className="w-full h-14 text-lg font-semibold touch-manipulation"
+              >
+                Próximo: Selecionar Produtos
+              </Button>
+            )}
+
+            {wizard.currentStep > 1 && (
               <Button
                 variant="outline"
                 size="lg"
@@ -179,8 +191,8 @@ export default function NewQuote() {
               >
                 Voltar
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
