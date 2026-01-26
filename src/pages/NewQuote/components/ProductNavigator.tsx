@@ -823,8 +823,6 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
   // Usar filteredVariations no lugar de variations nas lógicas abaixo
   const isPaperBagGroup = groupedProduct.sku.toLowerCase().startsWith('k-');
 
-  const [pendingVariation, setPendingVariation] = useState<VariationWithProduct | null>(null);
-  const [pendingModel, setPendingModel] = useState<string | undefined>(undefined);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
   const [finishing, setFinishing] = useState<FinishingOptions>({
     hotStamp: false,
@@ -1509,16 +1507,9 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
         onOpenChange={setShowFinishingModal}
         onConfirm={(newFinishing) => {
           setFinishing(newFinishing);
-          // Se tinha uma variação pendente, adiciona ao pedido com o acabamento
-          if (pendingVariation) {
-            const displayName = buildDisplayName(pendingVariation, pendingModel);
-            onSelect(pendingVariation, pendingVariation.quantity || 1000, newFinishing, displayName);
-            setPendingVariation(null);
-            setPendingModel(undefined);
-          }
         }}
         initialFinishing={finishing}
-        quantity={pendingVariation?.quantity || 1000}
+        quantity={filteredVariations[0]?.quantity || 1000}
       />
     </div>
   );
