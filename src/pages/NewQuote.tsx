@@ -6,7 +6,6 @@ import { CustomerFormStep } from './NewQuote/components/CustomerFormStep';
 import { QuoteSummaryStep } from './NewQuote/components/QuoteSummaryStep';
 import { Card, CardContent } from '@/componentes/ui/card';
 import { Button } from '@/componentes/ui/button';
-import { ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function NewQuote() {
@@ -170,34 +169,8 @@ export default function NewQuote() {
           </div>
 
           {/* Navigation Buttons (inline no conteúdo) */}
-          <div className="mt-8 space-y-4">
-            {wizard.currentStep < 4 && (
-              <Button
-                size="lg"
-                onClick={() => {
-                  console.log('🔘 Botão clicado! Step:', wizard.currentStep);
-                  console.log('🔍 Validações:', {
-                    step1: wizard.isStep1Valid(),
-                    step2: wizard.isStep2Valid(),
-                    step3: wizard.isStep3Valid(),
-                  });
-                  wizard.nextStep();
-                }}
-                disabled={
-                  wizard.currentStep === 1 ? !wizard.isStep1Valid() :
-                  wizard.currentStep === 2 ? !wizard.isStep2Valid() :
-                  !wizard.isStep3Valid()
-                }
-                className="w-full h-14 text-lg font-semibold touch-manipulation"
-              >
-                {wizard.currentStep === 1 && 'Próximo: Selecionar Produtos'}
-                {wizard.currentStep === 2 && 'Próximo: Dados do Cliente'}
-                {wizard.currentStep === 3 && 'Próximo: Resumo'}
-                <ChevronRight className="ml-2 h-5 w-5" />
-              </Button>
-            )}
-            
-            {wizard.currentStep > 1 && (
+          {wizard.currentStep > 1 && (
+            <div className="mt-8">
               <Button
                 variant="outline"
                 size="lg"
@@ -206,8 +179,8 @@ export default function NewQuote() {
               >
                 Voltar
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
