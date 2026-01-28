@@ -228,6 +228,24 @@ router.post('/:token/confirm', async (req: Request, res: Response) => {
     console.log(`✅ Quote ${quote.quote_number} signed by ${quote.customer_name}`);
     console.log(`📝 Signature data:`, signatureData);
 
+    // Dispara webhook com os dados do orçamento assinado (async, don't wait)
+    // Configure WEBHOOK_QUOTE_SIGNED nas variáveis de ambiente
+    console.log(`🔔 Preparando para enviar webhook...`);
+    console.log(`📦 Updated quote data:`, {
+      quote_number: updatedQuote.quote_number,
+      customer_name: updatedQuote.customer_name,
+      products: products,
+      total_price: updatedQuote.total_price,
+    });
+    
+    triggerQuoteSignedWebhook({
+      ...updatedQuote,
+      products: products,
+    } as QuoteWithProducts).catch((webhookError) => {
+      console.error('❌ Error triggering webhook:', webhookError);
+      // Don't fail the request if webhook fails
+    });
+
     // Send email notification to production team (async, don't wait)
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
     sendQuoteApprovedEmail(
@@ -240,16 +258,6 @@ router.post('/:token/confirm', async (req: Request, res: Response) => {
     ).catch((emailError) => {
       console.error('❌ Error sending approval email:', emailError);
       // Don't fail request if email fails
-    });
-
-    // Dispara webhook com os dados do orçamento assinado (async, don't wait)
-    // Configure WEBHOOK_QUOTE_SIGNED nas variáveis de ambiente
-    triggerQuoteSignedWebhook({
-      ...updatedQuote,
-      products: products,
-    } as QuoteWithProducts).catch((webhookError) => {
-      console.error('❌ Error triggering webhook:', webhookError);
-      // Don't fail the request if webhook fails
     });
 
     res.json({

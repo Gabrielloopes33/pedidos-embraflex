@@ -41,6 +41,13 @@ export async function triggerQuoteSignedWebhook(
   quote: QuoteWithProducts,
   pdfUrl?: string
 ): Promise<void> {
+  console.log(`🚀 triggerQuoteSignedWebhook CHAMADA!`);
+  console.log(`📦 Quote recebida:`, {
+    quote_number: quote.quote_number,
+    customer_name: quote.customer_name,
+    products: quote.products,
+  });
+  
   const webhookUrl = process.env.WEBHOOK_QUOTE_SIGNED || 'https://flow.agenciatouch.com.br/webhook/4d62d41b-5bd9-4014-9a4a-5f713be6bb31-PEDIDOS';
 
   console.log(`🔔 triggerQuoteSignedWebhook chamado. URL: ${webhookUrl}`);
