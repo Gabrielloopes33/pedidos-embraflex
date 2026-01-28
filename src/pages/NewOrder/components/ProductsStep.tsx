@@ -239,11 +239,16 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      {/* Botão de Acabamentos apenas para sacolas de papel */}
-                      {(product.codigo?.toLowerCase().startsWith('k-') || 
-                        (product.productName?.toLowerCase().includes('sacola') && 
+                      {/* Botão de Acabamentos para sacolas de papel (inclui produtos Kraft e linhas Premium/Comercial/Econômica) */}
+                      {(product.codigo?.toLowerCase().startsWith('k-') ||
+                        (product.productName?.toLowerCase().includes('sacola') &&
                          product.productName?.toLowerCase().includes('papel')) ||
-                        product.productName?.toLowerCase().includes('sacola de papel')) && (
+                        product.productName?.toLowerCase().includes('sacola de papel') ||
+                        product.productName?.toLowerCase().includes('kraft') ||
+                        product.productName?.toLowerCase().includes('linha premium') ||
+                        product.productName?.toLowerCase().includes('linha comercial') ||
+                        product.productName?.toLowerCase().includes('linha econômica') ||
+                        product.productName?.toLowerCase().includes('linha economica')) && (
                         <Button
                           type="button"
                           variant="ghost"

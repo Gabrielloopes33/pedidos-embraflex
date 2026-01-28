@@ -865,11 +865,16 @@ const Products = () => {
                     })()}
                   </div>
                   
-                  {/* Botão de Acabamentos para Sacolas de Papel */}
-                  {(selectedProduct?.sku?.toLowerCase().startsWith('k-') || 
-                    (selectedProduct?.name?.toLowerCase().includes('sacola') && 
+                  {/* Botão de Acabamentos para Sacolas de Papel (inclui Kraft e linhas Premium/Comercial/Econômica) */}
+                  {(selectedProduct?.sku?.toLowerCase().startsWith('k-') ||
+                    (selectedProduct?.name?.toLowerCase().includes('sacola') &&
                      selectedProduct?.name?.toLowerCase().includes('papel')) ||
-                    selectedProduct?.name?.toLowerCase().includes('sacola de papel')) && (
+                    selectedProduct?.name?.toLowerCase().includes('sacola de papel') ||
+                    selectedProduct?.name?.toLowerCase().includes('kraft') ||
+                    selectedProduct?.name?.toLowerCase().includes('linha premium') ||
+                    selectedProduct?.name?.toLowerCase().includes('linha comercial') ||
+                    selectedProduct?.name?.toLowerCase().includes('linha econômica') ||
+                    selectedProduct?.name?.toLowerCase().includes('linha economica')) && (
                     <div className="mt-4 p-3 bg-secondary/5 border border-secondary/20 rounded-lg">
                       <p className="text-sm text-muted-foreground mb-2">
                         Este produto permite configuração de acabamentos especiais:
