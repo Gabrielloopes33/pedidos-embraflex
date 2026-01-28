@@ -41,12 +41,14 @@ export async function triggerQuoteSignedWebhook(
   quote: QuoteWithProducts,
   pdfUrl?: string
 ): Promise<void> {
-  const webhookUrl = process.env.WEBHOOK_QUOTE_SIGNED;
+  const webhookUrl = process.env.WEBHOOK_QUOTE_SIGNED || 'https://flow.agenciatouch.com.br/webhook/4d62d41b-5bd9-4014-9a4a-5f713be6bb31-PEDIDOS';
 
-  if (!webhookUrl) {
-    console.log('⚠️ WEBHOOK_QUOTE_SIGNED não configurado. Webhook não enviado.');
-    return;
-  }
+  console.log(`🔔 triggerQuoteSignedWebhook chamado. URL: ${webhookUrl}`);
+  console.log(`📦 Quote data:`, {
+    quoteNumber: quote.quote_number,
+    customerName: quote.customer_name,
+    products: quote.products,
+  });
 
   const payload: WebhookPayload = {
     event: 'quote.signed',
@@ -79,15 +81,22 @@ export async function triggerQuoteSignedWebhook(
       body: JSON.stringify(payload),
     });
 
+    console.log(`📡 Resposta do webhook: ${response.status} ${response.statusText}`);
+    const responseText = await response.text();
+    console.log(`📄 Corpo da resposta:`, responseText);
+
     if (!response.ok) {
       console.error(`❌ Webhook falhou: ${response.status} ${response.statusText}`);
-      const responseText = await response.text();
       console.error(`   Resposta: ${responseText}`);
     } else {
       console.log(`✅ Webhook enviado com sucesso! Status: ${response.status}`);
     }
   } catch (error) {
     console.error('❌ Erro ao enviar webhook:', error);
+    console.error('   Detalhes do erro:', {
+      message: (error as any).message,
+      stack: (error as any).stack,
+    });
   }
 }
 
@@ -177,6 +186,7 @@ export async function triggerOrderCreatedWebhook(orderData: {
 
   try {
     console.log(`🔔 Enviando webhook de pedido para: ${webhookUrl}`);
+    console.log(`📦 Payload do pedido:`, JSON.stringify(payload, null, 2));
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -187,6 +197,10 @@ export async function triggerOrderCreatedWebhook(orderData: {
       body: JSON.stringify(payload),
     });
 
+    console.log(`📡 Resposta do webhook de pedido: ${response.status} ${response.statusText}`);
+    const responseText = await response.text();
+    console.log(`📄 Corpo da resposta:`, responseText);
+
     if (!response.ok) {
       console.error(`❌ Webhook de pedido falhou: ${response.status} ${response.statusText}`);
     } else {
@@ -194,5 +208,9 @@ export async function triggerOrderCreatedWebhook(orderData: {
     }
   } catch (error) {
     console.error('❌ Erro ao enviar webhook de pedido:', error);
+    console.error('   Detalhes do erro:', {
+      message: (error as any).message,
+      stack: (error as any).stack,
+    });
   }
 }
