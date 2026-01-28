@@ -1,10 +1,11 @@
 import { Button } from "@/componentes/ui/button";
 import { Card, CardContent } from "@/componentes/ui/card";
 import { Badge } from "@/componentes/ui/badge";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Settings } from "lucide-react";
 import type { ProductItem } from "../types";
 import { ProductFormModal } from "./ProductFormModal";
-import { calculateOrderTotal, calculateFinishingCosts } from "../utils/pricing";
+import { FinishingModal } from "./FinishingModal";
+import { calculateOrderTotal, calculateFinishingCosts, calculateItemTotal } from "../utils/pricing";
 import { useState } from "react";
 
 interface ProductsStepProps {
@@ -18,6 +19,8 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [selectedLine, setSelectedLine] = useState<ProductLine>(null);
+  const [finishingModalOpen, setFinishingModalOpen] = useState(false);
+  const [finishingProductIndex, setFinishingProductIndex] = useState<number | null>(null);
 
   const emptyProduct: ProductItem = {
     productId: 0,
@@ -54,6 +57,23 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
   const handleEditProduct = (index: number) => {
     setEditingIndex(index);
     setIsModalOpen(true);
+  };
+
+  const handleEditFinishing = (index: number) => {
+    setFinishingProductIndex(index);
+    setFinishingModalOpen(true);
+  };
+
+  const handleSaveFinishing = (finishing: ProductItem['finishing']) => {
+    if (finishingProductIndex !== null) {
+      const newProducts = [...products];
+      newProducts[finishingProductIndex] = {
+        ...newProducts[finishingProductIndex],
+        finishing,
+        total: calculateItemTotal({ ...newProducts[finishingProductIndex], finishing })
+      };
+      onUpdateProducts(newProducts);
+    }
   };
 
   const handleSaveProduct = (product: ProductItem) => {
@@ -219,6 +239,19 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
+                      {/* Botão de Acabamentos apenas para sacolas de papel (SKU começa com k-) */}
+                      {product.codigo?.toLowerCase().startsWith('k-') && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditFinishing(index)}
+                          className="hover:bg-secondary/10"
+                          title="Configurar Acabamentos"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -254,6 +287,14 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
           </div>
         </>
       )}
+
+      {/* Modal de Acabamentos */}
+      <FinishingModal
+        open={finishingModalOpen}
+        onOpenChange={setFinishingModalOpen}
+        product={finishingProductIndex !== null ? products[finishingProductIndex] : emptyProduct}
+        onSave={handleSaveFinishing}
+      />
 
       {/* Modal de Produto */}
       <ProductFormModal
