@@ -239,8 +239,11 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      {/* Botão de Acabamentos apenas para sacolas de papel (SKU começa com k-) */}
-                      {product.codigo?.toLowerCase().startsWith('k-') && (
+                      {/* Botão de Acabamentos apenas para sacolas de papel */}
+                      {(product.codigo?.toLowerCase().startsWith('k-') || 
+                        (product.productName?.toLowerCase().includes('sacola') && 
+                         product.productName?.toLowerCase().includes('papel')) ||
+                        product.productName?.toLowerCase().includes('sacola de papel')) && (
                         <Button
                           type="button"
                           variant="ghost"
