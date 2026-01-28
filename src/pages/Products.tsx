@@ -64,6 +64,8 @@ const convertCachedProduct = (cached: CachedProduct): WooCommerceProduct => ({
   attributes: cached.attributes || [],
   dimensions: { length: '', width: '', height: '' },
   meta_data: cached.meta_data || [],
+  variations: cached.variations || [],
+  precos_por_quantidade: cached.precos_por_quantidade,
 });
 
 // Cores para cada categoria
@@ -849,6 +851,48 @@ const Products = () => {
                       className="text-sm text-muted-foreground prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{ __html: selectedProduct.description }}
                     />
+                  </div>
+                )}
+
+                {/* Variações do Produto */}
+                {selectedProduct.variations && selectedProduct.variations.length > 0 && (
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-lg mb-3">Variações Disponíveis</h4>
+                    <div className="space-y-3">
+                      {selectedProduct.variations.slice(0, 10).map((variation: any, index: number) => (
+                        <div key={index} className="border rounded-lg p-3 bg-muted/30">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">
+                                Variação #{variation.id}
+                              </div>
+                              {variation.attributes && variation.attributes.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {variation.attributes.map((attr: any, attrIndex: number) => (
+                                    <div key={attrIndex} className="text-xs text-muted-foreground">
+                                      <span className="font-medium">{attr.name}:</span> {attr.option}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-primary">
+                                {formatPrice(parseFloat(variation.price || variation.regular_price || '0'))}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {variation.stock_status === 'instock' ? 'Em estoque' : 'Indisponível'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {selectedProduct.variations.length > 10 && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          E mais {selectedProduct.variations.length - 10} variações...
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
                 

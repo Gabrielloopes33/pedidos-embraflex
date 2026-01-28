@@ -43,6 +43,8 @@ export interface WooCommerceProduct {
     height: string;
   };
   meta_data?: { key: string; value: any }[];
+  variations?: any[];
+  precos_por_quantidade?: any;
 }
 
 // WooCommerce Products Query Parameters
