@@ -65,11 +65,16 @@ router.get('/:token', async (req: Request, res: Response) => {
       });
     }
 
+    // Parse products from JSON string if needed
+    const products = typeof quote.products === 'string' 
+      ? JSON.parse(quote.products) 
+      : quote.products;
+
     // Return public quote data (no sensitive information)
     const publicData: PublicQuoteData = {
       quoteNumber: quote.quote_number,
       customerName: quote.customer_name,
-      products: quote.products,
+      products: products,
       totalPrice: parseFloat(quote.total_price),
       expiresAt: quote.expires_at,
       status: quote.status,
@@ -139,6 +144,11 @@ router.post('/:token/confirm', async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Cotação não encontrada.' });
     }
 
+    // Parse products from JSON string if needed
+    const products = typeof quote.products === 'string' 
+      ? JSON.parse(quote.products) 
+      : quote.products;
+
     // Validate not expired
     const now = new Date();
     const expiresAt = new Date(quote.expires_at);
@@ -168,7 +178,7 @@ router.post('/:token/confirm', async (req: Request, res: Response) => {
     };
 
     // Validate products against cache before approving
-    const productIds = quote.products
+    const productIds = products
       .map((p: any) => p.productId || p.id)
       .filter((id: any) => typeof id === 'number'); // Only validate numeric IDs
 
@@ -223,18 +233,21 @@ router.post('/:token/confirm', async (req: Request, res: Response) => {
     sendQuoteApprovedEmail(
       {
         ...updatedQuote,
-        products: updatedQuote.products,
+        products: products,
         totalPrice: parseFloat(updatedQuote.total_price),
       },
       appUrl
     ).catch((emailError) => {
       console.error('❌ Error sending approval email:', emailError);
-      // Don't fail the request if email fails
+      // Don't fail request if email fails
     });
 
     // Dispara webhook com os dados do orçamento assinado (async, don't wait)
     // Configure WEBHOOK_QUOTE_SIGNED nas variáveis de ambiente
-    triggerQuoteSignedWebhook(updatedQuote as QuoteWithProducts).catch((webhookError) => {
+    triggerQuoteSignedWebhook({
+      ...updatedQuote,
+      products: products,
+    } as QuoteWithProducts).catch((webhookError) => {
       console.error('❌ Error triggering webhook:', webhookError);
       // Don't fail the request if webhook fails
     });
@@ -266,6 +279,11 @@ router.post('/:token/reject', async (req: Request, res: Response) => {
     if (quoteError || !quote) {
       return res.status(404).json({ message: 'Cotação não encontrada.' });
     }
+
+    // Parse products from JSON string if needed
+    const products = typeof quote.products === 'string' 
+      ? JSON.parse(quote.products) 
+      : quote.products;
 
     // Validate not expired
     const now = new Date();
@@ -321,7 +339,7 @@ router.post('/:token/reject', async (req: Request, res: Response) => {
         sendQuoteRejectedEmail(
           {
             ...updatedQuote,
-            products: updatedQuote.products,
+            products: products,
             totalPrice: parseFloat(updatedQuote.total_price),
           },
           userData.username,
@@ -334,7 +352,10 @@ router.post('/:token/reject', async (req: Request, res: Response) => {
 
     // Dispara webhook de rejeição (async, don't wait)
     // Configure WEBHOOK_QUOTE_REJECTED nas variáveis de ambiente (ou usa WEBHOOK_QUOTE_SIGNED)
-    triggerQuoteRejectedWebhook(updatedQuote as QuoteWithProducts).catch((webhookError) => {
+    triggerQuoteRejectedWebhook({
+      ...updatedQuote,
+      products: products,
+    } as QuoteWithProducts).catch((webhookError) => {
       console.error('❌ Error triggering rejection webhook:', webhookError);
     });
 
