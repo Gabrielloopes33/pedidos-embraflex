@@ -2,10 +2,10 @@
 import { QuoteWithProducts } from '../types/quote';
 
 interface WebhookPayload {
-  event: 'quote.signed' | 'quote.rejected';
+  event: 'quote.signed' | 'quote.rejected' | 'order.created';
   timestamp: string;
   data: {
-    quoteNumber: string;
+    quoteNumber?: string;
     customerName: string;
     customerEmail?: string;
     customerPhone?: string;
@@ -25,6 +25,10 @@ interface WebhookPayload {
     };
     rejectedAt?: string;
     rejectionReason?: string;
+    orderId?: number;
+    orderNumber?: string;
+    paymentUrl?: string;
+    status?: string;
   };
   pdfUrl?: string;
 }
@@ -137,5 +141,58 @@ export async function triggerQuoteRejectedWebhook(
     }
   } catch (error) {
     console.error('❌ Erro ao enviar webhook de rejeição:', error);
+  }
+}
+
+/**
+ * Envia dados para o webhook configurado quando um pedido é criado
+ * Configure a URL do webhook na variável de ambiente WEBHOOK_ORDER_CREATED
+ */
+export async function triggerOrderCreatedWebhook(orderData: {
+  woocommerceOrderId: number;
+  orderNumber: string;
+  customerName: string;
+  customerEmail?: string;
+  products: any[];
+  total: string;
+  status: string;
+  paymentUrl?: string;
+}): Promise<void> {
+  const webhookUrl = process.env.WEBHOOK_ORDER_CREATED || 'https://flow.agenciatouch.com.br/webhook/4d62d41b-5bd9-4014-9a4a-5f713be6bb31-PEDIDOS';
+
+  const payload: WebhookPayload = {
+    event: 'order.created',
+    timestamp: new Date().toISOString(),
+    data: {
+      customerName: orderData.customerName,
+      customerEmail: orderData.customerEmail,
+      products: orderData.products,
+      totalPrice: parseFloat(orderData.total),
+      orderId: orderData.woocommerceOrderId,
+      orderNumber: orderData.orderNumber,
+      paymentUrl: orderData.paymentUrl,
+      status: orderData.status,
+    },
+  };
+
+  try {
+    console.log(`🔔 Enviando webhook de pedido para: ${webhookUrl}`);
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Embraflex-Webhook/1.0',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Webhook de pedido falhou: ${response.status} ${response.statusText}`);
+    } else {
+      console.log(`✅ Webhook de pedido enviado! Status: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('❌ Erro ao enviar webhook de pedido:', error);
   }
 }

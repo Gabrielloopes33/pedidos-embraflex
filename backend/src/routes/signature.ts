@@ -168,7 +168,10 @@ router.post('/:token/confirm', async (req: Request, res: Response) => {
     };
 
     // Validate products against cache before approving
-    const productIds = quote.products.map((p: any) => p.productId || p.id);
+    const productIds = quote.products
+      .map((p: any) => p.productId || p.id)
+      .filter((id: any) => typeof id === 'number'); // Only validate numeric IDs
+
     let productValidation: { valid: number[]; invalid: number[]; missing: number[] } = {
       valid: [],
       invalid: [],

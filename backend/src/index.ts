@@ -12,6 +12,7 @@ import quotesRouter from './routes/quotes';
 import signatureRouter from './routes/signature';
 import syncRouter from './routes/sync';
 import usersRouter from './routes/users';
+import { triggerOrderCreatedWebhook } from './services/webhook';
 
 dotenv.config();
 
@@ -317,6 +318,21 @@ initializeDb().then(() => {
 
       const response = await wooCommerceApi.post('orders', wooOrder);
       const createdOrder = response.data;
+
+      // Enviar webhook com os dados do pedido (async, não bloqueia)
+      triggerOrderCreatedWebhook({
+        woocommerceOrderId: createdOrder.id,
+        orderNumber: createdOrder.number,
+        customerName: customerName,
+        customerEmail: customerEmail,
+        products: products,
+        total: createdOrder.total,
+        status: createdOrder.status,
+        paymentUrl: createdOrder.payment_url || createdOrder._links?.payment?.href,
+      }).catch((webhookError) => {
+        console.error('❌ Error triggering order webhook:', webhookError);
+        // Não falha a requisição se o webhook falhar
+      });
 
       res.status(201).json({
         success: true,
