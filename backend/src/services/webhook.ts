@@ -78,6 +78,8 @@ export async function triggerQuoteSignedWebhook(
   try {
     console.log(`🔔 Enviando webhook para: ${webhookUrl}`);
     console.log(`📦 Payload:`, JSON.stringify(payload, null, 2));
+    console.log(`📦 Payload stringified:`, JSON.stringify(payload));
+    console.log(`📦 Payload length:`, JSON.stringify(payload).length);
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
