@@ -4,6 +4,7 @@ import { supabase } from '../database';
 import { PublicQuoteData, SignatureConfirmRequest, RejectQuoteRequest, QuoteWithProducts } from '../types/quote';
 import { sendQuoteApprovedEmail, sendQuoteRejectedEmail } from '../services/email';
 import { triggerQuoteSignedWebhook, triggerQuoteRejectedWebhook } from '../services/webhook';
+import { cacheService } from '../services/cache';
 
 const router = Router();
 
@@ -166,13 +167,44 @@ router.post('/:token/confirm', async (req: Request, res: Response) => {
       geolocation: body.geolocation || null,
     };
 
+    // Validate products against cache before approving
+    const productIds = quote.products.map((p: any) => p.productId || p.id);
+    let productValidation: { valid: number[]; invalid: number[]; missing: number[] } = {
+      valid: [],
+      invalid: [],
+      missing: []
+    };
+
+    if (productIds.length > 0) {
+      try {
+        productValidation = await cacheService.validateProducts(productIds);
+
+        // Log validation results
+        console.log(`🔍 Product validation for quote ${quote.quote_number}:`, productValidation);
+
+        // If there are invalid or missing products, log warning but don't block
+        if (productValidation.invalid.length > 0 || productValidation.missing.length > 0) {
+          console.warn(`⚠️ Quote ${quote.quote_number} has products with cache issues:`, {
+            invalid: productValidation.invalid,
+            missing: productValidation.missing,
+          });
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ Failed to validate products against cache:', cacheError);
+        // Don't block signature if cache validation fails
+      }
+    }
+
     // Update quote status to approved
     const { data: updatedQuote, error: updateError } = await supabase
       .from('quotes')
       .update({
         status: 'approved',
         signed_at: new Date().toISOString(),
-        signature_data: signatureData,
+        signature_data: {
+          ...signatureData,
+          productValidation,
+        },
       })
       .eq('signature_link', token)
       .select()

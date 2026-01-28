@@ -18,6 +18,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import ProductionPage from "./pages/Production";
+import UserManagement from "./pages/UserManagement";
 import { warmupBackend } from "./lib/warmup";
 
 // Aquecer o backend assim que o app carrega
@@ -70,6 +71,13 @@ const App = () => {
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
+              </Route>
+            </Route>
+
+            {/* Rota de gestão de usuários (admin only) */}
+            <Route element={<ProtectedRoute requireAdmin={true} />}>
+              <Route element={<AppLayout />}>
+                <Route path="/users" element={<UserManagement />} />
               </Route>
             </Route>
 

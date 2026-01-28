@@ -3,10 +3,11 @@ import { Card, CardContent } from "@/componentes/ui/card";
 import { Avatar, AvatarFallback } from "@/componentes/ui/avatar";
 import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
-import { Building2, Plus, Search, Mail, Phone, Loader2, AlertCircle, MapPin, FileText } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { getCustomers } from "@/lib/customers";
-import type { WooCommerceCustomer } from "@/lib/types";
+import { Building2, Plus, Search, Mail, Phone, Loader2, AlertCircle, MapPin, FileText, Database } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCustomers as getCustomersFromWC } from "@/lib/customers";
+import { getCachedCustomers, getCacheStats } from "@/lib/supabase";
+import type { WooCommerceCustomer, CachedCustomer } from "@/lib/types";
 import { CustomerFormDialog } from "@/componentes/CustomerFormDialog";
 import {
   Dialog,
@@ -16,6 +17,20 @@ import {
   DialogTitle,
 } from "@/componentes/ui/dialog";
 import { Label } from "@/componentes/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/componentes/ui/alert";
+
+// Converter CachedCustomer para WooCommerceCustomer
+const convertCachedCustomer = (cached: CachedCustomer): WooCommerceCustomer => ({
+  id: cached.id,
+  email: cached.email,
+  first_name: cached.first_name || '',
+  last_name: cached.last_name || '',
+  username: cached.username || '',
+  billing: cached.billing || {},
+  shipping: cached.shipping || {},
+  role: cached.role || '',
+  meta_data: [],
+});
 
 const Customers = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,21 +40,53 @@ const Customers = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const perPage = 20;
 
-  const { data: customers, isLoading, error, refetch } = useQuery({
-    queryKey: ['customers', page, searchTerm],
-    queryFn: () => getCustomers({
+  // Buscar estatísticas do cache
+  const { data: cacheStats } = useQuery({
+    queryKey: ['cache-stats-customers'],
+    queryFn: getCacheStats,
+    retry: 1,
+    staleTime: 60000, // 1 minuto de cache
+  });
+
+  // Buscar clientes do cache primeiro
+  const { data: cachedCustomers, isLoading: cacheLoading, error: cacheError } = useQuery({
+    queryKey: ['cached-customers', page, searchTerm],
+    queryFn: () => getCachedCustomers({
+      search: searchTerm || undefined,
+      limit: perPage,
+      offset: (page - 1) * perPage,
+    }),
+    retry: 1,
+    staleTime: 60000, // 1 minuto de cache
+  });
+
+  // Fallback para WooCommerce se cache estiver vazio ou com erro
+  const { data: wcCustomers, isLoading: wcLoading, error: wcError } = useQuery({
+    queryKey: ['wc-customers', page, searchTerm],
+    queryFn: () => getCustomersFromWC({
       page,
       per_page: perPage,
       search: searchTerm || undefined,
       orderby: 'registered_date',
       order: 'desc',
     }),
-    retry: 0, // Não retry - falhar rápido
+    enabled: !cachedCustomers || cachedCustomers.length === 0 || !!cacheError,
+    retry: 0,
     staleTime: 60000, // 1 minuto de cache
   });
 
+  // Determinar qual fonte usar
+  const customers = (cachedCustomers && cachedCustomers.length > 0 && !cacheError)
+    ? cachedCustomers.map(convertCachedCustomer)
+    : wcCustomers || [];
+
+  const isLoading = cacheLoading || wcLoading;
+  const error = cacheError || wcError;
+
   const handleCustomerCreated = () => {
-    refetch();
+    // Refetch cache e WC
+    queryClient.invalidateQueries({ queryKey: ['cached-customers'] });
+    queryClient.invalidateQueries({ queryKey: ['wc-customers'] });
   };
 
   const handleCustomerClick = (customer: WooCommerceCustomer) => {
@@ -118,6 +165,35 @@ const Customers = () => {
         </Button>
       </div>
 
+      {/* Cache Status Alert */}
+      {cacheStats && (
+        <Alert>
+          <Database className="h-4 w-4" />
+          <AlertTitle>Fonte de dados</AlertTitle>
+          <AlertDescription>
+            {cachedCustomers && cachedCustomers.length > 0 && !cacheError ? (
+              <>
+                Usando cache do Supabase ({cachedCustomers.length} clientes).
+                {cacheStats.customers.lastSync && (
+                  <span className="ml-2">
+                    Última sincronização: {new Date(cacheStats.customers.lastSync).toLocaleString('pt-BR')}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                Usando API do WooCommerce direta.
+                {cacheStats.isEmpty && (
+                  <span className="ml-2 text-amber-600">
+                    Cache vazio - os dados serão sincronizados após o login.
+                  </span>
+                )}
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -131,7 +207,10 @@ const Customers = () => {
             className="pl-10"
           />
         </div>
-        <Button onClick={() => refetch()} variant="outline">Atualizar</Button>
+        <Button onClick={() => {
+          queryClient.invalidateQueries({ queryKey: ['cached-customers'] });
+          queryClient.invalidateQueries({ queryKey: ['wc-customers'] });
+        }} variant="outline">Atualizar</Button>
       </div>
 
       {isLoading ? (

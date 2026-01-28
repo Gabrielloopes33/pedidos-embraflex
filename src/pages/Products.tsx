@@ -3,10 +3,11 @@ import { Badge } from "@/componentes/ui/badge";
 import { Button } from "@/componentes/ui/button";
 import { Input } from "@/componentes/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/componentes/ui/alert";
-import { Package, Search, Loader2, AlertCircle, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
+import { Package, Search, Loader2, AlertCircle, ChevronLeft, ChevronRight, ShoppingCart, Database, RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getProducts } from "@/lib/woocommerce";
-import type { WooCommerceProduct } from "@/lib/types";
+import { getProducts as getProductsFromWC } from "@/lib/woocommerce";
+import { getCachedProducts, getCacheStats } from "@/lib/supabase";
+import type { WooCommerceProduct, CachedProduct } from "@/lib/types";
 import { calculatePriceByQuantity, formatPrice, getPriceTiers } from "@/lib/pricing";
 import { useState, useRef } from "react";
 import {
@@ -20,6 +21,7 @@ import { Label } from "@/componentes/ui/label";
 import { ProductFormModal } from "@/pages/NewOrder/components/ProductFormModal";
 import type { ProductItem } from "@/pages/NewOrder/types";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 interface ProductLine {
   name: string;
@@ -39,6 +41,30 @@ const normalizeLineName = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+
+// Converter CachedProduct para WooCommerceProduct
+const convertCachedProduct = (cached: CachedProduct): WooCommerceProduct => ({
+  id: cached.id,
+  name: cached.name,
+  slug: cached.name.toLowerCase().replace(/\s+/g, '-'),
+  permalink: '',
+  type: 'simple',
+  status: 'publish',
+  description: cached.description || '',
+  short_description: cached.short_description || '',
+  sku: cached.sku || '',
+  price: cached.price?.toString() || '0',
+  regular_price: cached.regular_price?.toString() || '0',
+  sale_price: '',
+  on_sale: false,
+  stock_status: cached.stock_status || 'instock',
+  stock_quantity: cached.stock_quantity,
+  categories: cached.categories || [],
+  images: cached.images || [],
+  attributes: cached.attributes || [],
+  dimensions: { length: '', width: '', height: '' },
+  meta_data: cached.meta_data || [],
+});
 
 // Cores para cada categoria
 const getCategoryColor = (categoryName: string): { bg: string; text: string; badge: string; border: string } => {
@@ -347,24 +373,63 @@ const Products = () => {
   const [isAddToOrderOpen, setIsAddToOrderOpen] = useState(false);
   const [productToAdd, setProductToAdd] = useState<ProductItem | null>(null);
 
-  // Buscar TODOS os produtos de uma vez
-  const { data: allProducts, isLoading: productsLoading, error: productsError } = useQuery({
-    queryKey: ['all-products'],
-    queryFn: () => getProducts({
+  // Buscar estatísticas do cache
+  const { data: cacheStats } = useQuery({
+    queryKey: ['cache-stats'],
+    queryFn: getCacheStats,
+    retry: 1,
+    staleTime: 60000, // 1 minuto de cache
+  });
+
+  // Buscar produtos do cache primeiro
+  const { data: cachedProducts, isLoading: cacheLoading, error: cacheError } = useQuery({
+    queryKey: ['cached-products'],
+    queryFn: () => getCachedProducts({ limit: 1000 }),
+    retry: 1,
+    staleTime: 120000, // 2 minutos de cache
+  });
+
+  // Fallback para WooCommerce se cache estiver vazio ou com erro
+  const { data: wcProducts, isLoading: wcLoading, error: wcError } = useQuery({
+    queryKey: ['wc-products'],
+    queryFn: () => getProductsFromWC({
       per_page: 100,
       orderby: 'menu_order',
       order: 'asc'
     }),
-    retry: 0, // Não retry - falhar rápido
+    enabled: !cachedProducts || cachedProducts.length === 0 || !!cacheError,
+    retry: 0,
     staleTime: 120000, // 2 minutos de cache
   });
 
+  // Determinar qual fonte usar
+  const allProducts = (cachedProducts && cachedProducts.length > 0 && !cacheError)
+    ? cachedProducts.map(convertCachedProduct)
+    : wcProducts || [];
+
+  const productsLoading = cacheLoading || wcLoading;
+  const productsError = cacheError || wcError;
+
+  // Busca de produtos (usa cache primeiro, fallback para WC)
   const { data: searchResults, isLoading: searchLoading } = useQuery({
     queryKey: ['products-search', searchTerm],
-    queryFn: () => getProducts({
-      search: searchTerm,
-      per_page: 20,
-    }),
+    queryFn: async () => {
+      // Tentar buscar do cache primeiro
+      if (cachedProducts && cachedProducts.length > 0) {
+        const cached = await getCachedProducts({
+          search: searchTerm,
+          limit: 20,
+        });
+        if (cached.length > 0) {
+          return cached.map(convertCachedProduct);
+        }
+      }
+      // Fallback para WooCommerce
+      return getProductsFromWC({
+        search: searchTerm,
+        per_page: 20,
+      });
+    },
     enabled: searchTerm.length > 0,
     retry: 0,
     staleTime: 60000, // 1 minuto de cache
@@ -505,6 +570,35 @@ const Products = () => {
         <h1 className="text-3xl font-bold text-foreground">Produtos</h1>
         <p className="text-muted-foreground mt-1">Explore nosso catálogo organizado por categorias</p>
       </div>
+
+      {/* Cache Status Alert */}
+      {cacheStats && (
+        <Alert>
+          <Database className="h-4 w-4" />
+          <AlertTitle>Fonte de dados</AlertTitle>
+          <AlertDescription>
+            {cachedProducts && cachedProducts.length > 0 && !cacheError ? (
+              <>
+                Usando cache do Supabase ({cachedProducts.length} produtos).
+                {cacheStats.products.lastSync && (
+                  <span className="ml-2">
+                    Última sincronização: {new Date(cacheStats.products.lastSync).toLocaleString('pt-BR')}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                Usando API do WooCommerce direta.
+                {cacheStats.isEmpty && (
+                  <span className="ml-2 text-amber-600">
+                    Cache vazio - os dados serão sincronizados após o login.
+                  </span>
+                )}
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Barra de Busca */}
       <div className="relative max-w-2xl">

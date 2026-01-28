@@ -6,10 +6,35 @@ import { useState } from 'react';
 import { Button } from '@/componentes/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import { ChevronLeft, Loader2, X } from 'lucide-react';
-import { getProducts, getProductVariations } from '@/lib/woocommerce';
-import type { WooCommerceProduct } from '@/lib/types';
+import { getProducts as getProductsFromWC, getProductVariations } from '@/lib/woocommerce';
+import { getCachedProducts } from '@/lib/supabase';
+import type { WooCommerceProduct, CachedProduct } from '@/lib/types';
 import { useQuery } from '@tanstack/react-query';
 import { FinishingModal, FinishingOptions } from './FinishingModal';
+
+// Converter CachedProduct para WooCommerceProduct
+const convertCachedProduct = (cached: CachedProduct): WooCommerceProduct => ({
+  id: cached.id,
+  name: cached.name,
+  slug: cached.name.toLowerCase().replace(/\s+/g, '-'),
+  permalink: '',
+  type: 'simple',
+  status: 'publish',
+  description: cached.description || '',
+  short_description: cached.short_description || '',
+  sku: cached.sku || '',
+  price: cached.price?.toString() || '0',
+  regular_price: cached.regular_price?.toString() || '0',
+  sale_price: '',
+  on_sale: false,
+  stock_status: cached.stock_status || 'instock',
+  stock_quantity: cached.stock_quantity,
+  categories: cached.categories || [],
+  images: cached.images || [],
+  attributes: cached.attributes || [],
+  dimensions: { length: '', width: '', height: '' },
+  meta_data: cached.meta_data || [],
+});
 
 interface ProductNavigatorProps {
   onAddProduct: (config: ProductConfig) => void;
@@ -144,15 +169,26 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     queryKey: ['all-products-navigator'],
     queryFn: async () => {
       console.log('🔍 Buscando todos os produtos...');
-      const result = await getProducts({ per_page: 100, orderby: 'menu_order', order: 'asc' });
-      console.log('✅ Produtos recebidos:', result?.length || 0);
+      // Tentar buscar do cache primeiro
+      try {
+        const cached = await getCachedProducts({ limit: 1000 });
+        if (cached.length > 0) {
+          console.log('✅ Produtos carregados do cache:', cached.length);
+          return cached.map(convertCachedProduct);
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ Falha ao buscar do cache:', cacheError);
+      }
+      // Fallback para WooCommerce
+      const result = await getProductsFromWC({ per_page: 100, orderby: 'menu_order', order: 'asc' });
+      console.log('✅ Produtos recebidos do WooCommerce:', result?.length || 0);
       // Log detalhado das categorias de cada produto
       result?.forEach((p: WooCommerceProduct) => {
         console.log(`📦 ${p.name} -> Categorias:`, p.categories?.map(c => c.name));
       });
       return result;
     },
-    staleTime: 1 * 60 * 1000, // 1 minuto
+    staleTime: 2 * 60 * 1000, // 2 minutos
   });
 
   // Categorias principais extraídas dos produtos (Sacola de Papel, Sacolas Plásticas, etc.)

@@ -10,6 +10,7 @@ import {
   LogOut,
   Factory,
   FileText,
+  Shield,
 } from "lucide-react";
 
 import {
@@ -26,6 +27,7 @@ import {
   useSidebar,
 } from "@/componentes/ui/sidebar";
 import { Button } from "@/componentes/ui/button";
+import { isAdmin } from "@/lib/auth";
 
 const menuItems = [
   { title: "Nova Cotação", url: "/cotacoes/nova", icon: FileText },
@@ -34,10 +36,15 @@ const menuItems = [
   // Ocultos: Dashboard, Produtos, Relatórios, Configurações, Produção
 ];
 
+const adminMenuItems = [
+  { title: "Usuários", url: "/users", icon: Shield },
+];
+
 export function AppSidebar() {
   const { open } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
+  const isUserAdmin = isAdmin();
 
   const isActive = (path: string) => currentPath === path;
 
@@ -94,6 +101,30 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isUserAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60">Administração</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all hover:bg-sidebar-accent"
+                        activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-semibold"
+                      >
+                        <item.icon className="w-5 h-5 flex-shrink-0" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">

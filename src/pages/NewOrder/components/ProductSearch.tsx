@@ -4,11 +4,36 @@ import { Input } from "@/componentes/ui/input";
 import { Label } from "@/componentes/ui/label";
 import { Search, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getProducts, getProductById } from "@/lib/woocommerce";
-import type { WooCommerceProduct } from "@/lib/types";
+import { getProducts as getProductsFromWC, getProductById as getProductByIdFromWC } from "@/lib/woocommerce";
+import { getCachedProducts, getCachedProductById } from "@/lib/supabase";
+import type { WooCommerceProduct, CachedProduct } from "@/lib/types";
 import type { ProductItem } from "../types";
 import type { ProductLine } from "./ProductsStep";
 import { toast } from "sonner";
+
+// Converter CachedProduct para WooCommerceProduct
+const convertCachedProduct = (cached: CachedProduct): WooCommerceProduct => ({
+  id: cached.id,
+  name: cached.name,
+  slug: cached.name.toLowerCase().replace(/\s+/g, '-'),
+  permalink: '',
+  type: 'simple',
+  status: 'publish',
+  description: cached.description || '',
+  short_description: cached.short_description || '',
+  sku: cached.sku || '',
+  price: cached.price?.toString() || '0',
+  regular_price: cached.regular_price?.toString() || '0',
+  sale_price: '',
+  on_sale: false,
+  stock_status: cached.stock_status || 'instock',
+  stock_quantity: cached.stock_quantity,
+  categories: cached.categories || [],
+  images: cached.images || [],
+  attributes: cached.attributes || [],
+  dimensions: { length: '', width: '', height: '' },
+  meta_data: cached.meta_data || [],
+});
 
 interface ProductSearchProps {
   item: ProductItem;
@@ -43,10 +68,27 @@ export function ProductSearch({ item, onSelect, onClear, selectedLine }: Product
 
   const { data: productsRaw, isLoading: isLoadingProducts, error: productsError } = useQuery({
     queryKey: ['products-search', searchTerm],
-    queryFn: () => getProducts({
-      search: searchTerm || undefined,
-      per_page: 50,
-    }),
+    queryFn: async () => {
+      // Tentar buscar do cache primeiro
+      if (searchTerm && searchTerm.length > 2) {
+        try {
+          const cached = await getCachedProducts({
+            search: searchTerm,
+            limit: 50,
+          });
+          if (cached.length > 0) {
+            return cached.map(convertCachedProduct);
+          }
+        } catch (cacheError) {
+          console.warn('⚠️ Failed to fetch from cache:', cacheError);
+        }
+      }
+      // Fallback para WooCommerce
+      return getProductsFromWC({
+        search: searchTerm || undefined,
+        per_page: 50,
+      });
+    },
     enabled: searchTerm.length > 2,
   });
 
@@ -55,7 +97,19 @@ export function ProductSearch({ item, onSelect, onClear, selectedLine }: Product
 
   const handleSelect = async (product: WooCommerceProduct) => {
     try {
-      const fullProduct = await getProductById(product.id);
+      // Tentar buscar do cache primeiro
+      let fullProduct = product;
+      try {
+        const cached = await getCachedProductById(product.id);
+        if (cached) {
+          fullProduct = convertCachedProduct(cached);
+        } else {
+          fullProduct = await getProductByIdFromWC(product.id);
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ Failed to fetch from cache, using WC:', cacheError);
+        fullProduct = await getProductByIdFromWC(product.id);
+      }
       onSelect(fullProduct);
       setSearchTerm("");
     } catch (error) {

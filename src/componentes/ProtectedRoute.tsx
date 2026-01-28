@@ -1,16 +1,23 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
 
-const ProtectedRoute = () => {
+interface ProtectedRouteProps {
+  requireAdmin?: boolean;
+}
+
+const ProtectedRoute = ({ requireAdmin = false }: ProtectedRouteProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState<boolean | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
     const checkAuth = () => {
       console.log('🔐 ProtectedRoute: Verificando autenticação...');
       const token = localStorage.getItem('authToken');
       const expirationTime = localStorage.getItem('tokenExpiration');
-      
+
       console.log('🔑 Token:', token ? 'presente' : 'ausente');
       console.log('⏰ Expiration:', expirationTime);
 
@@ -46,6 +53,20 @@ const ProtectedRoute = () => {
 
       console.log('✅ Autenticado com sucesso');
       setIsAuthenticated(true);
+
+      // Verificar se é admin se necessário
+      if (requireAdmin) {
+        const user = getCurrentUser();
+        const admin = isAdmin();
+        console.log('🔐 Verificando permissão de admin:', { user, isAdmin: admin });
+        setIsAdminUser(admin);
+
+        if (!admin) {
+          toast.error('Acesso negado. Esta página é apenas para administradores.');
+        }
+      } else {
+        setIsAdminUser(true);
+      }
     };
 
     checkAuth();
@@ -54,10 +75,10 @@ const ProtectedRoute = () => {
     const interval = setInterval(checkAuth, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [requireAdmin]);
 
   // Mostrar loading enquanto verifica autenticação
-  if (isAuthenticated === null) {
+  if (isAuthenticated === null || (requireAdmin && isAdminUser === null)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -70,10 +91,15 @@ const ProtectedRoute = () => {
 
   // Se não estiver autenticado, redireciona para login
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // Se autenticado, renderiza a rota filha
+  // Se requer admin e não for admin, redireciona para dashboard
+  if (requireAdmin && !isAdminUser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Se autenticado (e admin se necessário), renderiza a rota filha
   return <Outlet />;
 };
 

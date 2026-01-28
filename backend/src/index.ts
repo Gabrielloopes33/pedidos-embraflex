@@ -10,6 +10,8 @@ import { ProductionOrder } from './types';
 import wooCommerceApi from './woocommerce';
 import quotesRouter from './routes/quotes';
 import signatureRouter from './routes/signature';
+import syncRouter from './routes/sync';
+import usersRouter from './routes/users';
 
 dotenv.config();
 
@@ -51,6 +53,8 @@ app.use(express.json());
 // Register quote routes
 app.use('/api/quotes', quotesRouter);
 app.use('/api/signature', signatureRouter);
+app.use('/api/sync', syncRouter);
+app.use('/api/users', usersRouter);
 
 // Estendendo a interface Request do Express para incluir o usuário
 interface AuthenticatedRequest extends Request {

@@ -192,3 +192,144 @@ export interface CustomerCreateData {
   };
   meta_data?: { key: string; value: any }[];
 }
+
+// ==================== CACHE TYPES ====================
+
+export interface CachedProduct {
+  id: number;
+  name: string;
+  sku: string | null;
+  price: number | null;
+  regular_price: number | null;
+  description: string | null;
+  short_description: string | null;
+  stock_status: string | null;
+  stock_quantity: number | null;
+  manage_stock: boolean;
+  images: any[];
+  categories: any[];
+  attributes: any[];
+  variations: any[];
+  meta_data: any[];
+  precos_por_quantidade: any;
+  wc_modified_at: string;
+  synced_at: string;
+  is_active: boolean;
+  search_vector?: any;
+}
+
+export interface CachedCustomer {
+  id: number;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  billing: any;
+  shipping: any;
+  role: string | null;
+  wc_modified_at: string;
+  synced_at: string;
+  is_active: boolean;
+  search_vector?: any;
+}
+
+export interface ProductSearchOptions {
+  search?: string;
+  category?: string;
+  sku?: string;
+  includeInactive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CustomerSearchOptions {
+  search?: string;
+  email?: string;
+  includeInactive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SyncMetadata {
+  id?: number;
+  sync_type: 'products' | 'customers' | 'full' | 'incremental';
+  started_at: string;
+  completed_at?: string;
+  status: 'running' | 'completed' | 'failed';
+  items_processed: number;
+  items_created: number;
+  items_updated: number;
+  items_failed: number;
+  error_message?: string;
+  last_synced_at?: string;
+  triggered_by: 'login' | 'manual' | 'webhook' | 'scheduled';
+  user_id?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CacheStats {
+  products: {
+    total: number;
+    active: number;
+    inactive: number;
+    lastSync: string | null;
+  };
+  customers: {
+    total: number;
+    active: number;
+    inactive: number;
+    lastSync: string | null;
+  };
+  isEmpty: boolean;
+}
+
+// ==================== USER MANAGEMENT TYPES ====================
+
+export interface UserManagement {
+  id: string;
+  username: string;
+  email: string | null;
+  full_name: string | null;
+  role: 'admin' | 'vendedor';
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  last_login: string | null;
+  created_by: string | null;
+}
+
+export interface UserAuditLog {
+  id: string;
+  user_id: string;
+  action: 'created' | 'updated' | 'deleted' | 'password_changed' | 'role_changed';
+  performed_by: string | null;
+  changes: Record<string, any>;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
+export interface UserStats {
+  total_users: number;
+  active_users: number;
+  admin_count: number;
+  vendedor_count: number;
+  recent_logins: number;
+}
+
+export interface UserCreateData {
+  username: string;
+  password: string;
+  email?: string;
+  role: 'admin' | 'vendedor';
+  full_name?: string;
+}
+
+export interface UserUpdateData {
+  username?: string;
+  email?: string;
+  role?: 'admin' | 'vendedor';
+  full_name?: string;
+  is_active?: boolean;
+  password?: string;
+}

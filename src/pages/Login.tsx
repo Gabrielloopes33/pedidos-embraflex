@@ -5,8 +5,8 @@ import { Input } from "@/componentes/ui/input";
 import { Label } from "@/componentes/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/componentes/ui/card";
 import { toast } from "sonner";
-import { Package } from "lucide-react";
-import { login } from "@/lib/api"; // Importar a função de login da API
+import { Package, RefreshCw } from "lucide-react";
+import { login, triggerSync } from "@/lib/api"; // Importar a função de login e sync da API
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,17 +20,28 @@ const Login = () => {
 
     try {
       const { accessToken, user } = await login({ username, password });
-      
+
       // Armazenar o token e os dados do usuário
       localStorage.setItem('authToken', accessToken);
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       // Armazenar timestamp de expiração (12 horas a partir de agora)
       const expirationTime = new Date().getTime() + (12 * 60 * 60 * 1000);
       localStorage.setItem('tokenExpiration', expirationTime.toString());
 
       toast.success("Login realizado com sucesso!");
-      
+
+      // Disparar sync em background (não bloquear o redirecionamento)
+      triggerSync({ syncType: 'incremental' })
+        .then((result) => {
+          console.log('✅ Sync iniciado:', result);
+          toast.info('Sincronização de dados iniciada em background.');
+        })
+        .catch((error) => {
+          console.warn('⚠️ Falha ao iniciar sync:', error);
+          // Não mostrar erro ao usuário, pois o sync é opcional
+        });
+
       // Forçar um recarregamento da página para que a lógica de rotas em app.tsx seja reavaliada
       window.location.href = '/cotacoes/nova';
 

@@ -249,3 +249,63 @@ export const createWooCommerceOrder = async (orderData: {
   return response.data;
 };
 
+// ==================== SYNC FUNCTIONS ====================
+
+/**
+ * Dispara sincronização com WooCommerce
+ */
+export const triggerSync = async (options?: {
+  syncType?: 'products' | 'customers' | 'full' | 'incremental';
+  forceFullSync?: boolean;
+}): Promise<{ message: string; syncType: string; triggeredBy: string }> => {
+  const response = await apiClient.post('/sync/woocommerce', options);
+  return response.data;
+};
+
+/**
+ * Obtém status do último sync
+ */
+export const getSyncStatus = async (syncType?: 'products' | 'customers' | 'full' | 'incremental'): Promise<{
+  lastSync: any;
+  isStale: boolean;
+}> => {
+  const response = await apiClient.get('/sync/status', {
+    params: { syncType },
+  });
+  return response.data;
+};
+
+/**
+ * Obtém estatísticas do cache
+ */
+export const getCacheStats = async (): Promise<{
+  products: {
+    total: number;
+    active: number;
+    inactive: number;
+    lastSync: string | null;
+  };
+  customers: {
+    total: number;
+    active: number;
+    inactive: number;
+    lastSync: string | null;
+  };
+  isEmpty: boolean;
+}> => {
+  const response = await apiClient.get('/sync/stats');
+  return response.data;
+};
+
+/**
+ * Limpa cache antigo (marca como inativo)
+ */
+export const cleanupCache = async (daysToKeep: number = 30): Promise<{
+  message: string;
+  cleanedCount: number;
+  daysToKeep: number;
+}> => {
+  const response = await apiClient.post('/sync/cleanup', { daysToKeep });
+  return response.data;
+};
+
