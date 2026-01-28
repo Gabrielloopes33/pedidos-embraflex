@@ -48,7 +48,7 @@ const convertCachedProduct = (cached: CachedProduct): WooCommerceProduct => ({
   name: cached.name,
   slug: cached.name.toLowerCase().replace(/\s+/g, '-'),
   permalink: '',
-  type: 'simple',
+  type: cached.type || 'simple', // Usar o type do cache (simple, variable, grouped, external)
   status: 'publish',
   description: cached.description || '',
   short_description: cached.short_description || '',
