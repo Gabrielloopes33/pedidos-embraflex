@@ -19,6 +19,7 @@ import {
 } from "@/componentes/ui/dialog";
 import { Label } from "@/componentes/ui/label";
 import { ProductFormModal } from "@/pages/NewOrder/components/ProductFormModal";
+import { FinishingModal } from "@/pages/NewOrder/components/FinishingModal";
 import type { ProductItem } from "@/pages/NewOrder/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -374,6 +375,8 @@ const Products = () => {
   const [selectedLineFilter, setSelectedLineFilter] = useState<string | null>(null);
   const [isAddToOrderOpen, setIsAddToOrderOpen] = useState(false);
   const [productToAdd, setProductToAdd] = useState<ProductItem | null>(null);
+  const [isFinishingModalOpen, setIsFinishingModalOpen] = useState(false);
+  const [finishingProduct, setFinishingProduct] = useState<ProductItem | null>(null);
 
   // Buscar estatísticas do cache
   const { data: cacheStats } = useQuery({
@@ -522,6 +525,52 @@ const Products = () => {
     navigate('/orders/new', { 
       state: { 
         prefilledProduct: product 
+      } 
+    });
+  };
+
+  const handleOpenFinishingModal = () => {
+    if (!selectedProduct) return;
+    
+    // Criar item temporário para configurar acabamentos
+    const tempProduct: ProductItem = {
+      productId: selectedProduct.id,
+      productName: selectedProduct.name,
+      quantity: selectedQuantity,
+      unitPrice: parseFloat(selectedProduct.price || '0'),
+      total: 0,
+      codigo: selectedProduct.sku || '',
+      discriminacaoProduto: selectedProduct.name,
+      larguraCm: 0,
+      alturaCm: 0,
+      comprimentoCm: 0,
+      tipoImpressao: '',
+      finishing: {
+        hotStamp: false,
+        ilhos: false,
+        furoPresente: false,
+        cordao: '',
+        corCordao: '',
+      },
+    };
+    
+    setFinishingProduct(tempProduct);
+    setIsFinishingModalOpen(true);
+  };
+
+  const handleSaveFinishing = (finishing: ProductItem['finishing']) => {
+    if (!finishingProduct) return;
+    
+    // Atualizar o produto com os acabamentos configurados
+    const updatedProduct = {
+      ...finishingProduct,
+      finishing,
+    };
+    
+    // Navegar para novo pedido com o produto pré-configurado
+    navigate('/orders/new', { 
+      state: { 
+        prefilledProduct: updatedProduct 
       } 
     });
   };
@@ -816,6 +865,23 @@ const Products = () => {
                     })()}
                   </div>
                   
+                  {/* Botão de Acabamentos para Sacolas de Papel */}
+                  {selectedProduct?.sku?.toLowerCase().startsWith('k-') && (
+                    <div className="mt-4 p-3 bg-secondary/5 border border-secondary/20 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Este produto permite configuração de acabamentos especiais:
+                      </p>
+                      <Button 
+                        onClick={handleOpenFinishingModal} 
+                        variant="outline" 
+                        className="w-full gap-2"
+                        size="sm"
+                      >
+                        ⚙️ Configurar Acabamentos
+                      </Button>
+                    </div>
+                  )}
+                  
                   {/* Botão para abrir formulário completo */}
                   <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-3">
@@ -933,6 +999,16 @@ const Products = () => {
           onOpenChange={setIsAddToOrderOpen}
           item={productToAdd}
           onSave={handleSaveProductToOrder}
+        />
+      )}
+
+      {/* Modal de Acabamentos */}
+      {finishingProduct && (
+        <FinishingModal
+          open={isFinishingModalOpen}
+          onOpenChange={setIsFinishingModalOpen}
+          product={finishingProduct}
+          onSave={handleSaveFinishing}
         />
       )}
 
