@@ -198,8 +198,16 @@ export function QuickProductsStep({
                             )}
                           </div>
 
-                          {/* Botão Adicionar Acabamento - apenas para sacola de PAPEL (SKU começa com k-) */}
-                          {product.sku.toLowerCase().startsWith('k-') && (
+                          {/* Botão Adicionar Acabamento - para sacolas de papel (Kraft e linhas Premium/Comercial/Econômica) */}
+                          {(product.sku?.toLowerCase().startsWith('k-') ||
+                            (product.name?.toLowerCase().includes('sacola') &&
+                             product.name?.toLowerCase().includes('papel')) ||
+                            product.name?.toLowerCase().includes('sacola de papel') ||
+                            product.name?.toLowerCase().includes('kraft') ||
+                            product.name?.toLowerCase().includes('linha premium') ||
+                            product.name?.toLowerCase().includes('linha comercial') ||
+                            product.name?.toLowerCase().includes('linha econômica') ||
+                            product.name?.toLowerCase().includes('linha economica')) && (
                             <Button
                               variant="outline"
                               size="sm"
