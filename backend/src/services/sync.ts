@@ -329,6 +329,7 @@ export class WooCommerceSyncService {
     const productData = {
       id: product.id,
       name: product.name,
+      type: product.type || 'simple', // simple, variable, grouped, external
       sku: product.sku || null,
       price: product.price ? parseFloat(product.price) : null,
       regular_price: product.regular_price ? parseFloat(product.regular_price) : null,

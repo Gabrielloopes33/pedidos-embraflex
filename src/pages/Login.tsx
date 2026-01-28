@@ -31,11 +31,12 @@ const Login = () => {
 
       toast.success("Login realizado com sucesso!");
 
-      // Disparar sync em background (não bloquear o redirecionamento)
-      triggerSync({ syncType: 'incremental' })
+      // Disparar sync completo em background para atualizar cache de produtos
+      // Usando forceFullSync para garantir que todos os produtos tenham o campo 'type'
+      triggerSync({ syncType: 'products', forceFullSync: true })
         .then((result) => {
-          console.log('✅ Sync iniciado:', result);
-          toast.info('Sincronização de dados iniciada em background.');
+          console.log('✅ Sync completo iniciado:', result);
+          toast.info('Sincronização de produtos iniciada em background.');
         })
         .catch((error) => {
           console.warn('⚠️ Falha ao iniciar sync:', error);

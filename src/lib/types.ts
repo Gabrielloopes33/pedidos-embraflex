@@ -200,6 +200,7 @@ export interface CustomerCreateData {
 export interface CachedProduct {
   id: number;
   name: string;
+  type: string; // simple, variable, grouped, external
   sku: string | null;
   price: number | null;
   regular_price: number | null;
