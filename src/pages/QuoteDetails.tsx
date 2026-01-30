@@ -52,9 +52,29 @@ const QuoteDetails = () => {
           lastViewedAt: (data as any).lastViewedAt
         });
 
+        // Verificar e corrigir products se necessário
+        let products = data.products;
+        console.log('📦 Products original:', products, 'Tipo:', typeof products);
+
+        if (typeof products === 'string') {
+          console.log('🔄 Products é string JSON, fazendo parse...');
+          try {
+            products = JSON.parse(products);
+            console.log('✅ Products parseado:', products);
+          } catch (e) {
+            console.error('❌ Erro ao fazer parse de products:', e);
+            products = [];
+          }
+        } else if (!Array.isArray(products)) {
+          console.warn('⚠️ Products não é array, convertendo...');
+          console.log('📋 Tipo de products:', typeof products, 'Valor:', products);
+          products = [];
+        }
+
         // Converter para QuoteWithViews com fallbacks
         const quoteWithViews: QuoteWithViews = {
           ...data,
+          products: products as any,
           viewCount: (data as any).viewCount ?? 0,
           lastViewedAt: (data as any).lastViewedAt ?? undefined
         };
