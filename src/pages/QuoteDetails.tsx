@@ -29,24 +29,46 @@ const QuoteDetails = () => {
   const [copied, setCopied] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
 
+  console.log('🔍 QuoteDetails montado - ID:', id);
+
   useEffect(() => {
     const fetchQuote = async () => {
-      if (!id) return;
-      
+      if (!id) {
+        console.error('❌ ID não encontrado na URL');
+        setError('ID da cotação não encontrado');
+        setLoading(false);
+        return;
+      }
+
       try {
-        console.log('🔄 Buscando cotação:', id);
+        console.log('🔄 Iniciando busca da cotação - ID:', id);
         const data = await getQuote(id);
-        console.log('✅ Cotação recebida:', data);
-        // Converter para QuoteWithViews adicionando campos padrão
+        console.log('✅ Cotação recebida - Tipo:', typeof data);
+        console.log('📋 Campos da cotação:', Object.keys(data));
+        console.log('🔍 Campos especiais:', {
+          hasViewCount: 'viewCount' in data,
+          hasLastViewedAt: 'lastViewedAt' in data,
+          viewCount: (data as any).viewCount,
+          lastViewedAt: (data as any).lastViewedAt
+        });
+
+        // Converter para QuoteWithViews com fallbacks
         const quoteWithViews: QuoteWithViews = {
           ...data,
-          viewCount: (data as any).viewCount || 0,
-          lastViewedAt: (data as any).lastViewedAt,
+          viewCount: (data as any).viewCount ?? 0,
+          lastViewedAt: (data as any).lastViewedAt ?? undefined
         };
+
+        console.log('✅ QuoteWithViews pronto, definindo no estado');
         setQuote(quoteWithViews);
         setError(null);
       } catch (error: any) {
         console.error('❌ Erro ao carregar cotação:', error);
+        console.error('📝 Detalhes do erro:', {
+          message: error?.message,
+          status: error?.response?.status,
+          data: error?.response?.data
+        });
         setError(error?.response?.data?.message || error?.message || 'Erro ao carregar cotação');
       } finally {
         setLoading(false);
@@ -162,6 +184,14 @@ const QuoteDetails = () => {
   }
 
   const isLinkExpired = quote.expiresAt && new Date(quote.expiresAt) < new Date();
+
+  console.log('🎯 Renderizando QuoteDetails:', {
+    loading,
+    error,
+    hasQuote: !!quote,
+    quoteId: quote?.id,
+    quoteStatus: quote?.status
+  });
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl space-y-6">
