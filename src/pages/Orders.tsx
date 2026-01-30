@@ -84,7 +84,7 @@ const Orders = () => {
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={() => navigate("/quotes/new")}
+            onClick={() => navigate("/cotacoes/nova")}
             className="gap-2 shadow-primary"
             size="lg"
           >

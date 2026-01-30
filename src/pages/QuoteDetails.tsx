@@ -35,9 +35,15 @@ const QuoteDetails = () => {
       
       try {
         console.log('🔄 Buscando cotação:', id);
-        const data = await getQuote(id) as QuoteWithViews;
+        const data = await getQuote(id);
         console.log('✅ Cotação recebida:', data);
-        setQuote(data);
+        // Converter para QuoteWithViews adicionando campos padrão
+        const quoteWithViews: QuoteWithViews = {
+          ...data,
+          viewCount: (data as any).viewCount || 0,
+          lastViewedAt: (data as any).lastViewedAt,
+        };
+        setQuote(quoteWithViews);
         setError(null);
       } catch (error: any) {
         console.error('❌ Erro ao carregar cotação:', error);
