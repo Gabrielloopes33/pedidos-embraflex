@@ -10,12 +10,13 @@ import { Separator } from '@/componentes/ui/separator';
 export interface FinishingOptions {
   // Acessórios (checkboxes - múltipla escolha)
   hotStamp: boolean;
+  hotStampCor: 'nenhum' | 'dourado' | 'prata' | 'colorido';
   ilhos: boolean;
   furoPresente: boolean;
-  
+
   // Cordão (radio - escolha única)
   cordao: 'nenhum' | 'padrao' | 'gorgurao' | 'saoFrancisco' | 'colorido' | 'gorgurinho';
-  
+
   // Cor do Cordão (radio - escolha única)
   corCordao: 'nenhum' | 'preto' | 'branco' | 'colorido';
 }
@@ -31,17 +32,19 @@ interface FinishingModalProps {
 // Preços dos acabamentos (por unidade)
 const FINISHING_PRICES = {
   acessorios: {
-    hotStamp: 0,
+    hotStampDourado: 0.80,
+    hotStampPrata: 0.80,
+    hotStampColorido: 0.90,
     ilhos: 0.35,
     furoPresente: 0,
   },
   cordao: {
     nenhum: 0,
     padrao: 0, // Grátis
-    gorgurao: 0,
-    saoFrancisco: 0,
+    gorgurao: 0, // Preço vem da cor do cordão
+    saoFrancisco: 0, // Preço vem da cor do cordão
     colorido: 0.10,
-    gorgurinho: 0,
+    gorgurinho: 0, // Preço vem da cor do cordão
   },
   corCordao: {
     nenhum: 0,
@@ -61,6 +64,7 @@ export function FinishingModal({
   const [finishing, setFinishing] = useState<FinishingOptions>(
     initialFinishing || {
       hotStamp: false,
+      hotStampCor: 'nenhum',
       ilhos: false,
       furoPresente: false,
       cordao: 'nenhum',
@@ -84,20 +88,28 @@ export function FinishingModal({
 
   const calculateFinishingCost = () => {
     let cost = 0;
-    
-    // Acessórios
-    if (finishing.hotStamp) cost += FINISHING_PRICES.acessorios.hotStamp;
+
+    // Acessórios - Hot Stamp (preço depende da cor)
+    if (finishing.hotStamp) {
+      if (finishing.hotStampCor === 'dourado') {
+        cost += FINISHING_PRICES.acessorios.hotStampDourado;
+      } else if (finishing.hotStampCor === 'prata') {
+        cost += FINISHING_PRICES.acessorios.hotStampPrata;
+      } else if (finishing.hotStampCor === 'colorido') {
+        cost += FINISHING_PRICES.acessorios.hotStampColorido;
+      }
+    }
     if (finishing.ilhos) cost += FINISHING_PRICES.acessorios.ilhos;
     if (finishing.furoPresente) cost += FINISHING_PRICES.acessorios.furoPresente;
-    
+
     // Cordão
     cost += FINISHING_PRICES.cordao[finishing.cordao];
-    
+
     // Cor do Cordão (só se tiver cordão selecionado)
     if (finishing.cordao !== 'nenhum') {
       cost += FINISHING_PRICES.corCordao[finishing.corCordao];
     }
-    
+
     return cost;
   };
 
@@ -125,17 +137,16 @@ export function FinishingModal({
                 <Checkbox
                   id="hotStamp"
                   checked={finishing.hotStamp}
-                  onCheckedChange={(checked) => 
-                    setFinishing(prev => ({ ...prev, hotStamp: checked as boolean }))
+                  onCheckedChange={(checked) =>
+                    setFinishing(prev => ({
+                      ...prev,
+                      hotStamp: checked as boolean,
+                      hotStampCor: checked ? 'dourado' : 'nenhum'
+                    }))
                   }
                 />
                 <Label htmlFor="hotStamp" className="cursor-pointer font-normal">
                   Hot Stamp
-                  {FINISHING_PRICES.acessorios.hotStamp > 0 && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({formatCurrency(FINISHING_PRICES.acessorios.hotStamp)})
-                    </span>
-                  )}
                 </Label>
               </div>
 
@@ -143,7 +154,7 @@ export function FinishingModal({
                 <Checkbox
                   id="ilhos"
                   checked={finishing.ilhos}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setFinishing(prev => ({ ...prev, ilhos: checked as boolean }))
                   }
                 />
@@ -161,7 +172,7 @@ export function FinishingModal({
                 <Checkbox
                   id="furoPresente"
                   checked={finishing.furoPresente}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setFinishing(prev => ({ ...prev, furoPresente: checked as boolean }))
                   }
                 />
@@ -177,6 +188,53 @@ export function FinishingModal({
             </div>
           </div>
 
+          {/* Cor do Hot Stamp - aparece apenas quando Hot Stamp está selecionado */}
+          {finishing.hotStamp && (
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-muted-foreground">
+                Cor do Hot Stamp <span className="text-xs font-normal">(selecione apenas 1)</span>
+              </Label>
+              <RadioGroup
+                value={finishing.hotStampCor}
+                onValueChange={(value) =>
+                  setFinishing(prev => ({ ...prev, hotStampCor: value as FinishingOptions['hotStampCor'] }))
+                }
+              >
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="dourado" id="hotstamp-dourado" />
+                    <Label htmlFor="hotstamp-dourado" className="cursor-pointer font-normal">
+                      Dourado
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({formatCurrency(FINISHING_PRICES.acessorios.hotStampDourado)})
+                      </span>
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="prata" id="hotstamp-prata" />
+                    <Label htmlFor="hotstamp-prata" className="cursor-pointer font-normal">
+                      Prata
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({formatCurrency(FINISHING_PRICES.acessorios.hotStampPrata)})
+                      </span>
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="colorido" id="hotstamp-colorido" />
+                    <Label htmlFor="hotstamp-colorido" className="cursor-pointer font-normal">
+                      Colorido
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({formatCurrency(FINISHING_PRICES.acessorios.hotStampColorido)})
+                      </span>
+                    </Label>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+
           <Separator />
 
           {/* Cordão */}
@@ -187,8 +245,8 @@ export function FinishingModal({
             <RadioGroup
               value={finishing.cordao}
               onValueChange={(value) => {
-                setFinishing(prev => ({ 
-                  ...prev, 
+                setFinishing(prev => ({
+                  ...prev,
                   cordao: value as FinishingOptions['cordao'],
                   // Se nenhum cordão, resetar cor
                   corCordao: value === 'nenhum' ? 'nenhum' : prev.corCordao
@@ -200,14 +258,15 @@ export function FinishingModal({
                   <RadioGroupItem value="padrao" id="cordao-padrao" />
                   <Label htmlFor="cordao-padrao" className="cursor-pointer font-normal">
                     Padrão
-                    <span className="text-xs text-success ml-1">(Grátis)()</span>
+                    <span className="text-xs text-muted-foreground ml-1">(Grátis)</span>
                   </Label>
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="gorgurao" id="cordao-gorgurao" />
                   <Label htmlFor="cordao-gorgurao" className="cursor-pointer font-normal">
-                    Gorgurao
+                    Gorgurão
+                    <span className="text-xs text-muted-foreground ml-1">(+ cor)</span>
                   </Label>
                 </div>
 
@@ -215,6 +274,7 @@ export function FinishingModal({
                   <RadioGroupItem value="saoFrancisco" id="cordao-saofrancisco" />
                   <Label htmlFor="cordao-saofrancisco" className="cursor-pointer font-normal">
                     São Francisco
+                    <span className="text-xs text-muted-foreground ml-1">(+ cor)</span>
                   </Label>
                 </div>
 
@@ -234,6 +294,7 @@ export function FinishingModal({
                   <RadioGroupItem value="gorgurinho" id="cordao-gorgurinho" />
                   <Label htmlFor="cordao-gorgurinho" className="cursor-pointer font-normal">
                     Gorgurinho
+                    <span className="text-xs text-muted-foreground ml-1">(+ cor)</span>
                   </Label>
                 </div>
               </div>

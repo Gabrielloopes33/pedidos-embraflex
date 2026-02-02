@@ -8,7 +8,7 @@ import { ProductSearch } from "./ProductSearch";
 import { ProductBasicInfo } from "./ProductBasicInfo";
 import { ProductDimensions } from "./ProductDimensions";
 import { ProductFinishing } from "./ProductFinishing";
-import { calculateFinishingCosts, calculateItemTotal } from "../utils/pricing";
+import { calculateFinishingCosts, calculateItemTotal, getFinishingDetails } from "../utils/pricing";
 import { useEffect, useState } from "react";
 import { getProductVariations } from "@/lib/woocommerce";
 
@@ -470,12 +470,22 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
             </span>
           </div>
           {finishingCost > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Acabamentos (unitário):</span>
-              <span className="font-medium text-primary">
-                + R$ {finishingCost.toFixed(2).replace('.', ',')}
-              </span>
-            </div>
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Acabamentos (unitário):</span>
+                <span className="font-medium text-primary">
+                  + R$ {finishingCost.toFixed(2).replace('.', ',')}
+                </span>
+              </div>
+              <div className="pl-4 space-y-1">
+                {getFinishingDetails(item.finishing).map((detail, idx) => (
+                  <div key={idx} className="flex justify-between text-xs text-muted-foreground">
+                    <span>{detail.label}:</span>
+                    <span>R$ {detail.value.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
           <div className="flex justify-between text-sm pt-2 border-t">
             <span className="text-muted-foreground">Valor unitário final:</span>

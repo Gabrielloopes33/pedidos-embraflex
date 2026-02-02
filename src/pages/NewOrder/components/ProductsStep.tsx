@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, Settings } from "lucide-react";
 import type { ProductItem } from "../types";
 import { ProductFormModal } from "./ProductFormModal";
 import { FinishingModal } from "./FinishingModal";
-import { calculateOrderTotal, calculateFinishingCosts, calculateItemTotal } from "../utils/pricing";
+import { calculateOrderTotal, calculateFinishingCosts, calculateItemTotal, getFinishingDetails } from "../utils/pricing";
 import { useState } from "react";
 
 interface ProductsStepProps {
@@ -36,6 +36,7 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
     tipoImpressao: '',
     finishing: {
       hotStamp: false,
+      hotStampCor: '',
       ilhos: false,
       furoPresente: false,
       cordao: '',
@@ -209,21 +210,19 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                       {/* Acabamentos */}
                       {(product.finishing.hotStamp || product.finishing.ilhos || product.finishing.furoPresente || product.finishing.cordao) && (
                         <div className="flex flex-wrap gap-1">
-                          {product.finishing.hotStamp && (
-                            <Badge variant="secondary" className="text-xs">Hot Stamp</Badge>
-                          )}
-                          {product.finishing.ilhos && (
-                            <Badge variant="secondary" className="text-xs">Ilhós</Badge>
-                          )}
-                          {product.finishing.furoPresente && (
-                            <Badge variant="secondary" className="text-xs">Furo de Presente</Badge>
-                          )}
-                          {product.finishing.cordao && (
-                            <Badge variant="secondary" className="text-xs">
-                              Cordão: {product.finishing.cordao}
-                              {product.finishing.corCordao && ` (${product.finishing.corCordao})`}
-                            </Badge>
-                          )}
+                          {(() => {
+                            const finishingDetails = getFinishingDetails(product.finishing);
+                            return finishingDetails.map((detail, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {detail.label}
+                                {detail.value > 0 && (
+                                  <span className="ml-1 text-xs opacity-75">
+                                    - R$ {detail.value.toFixed(2).replace('.', ',')}
+                                  </span>
+                                )}
+                              </Badge>
+                            ));
+                          })()}
                         </div>
                       )}
                     </div>
