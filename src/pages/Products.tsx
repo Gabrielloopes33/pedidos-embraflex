@@ -408,9 +408,14 @@ const Products = () => {
   });
 
   // Determinar qual fonte usar
-  const allProducts = (cachedProducts && cachedProducts.length > 0 && !cacheError)
+  let allProducts = (cachedProducts && cachedProducts.length > 0 && !cacheError)
     ? cachedProducts.map(convertCachedProduct)
     : wcProducts || [];
+
+  // Filtrar produto "SACOLA DE PAPEL PERSONALIZADA" (case-insensitive)
+  allProducts = allProducts.filter((product: WooCommerceProduct) => 
+    !product.name.toLowerCase().includes('sacola de papel personalizada')
+  );
 
   const productsLoading = cacheLoading || wcLoading;
   const productsError = cacheError || wcError;

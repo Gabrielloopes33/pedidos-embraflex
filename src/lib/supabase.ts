@@ -32,6 +32,7 @@ export async function getCachedProducts(options: ProductSearchOptions = {}): Pro
     category,
     sku,
     includeInactive = false,
+    includeNonInterno = false,
     limit = 100,
     offset = 0,
   } = options;
@@ -43,6 +44,13 @@ export async function getCachedProducts(options: ProductSearchOptions = {}): Pro
 
   if (!includeInactive) {
     query = query.eq('is_active', true);
+  }
+
+  // Filtrar por categoria "Interno" ou "Interna" por padrão
+  if (!includeNonInterno) {
+    query = query.or(
+      'categories.cs.{\\"name\\":\\"Interno\\"},categories.cs.{\\"name\\":\\"Interna\\"}'
+    );
   }
 
   if (search) {

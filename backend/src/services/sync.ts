@@ -144,22 +144,59 @@ export class WooCommerceSyncService {
         .limit(1)
         .single();
 
-      if (lastSync?.last_synced_at) {
+    if (lastSync?.last_synced_at) {
         lastSyncDate = new Date(lastSync.last_synced_at);
       }
+    }
+
+    // Buscar categoria "Interno" ou "Interna" antes do sync
+    let internoCategoryId: number | null = null;
+    try {
+      const { data: categories } = await wooCommerceApi.get('products/categories', {
+        search: 'Interno',
+        per_page: 10
+      });
+      
+      if (categories && categories.length > 0) {
+        const internoCategory = categories.find((cat: any) => 
+          cat.name.toLowerCase() === 'interno' || 
+          cat.name.toLowerCase() === 'interna'
+        );
+        
+        if (internoCategory) {
+          internoCategoryId = internoCategory.id;
+          console.log(`📁 Categoria "${internoCategory.name}" encontrada com ID: ${internoCategoryId}`);
+        } else {
+          console.warn('⚠️ Categoria "Interno" não encontrada nas categorias:', categories.map((c: any) => c.name));
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar categoria Interno:', error);
+    }
+
+    // Se não encontrou a categoria, fazer sync sem filtro
+    if (!internoCategoryId) {
+      console.warn('⚠️ Categoria Interno não encontrada - fazendo sync SEM filtro de categoria');
     }
 
     while (true) {
       try {
         // Buscar produtos do WooCommerce
-        const response = await wooCommerceApi.get('products', {
+        const params: any = {
           page,
           per_page: batchSize,
           // Se não for full sync, buscar apenas produtos modificados após último sync
           ...(lastSyncDate && {
             after: lastSyncDate.toISOString(),
           }),
-        });
+        };
+
+        // Filtrar por categoria se encontrou
+        if (internoCategoryId) {
+          params.category = internoCategoryId.toString();
+        }
+
+        const response = await wooCommerceApi.get('products', params);
 
         const products = response.data;
 
