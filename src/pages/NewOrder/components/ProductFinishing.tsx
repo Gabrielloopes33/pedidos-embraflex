@@ -17,17 +17,17 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
   ];
 
   const cordoes = [
-    { value: 'padrão', label: 'Padrão (Grátis)', price: 0 },
+    { value: 'padrão', label: 'Padrão', price: 0, priceLabel: '(Grátis)' },
     { value: 'colorido', label: 'Colorido', price: FINISHING_PRICES.cordaoColorido },
-    { value: 'gorgurinho', label: 'Gorgurinho', showPrice: false }, // Preço depende da cor
-    { value: 'gorgurão', label: 'Gorgurão', showPrice: false },
-    { value: 'são francisco', label: 'São Francisco', showPrice: false },
+    { value: 'gorgurinho', label: 'Gorgurinho', price: FINISHING_PRICES.cordaoEspecialPretoBranco, priceRange: `R$ ${FINISHING_PRICES.cordaoEspecialPretoBranco.toFixed(2).replace('.', ',')} - R$ ${FINISHING_PRICES.cordaoEspecialColorido.toFixed(2).replace('.', ',')}` },
+    { value: 'gorgurão', label: 'Gorgurão', price: FINISHING_PRICES.cordaoEspecialPretoBranco, priceRange: `R$ ${FINISHING_PRICES.cordaoEspecialPretoBranco.toFixed(2).replace('.', ',')} - R$ ${FINISHING_PRICES.cordaoEspecialColorido.toFixed(2).replace('.', ',')}` },
+    { value: 'são francisco', label: 'São Francisco', price: FINISHING_PRICES.cordaoEspecialPretoBranco, priceRange: `R$ ${FINISHING_PRICES.cordaoEspecialPretoBranco.toFixed(2).replace('.', ',')} - R$ ${FINISHING_PRICES.cordaoEspecialColorido.toFixed(2).replace('.', ',')}` },
   ];
 
   const coresCordao = [
-    { value: 'preto', label: 'Preto', price: 0 },
-    { value: 'branco', label: 'Branco', price: 0 },
-    { value: 'bege', label: 'Bege', price: 0 },
+    { value: 'preto', label: 'Preto' },
+    { value: 'branco', label: 'Branco' },
+    { value: 'bege', label: 'Bege' },
   ];
 
   const coresHotStamp = [
@@ -37,9 +37,9 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
   ];
 
   const coresCordaoEspecial = [
-    { value: 'preto', label: 'Preto', price: FINISHING_PRICES.cordaoEspecialPretoBranco },
-    { value: 'branco', label: 'Branco', price: FINISHING_PRICES.cordaoEspecialPretoBranco },
-    { value: 'colorido', label: 'Colorido', price: FINISHING_PRICES.cordaoEspecialColorido },
+    { value: 'preto', label: 'Preto' },
+    { value: 'branco', label: 'Branco' },
+    { value: 'colorido', label: 'Colorido' },
   ];
 
   // Verificar se a quantidade é menor que 1000 para desabilitar Hot Stamp
@@ -158,8 +158,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-md">
             {cordoes.map((option) => (
               <div key={option.value} className="flex items-center space-x-2">
-                <RadioGroupItem 
-                  value={option.value} 
+                <RadioGroupItem
+                  value={option.value}
                   id={`${item.productId}-cordao-${option.value}`}
                 />
                 <label
@@ -167,7 +167,17 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                   className="text-sm font-medium leading-none cursor-pointer flex-1"
                 >
                   {option.label}
-                  {option.showPrice !== false && option.price && option.price > 0 && (
+                  {option.priceLabel && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      {option.priceLabel}
+                    </span>
+                  )}
+                  {option.priceRange && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      ({option.priceRange})
+                    </span>
+                  )}
+                  {!option.priceLabel && !option.priceRange && option.price > 0 && (
                     <span className="text-xs text-muted-foreground ml-2">
                       (R$ {option.price.toFixed(2).replace('.', ',')})
                     </span>
@@ -197,8 +207,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-md">
               {coresCordao.map((option) => (
                 <div key={option.value} className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value={option.value} 
+                  <RadioGroupItem
+                    value={option.value}
                     id={`${item.productId}-cor-${option.value}`}
                   />
                   <label
@@ -206,9 +216,6 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                     className="text-sm font-medium leading-none cursor-pointer flex-1"
                   >
                     {option.label}
-                    <span className="text-xs text-muted-foreground ml-2">
-                      (R$ {option.price.toFixed(2).replace('.', ',')})
-                    </span>
                   </label>
                 </div>
               ))}
@@ -218,8 +225,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
       )}
 
       {/* Cor do Cordão Especial (para Gorgurinho, Gorgurão ou São Francisco) */}
-      {(item.finishing?.cordao === 'gorgurinho' || 
-        item.finishing?.cordao === 'gorgurão' || 
+      {(item.finishing?.cordao === 'gorgurinho' ||
+        item.finishing?.cordao === 'gorgurão' ||
         item.finishing?.cordao === 'são francisco') && (
         <div className="space-y-3">
           <Label className="text-sm font-medium text-muted-foreground">
@@ -237,8 +244,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-md">
               {coresCordaoEspecial.map((option) => (
                 <div key={option.value} className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value={option.value} 
+                  <RadioGroupItem
+                    value={option.value}
                     id={`${item.productId}-cor-especial-${option.value}`}
                   />
                   <label
@@ -246,9 +253,6 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                     className="text-sm font-medium leading-none cursor-pointer flex-1"
                   >
                     {option.label}
-                    <span className="text-xs text-muted-foreground ml-2">
-                      (R$ {option.price.toFixed(2).replace('.', ',')})
-                    </span>
                   </label>
                 </div>
               ))}

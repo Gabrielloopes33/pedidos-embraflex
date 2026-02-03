@@ -38,20 +38,33 @@ const FINISHING_PRICES = {
     ilhos: 0.35,
     furoPresente: 0,
   },
-  cordao: {
-    nenhum: 0,
+  // Cordão simples
+  cordaoSimples: {
     padrao: 0, // Grátis
-    gorgurao: 0, // Preço vem da cor do cordão
-    saoFrancisco: 0, // Preço vem da cor do cordão
     colorido: 0.10,
-    gorgurinho: 0, // Preço vem da cor do cordão
   },
-  corCordao: {
-    nenhum: 0,
-    preto: 0.50,
-    branco: 0.50,
+  // Cordões especiais (Gorgurão, São Francisco, Gorgurinho) - preço depende da cor
+  cordaoEspecial: {
+    pretoBranco: 0.50, // Preto ou Branco
     colorido: 0.55,
   },
+};
+
+// Helper para calcular preço do cordão baseado no tipo + cor
+const getCordaoPrice = (cordao: FinishingOptions['cordao'], corCordao: FinishingOptions['corCordao']): number => {
+  if (cordao === 'nenhum') return 0;
+  if (cordao === 'padrao') return FINISHING_PRICES.cordaoSimples.padrao;
+  if (cordao === 'colorido') return FINISHING_PRICES.cordaoSimples.colorido;
+
+  // Cordões especiais (gorgurao, saoFrancisco, gorgurinho)
+  if (corCordao === 'colorido') {
+    return FINISHING_PRICES.cordaoEspecial.colorido;
+  }
+  // Preto ou branco
+  if (corCordao === 'preto' || corCordao === 'branco') {
+    return FINISHING_PRICES.cordaoEspecial.pretoBranco;
+  }
+  return 0;
 };
 
 export function FinishingModal({ 
@@ -102,13 +115,8 @@ export function FinishingModal({
     if (finishing.ilhos) cost += FINISHING_PRICES.acessorios.ilhos;
     if (finishing.furoPresente) cost += FINISHING_PRICES.acessorios.furoPresente;
 
-    // Cordão
-    cost += FINISHING_PRICES.cordao[finishing.cordao];
-
-    // Cor do Cordão (só se tiver cordão selecionado)
-    if (finishing.cordao !== 'nenhum') {
-      cost += FINISHING_PRICES.corCordao[finishing.corCordao];
-    }
+    // Cordão (preço calculado pela combinação tipo + cor)
+    cost += getCordaoPrice(finishing.cordao, finishing.corCordao);
 
     return cost;
   };
@@ -248,8 +256,8 @@ export function FinishingModal({
                 setFinishing(prev => ({
                   ...prev,
                   cordao: value as FinishingOptions['cordao'],
-                  // Se nenhum cordão, resetar cor
-                  corCordao: value === 'nenhum' ? 'nenhum' : prev.corCordao
+                  // Se nenhum cordão ou cordão simples, resetar cor
+                  corCordao: (value === 'nenhum' || value === 'padrao' || value === 'colorido') ? 'nenhum' : prev.corCordao
                 }));
               }}
             >
@@ -263,10 +271,22 @@ export function FinishingModal({
                 </div>
 
                 <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="colorido" id="cordao-colorido" />
+                  <Label htmlFor="cordao-colorido" className="cursor-pointer font-normal">
+                    Colorido
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({formatCurrency(FINISHING_PRICES.cordaoSimples.colorido)})
+                    </span>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
                   <RadioGroupItem value="gorgurao" id="cordao-gorgurao" />
                   <Label htmlFor="cordao-gorgurao" className="cursor-pointer font-normal">
                     Gorgurão
-                    <span className="text-xs text-muted-foreground ml-1">(+ cor)</span>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({formatCurrency(FINISHING_PRICES.cordaoEspecial.pretoBranco)} - {formatCurrency(FINISHING_PRICES.cordaoEspecial.colorido)})
+                    </span>
                   </Label>
                 </div>
 
@@ -274,19 +294,9 @@ export function FinishingModal({
                   <RadioGroupItem value="saoFrancisco" id="cordao-saofrancisco" />
                   <Label htmlFor="cordao-saofrancisco" className="cursor-pointer font-normal">
                     São Francisco
-                    <span className="text-xs text-muted-foreground ml-1">(+ cor)</span>
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="colorido" id="cordao-colorido" />
-                  <Label htmlFor="cordao-colorido" className="cursor-pointer font-normal">
-                    Colorido
-                    {FINISHING_PRICES.cordao.colorido > 0 && (
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({formatCurrency(FINISHING_PRICES.cordao.colorido)})
-                      </span>
-                    )}
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({formatCurrency(FINISHING_PRICES.cordaoEspecial.pretoBranco)} - {formatCurrency(FINISHING_PRICES.cordaoEspecial.colorido)})
+                    </span>
                   </Label>
                 </div>
 
@@ -294,87 +304,55 @@ export function FinishingModal({
                   <RadioGroupItem value="gorgurinho" id="cordao-gorgurinho" />
                   <Label htmlFor="cordao-gorgurinho" className="cursor-pointer font-normal">
                     Gorgurinho
-                    <span className="text-xs text-muted-foreground ml-1">(+ cor)</span>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({formatCurrency(FINISHING_PRICES.cordaoEspecial.pretoBranco)} - {formatCurrency(FINISHING_PRICES.cordaoEspecial.colorido)})
+                    </span>
                   </Label>
                 </div>
               </div>
             </RadioGroup>
           </div>
 
-          <Separator />
+          {/* Cor do Cordão - só aparece para cordões especiais */}
+          {(finishing.cordao === 'gorgurao' || finishing.cordao === 'saoFrancisco' || finishing.cordao === 'gorgurinho') && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">
+                  Cor do Cordão <span className="text-sm font-normal text-muted-foreground">(selecione apenas 1)</span>
+                </Label>
+                <RadioGroup
+                  value={finishing.corCordao}
+                  onValueChange={(value) =>
+                    setFinishing(prev => ({ ...prev, corCordao: value as FinishingOptions['corCordao'] }))
+                  }
+                >
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="preto" id="cor-preto" />
+                      <Label htmlFor="cor-preto" className="cursor-pointer font-normal">
+                        Preto
+                      </Label>
+                    </div>
 
-          {/* Cor do Cordão */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">
-              Cor do Cordão <span className="text-sm font-normal text-muted-foreground">(selecione apenas 1)</span>
-            </Label>
-            <RadioGroup
-              value={finishing.corCordao}
-              onValueChange={(value) => 
-                setFinishing(prev => ({ ...prev, corCordao: value as FinishingOptions['corCordao'] }))
-              }
-              disabled={finishing.cordao === 'nenhum'}
-            >
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value="preto" 
-                    id="cor-preto" 
-                    disabled={finishing.cordao === 'nenhum'}
-                  />
-                  <Label 
-                    htmlFor="cor-preto" 
-                    className={`cursor-pointer font-normal ${finishing.cordao === 'nenhum' ? 'opacity-50' : ''}`}
-                  >
-                    Preto
-                    {FINISHING_PRICES.corCordao.preto > 0 && (
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({formatCurrency(FINISHING_PRICES.corCordao.preto)})
-                      </span>
-                    )}
-                  </Label>
-                </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="branco" id="cor-branco" />
+                      <Label htmlFor="cor-branco" className="cursor-pointer font-normal">
+                        Branco
+                      </Label>
+                    </div>
 
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value="branco" 
-                    id="cor-branco"
-                    disabled={finishing.cordao === 'nenhum'}
-                  />
-                  <Label 
-                    htmlFor="cor-branco" 
-                    className={`cursor-pointer font-normal ${finishing.cordao === 'nenhum' ? 'opacity-50' : ''}`}
-                  >
-                    Branco
-                    {FINISHING_PRICES.corCordao.branco > 0 && (
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({formatCurrency(FINISHING_PRICES.corCordao.branco)})
-                      </span>
-                    )}
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value="colorido" 
-                    id="cor-colorido"
-                    disabled={finishing.cordao === 'nenhum'}
-                  />
-                  <Label 
-                    htmlFor="cor-colorido" 
-                    className={`cursor-pointer font-normal ${finishing.cordao === 'nenhum' ? 'opacity-50' : ''}`}
-                  >
-                    Colorido
-                    {FINISHING_PRICES.corCordao.colorido > 0 && (
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({formatCurrency(FINISHING_PRICES.corCordao.colorido)})
-                      </span>
-                    )}
-                  </Label>
-                </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="colorido" id="cor-colorido" />
+                      <Label htmlFor="cor-colorido" className="cursor-pointer font-normal">
+                        Colorido
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
               </div>
-            </RadioGroup>
-          </div>
+            </>
+          )}
 
           <Separator />
 
