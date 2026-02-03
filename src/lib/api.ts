@@ -62,36 +62,41 @@ apiClient.interceptors.response.use(
 // --- Autenticação ---
 export const login = async (credentials: { username: string; password: string; }) => {
   console.log('🔐 Tentando autenticar:', credentials.username);
-  
-  // Primeiro validar localmente para feedback imediato
+
+  // Validar localmente para feedback INSTANTÂNEO
   const localUser = authenticateUser(credentials.username, credentials.password);
-  
+
   if (!localUser) {
     throw new Error('Credenciais inválidas');
   }
-  
-  // Tentar autenticar no backend com timeout rápido (8s)
-  try {
-    console.log('📡 Tentando autenticação no backend...');
-    const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 8000 });
-    console.log('✅ Backend auth bem-sucedida! Usando token real.');
-    return {
-      accessToken: response.data.accessToken,
-      user: response.data.user
-    };
-  } catch (error: any) {
-    // Se falhar (timeout, offline, erro), usar modo local
-    console.warn('⚠️ Backend indisponível, usando autenticação local:', error.message);
-    
-    // Gerar um token local válido (formato JWT-like para compatibilidade)
-    const accessToken = `local-token-${localUser.id}-${Date.now()}`;
-    
-    console.log('✅ Login local bem-sucedido');
-    return {
-      accessToken,
-      user: localUser
-    };
-  }
+
+  // Gerar token local imediatamente (login instantâneo)
+  const localToken = `local-token-${localUser.id}-${Date.now()}`;
+  console.log('✅ Login local instantâneo bem-sucedido');
+
+  // Tentar backend em BACKGROUND (não bloqueia o login)
+  // Se conseguir, atualiza o token silenciosamente
+  setTimeout(() => {
+    axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 10000 })
+      .then((response) => {
+        console.log('✅ Backend respondeu! Atualizando token real...');
+        localStorage.setItem('authToken', response.data.accessToken);
+        // Atualizar user se backend retornar dados mais completos
+        if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+      })
+      .catch((error) => {
+        console.warn('⚠️ Backend indisponível, mantendo token local:', error.message);
+        // Mantém o token local, não afeta o usuário
+      });
+  }, 0);
+
+  // Retorna IMEDIATAMENTE com credenciais locais
+  return {
+    accessToken: localToken,
+    user: localUser
+  };
 };
 
 
