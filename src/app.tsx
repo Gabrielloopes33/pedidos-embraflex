@@ -1,9 +1,9 @@
 import { Toaster } from "@/componentes/ui/toaster";
 import { Toaster as Sonner } from "@/componentes/ui/sonner";
 import { TooltipProvider } from "@/componentes/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { DashboardLayout } from "./componentes/layouts/DashboardLayout";
 import ProtectedRoute from "./componentes/ProtectedRoute"; // Importar o novo componente
