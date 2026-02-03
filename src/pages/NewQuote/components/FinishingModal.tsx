@@ -256,8 +256,8 @@ export function FinishingModal({
                 setFinishing(prev => ({
                   ...prev,
                   cordao: value as FinishingOptions['cordao'],
-                  // Se nenhum cordão ou cordão simples, resetar cor
-                  corCordao: (value === 'nenhum' || value === 'padrao' || value === 'colorido') ? 'nenhum' : prev.corCordao
+                  // Se nenhum cordão ou cordão colorido (já é colorido), resetar cor
+                  corCordao: (value === 'nenhum' || value === 'colorido') ? 'nenhum' : prev.corCordao
                 }));
               }}
             >
@@ -313,8 +313,8 @@ export function FinishingModal({
             </RadioGroup>
           </div>
 
-          {/* Cor do Cordão - só aparece para cordões especiais */}
-          {(finishing.cordao === 'gorgurao' || finishing.cordao === 'saoFrancisco' || finishing.cordao === 'gorgurinho') && (
+          {/* Cor do Cordão - aparece para todos os cordões exceto "nenhum" e "colorido" (que já é colorido por definição) */}
+          {finishing.cordao !== 'nenhum' && finishing.cordao !== 'colorido' && (
             <>
               <Separator />
               <div className="space-y-3">
@@ -359,27 +359,21 @@ export function FinishingModal({
           {/* Resumo de Custos */}
           <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Valor base unitário:</span>
-              <span>-</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Acabamentos (unitário):</span>
-              <span className="text-primary font-medium">+ {formatCurrency(unitaryCost)}</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Valor unitário final:</span>
-              <span>-</span>
+              <span className="text-muted-foreground">Acabamentos (por unidade):</span>
+              <span className="font-medium">+ {formatCurrency(unitaryCost)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Quantidade:</span>
-              <span className="font-medium">{quantity} un</span>
+              <span className="font-medium">{quantity.toLocaleString('pt-BR')} un</span>
             </div>
             <Separator />
             <div className="flex justify-between">
-              <span className="font-semibold">Subtotal:</span>
-              <span className="text-lg font-bold">-</span>
+              <span className="font-semibold">Total de Acabamentos:</span>
+              <span className="text-lg font-bold text-primary">{formatCurrency(totalCost)}</span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              ({formatCurrency(unitaryCost)} × {quantity.toLocaleString('pt-BR')} = {formatCurrency(totalCost)})
+            </p>
           </div>
         </div>
 
