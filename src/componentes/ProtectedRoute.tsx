@@ -1,7 +1,9 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { prefetchInBackground } from '@/lib/prefetch';
 
 interface ProtectedRouteProps {
   requireAdmin?: boolean;
@@ -11,6 +13,8 @@ const ProtectedRoute = ({ requireAdmin = false }: ProtectedRouteProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isAdminUser, setIsAdminUser] = useState<boolean | null>(null);
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const prefetchDone = useRef(false);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -54,6 +58,12 @@ const ProtectedRoute = ({ requireAdmin = false }: ProtectedRouteProps) => {
       console.log('✅ Autenticado com sucesso');
       setIsAuthenticated(true);
 
+      // Prefetch de dados críticos em background (só uma vez)
+      if (!prefetchDone.current) {
+        prefetchDone.current = true;
+        prefetchInBackground(queryClient);
+      }
+
       // Verificar se é admin se necessário
       if (requireAdmin) {
         const user = getCurrentUser();
@@ -75,7 +85,7 @@ const ProtectedRoute = ({ requireAdmin = false }: ProtectedRouteProps) => {
     const interval = setInterval(checkAuth, 60000);
 
     return () => clearInterval(interval);
-  }, [requireAdmin]);
+  }, [requireAdmin, queryClient]);
 
   // Mostrar loading enquanto verifica autenticação
   if (isAuthenticated === null || (requireAdmin && isAdminUser === null)) {

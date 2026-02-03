@@ -308,42 +308,32 @@ export async function countCachedCustomers(options: CustomerSearchOptions = {}):
 }
 
 /**
- * Obtém estatísticas do cache
+ * Obtém estatísticas do cache (queries em paralelo para performance)
  */
 export async function getCacheStats(): Promise<CacheStats> {
-  // Contar produtos
-  const { count: totalProducts } = await supabase
-    .from('wc_products_cache')
-    .select('*', { count: 'exact', head: true });
+  // Executar todas as queries em PARALELO (muito mais rápido!)
+  const [
+    totalProductsResult,
+    activeProductsResult,
+    latestProductSyncResult,
+    totalCustomersResult,
+    activeCustomersResult,
+    latestCustomerSyncResult,
+  ] = await Promise.all([
+    supabase.from('wc_products_cache').select('*', { count: 'exact', head: true }),
+    supabase.from('wc_products_cache').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('wc_products_cache').select('synced_at').order('synced_at', { ascending: false }).limit(1).single(),
+    supabase.from('wc_customers_cache').select('*', { count: 'exact', head: true }),
+    supabase.from('wc_customers_cache').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('wc_customers_cache').select('synced_at').order('synced_at', { ascending: false }).limit(1).single(),
+  ]);
 
-  const { count: activeProducts } = await supabase
-    .from('wc_products_cache')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_active', true);
-
-  const { data: latestProductSync } = await supabase
-    .from('wc_products_cache')
-    .select('synced_at')
-    .order('synced_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  // Contar clientes
-  const { count: totalCustomers } = await supabase
-    .from('wc_customers_cache')
-    .select('*', { count: 'exact', head: true });
-
-  const { count: activeCustomers } = await supabase
-    .from('wc_customers_cache')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_active', true);
-
-  const { data: latestCustomerSync } = await supabase
-    .from('wc_customers_cache')
-    .select('synced_at')
-    .order('synced_at', { ascending: false })
-    .limit(1)
-    .single();
+  const totalProducts = totalProductsResult.count;
+  const activeProducts = activeProductsResult.count;
+  const latestProductSync = latestProductSyncResult.data;
+  const totalCustomers = totalCustomersResult.count;
+  const activeCustomers = activeCustomersResult.count;
+  const latestCustomerSync = latestCustomerSyncResult.data;
 
   const isEmpty = (totalProducts || 0) === 0 && (totalCustomers || 0) === 0;
 

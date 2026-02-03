@@ -2,6 +2,8 @@ import { Toaster } from "@/componentes/ui/toaster";
 import { Toaster as Sonner } from "@/componentes/ui/sonner";
 import { TooltipProvider } from "@/componentes/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/react-query-persist-client";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { DashboardLayout } from "./componentes/layouts/DashboardLayout";
 import ProtectedRoute from "./componentes/ProtectedRoute"; // Importar o novo componente
@@ -28,12 +30,34 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1, // Tentar apenas 1 vez se falhar
-      staleTime: 30000, // 30 segundos - dados considerados frescos
-      gcTime: 5 * 60 * 1000, // 5 minutos de cache
+      staleTime: 5 * 60 * 1000, // 5 minutos - dados considerados frescos (aumentado!)
+      gcTime: 30 * 60 * 1000, // 30 minutos de cache (aumentado!)
       refetchOnWindowFocus: false, // Não recarregar ao focar janela
       refetchOnMount: false, // Não recarregar ao montar se já tem cache
     },
   },
+});
+
+// Persistir cache no localStorage para carregamento instantâneo
+const persister = createSyncStoragePersister({
+  storage: window.localStorage,
+  key: 'embraflex-cache',
+  // Serializar apenas queries de produtos e cache-stats (não sync-status)
+  serialize: (data) => {
+    // Filtrar para persistir apenas dados de produtos
+    const filtered = {
+      ...data,
+      clientState: {
+        ...data.clientState,
+        queries: data.clientState.queries.filter((q: any) =>
+          q.queryKey[0] === 'cached-products' ||
+          q.queryKey[0] === 'cache-stats'
+        ),
+      },
+    };
+    return JSON.stringify(filtered);
+  },
+  deserialize: (data) => JSON.parse(data),
 });
 
 // Layout principal para as páginas protegidas
@@ -45,7 +69,14 @@ const AppLayout = () => (
 
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: 24 * 60 * 60 * 1000, // Cache válido por 24 horas
+        buster: 'v1', // Incrementar para invalidar cache antigo
+      }}
+    >
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -53,7 +84,7 @@ const App = () => {
           <Routes>
             {/* Rota de login é pública */}
             <Route path="/login" element={<Login />} />
-            
+
             {/* Rota de assinatura é pública */}
             <Route path="/assinar/:token" element={<SignaturePage />} />
 
@@ -86,7 +117,7 @@ const App = () => {
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 };
 
