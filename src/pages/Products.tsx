@@ -23,6 +23,7 @@ import { FinishingModal } from "@/pages/NewOrder/components/FinishingModal";
 import type { ProductItem } from "@/pages/NewOrder/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 
 interface ProductLine {
   name: string;
@@ -378,6 +379,9 @@ const Products = () => {
   const [isFinishingModalOpen, setIsFinishingModalOpen] = useState(false);
   const [finishingProduct, setFinishingProduct] = useState<ProductItem | null>(null);
 
+  // Hook para monitorar status do sync
+  const { isSyncing, lastSyncDate, startSync, syncStatus } = useSyncStatus();
+
   // Buscar estatísticas do cache
   const { data: cacheStats } = useQuery({
     queryKey: ['cache-stats'],
@@ -627,16 +631,48 @@ const Products = () => {
         <p className="text-muted-foreground mt-1">Explore nosso catálogo organizado por categorias</p>
       </div>
 
+      {/* Sync Status Indicator */}
+      {isSyncing && (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
+          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+          <AlertTitle className="text-blue-800 dark:text-blue-200">Sincronizando produtos...</AlertTitle>
+          <AlertDescription className="text-blue-700 dark:text-blue-300">
+            Os produtos estão sendo atualizados do WooCommerce. A lista será atualizada automaticamente quando concluir.
+            {syncStatus?.lastSync && (
+              <span className="ml-2">
+                ({syncStatus.lastSync.items_processed} itens processados)
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Cache Status Alert */}
-      {cacheStats && (
+      {cacheStats && !isSyncing && (
         <Alert>
           <Database className="h-4 w-4" />
-          <AlertTitle>Fonte de dados</AlertTitle>
+          <AlertTitle className="flex items-center gap-2">
+            Fonte de dados
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => startSync(false)}
+              disabled={isSyncing}
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          </AlertTitle>
           <AlertDescription>
             {cachedProducts && cachedProducts.length > 0 && !cacheError ? (
               <>
                 Usando cache do Supabase ({cachedProducts.length} produtos).
-                {cacheStats.products.lastSync && (
+                {lastSyncDate ? (
+                  <span className="ml-2">
+                    Última sincronização: {lastSyncDate.toLocaleString('pt-BR')}
+                  </span>
+                ) : cacheStats.products.lastSync && (
                   <span className="ml-2">
                     Última sincronização: {new Date(cacheStats.products.lastSync).toLocaleString('pt-BR')}
                   </span>

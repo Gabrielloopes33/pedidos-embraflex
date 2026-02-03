@@ -6,13 +6,17 @@ import { Label } from "@/componentes/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/componentes/ui/card";
 import { toast } from "sonner";
 import { Package, RefreshCw } from "lucide-react";
-import { login, triggerSync } from "@/lib/api"; // Importar a função de login e sync da API
+import { login } from "@/lib/api";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 
 const Login = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Hook para gerenciar sync com polling automático
+  const { startSync } = useSyncStatus();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,17 +35,12 @@ const Login = () => {
 
       toast.success("Login realizado com sucesso!");
 
-      // Disparar sync completo em background para atualizar cache de produtos
+      // Disparar sync via hook (polling automático será gerenciado pelo hook)
       // Usando forceFullSync para garantir que todos os produtos tenham o campo 'type'
-      triggerSync({ syncType: 'products', forceFullSync: true })
-        .then((result) => {
-          console.log('✅ Sync completo iniciado:', result);
-          toast.info('Sincronização de produtos iniciada em background.');
-        })
-        .catch((error) => {
-          console.warn('⚠️ Falha ao iniciar sync:', error);
-          // Não mostrar erro ao usuário, pois o sync é opcional
-        });
+      startSync(true).catch((error) => {
+        console.warn('⚠️ Falha ao iniciar sync:', error);
+        // Não mostrar erro ao usuário, pois o sync é opcional
+      });
 
       // Forçar um recarregamento da página para que a lógica de rotas em app.tsx seja reavaliada
       window.location.href = '/cotacoes/nova';
