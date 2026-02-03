@@ -1,4 +1,4 @@
-// FinishingModal - Modal para seleção de acabamentos com preços
+// FinishingModal - Modal para seleção de acabamentos com preços atualizados
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/componentes/ui/dialog';
 import { Button } from '@/componentes/ui/button';
