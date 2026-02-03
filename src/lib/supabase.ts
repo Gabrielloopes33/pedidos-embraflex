@@ -23,8 +23,28 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ==================== CACHE FUNCTIONS ====================
 
+// Campos essenciais para listagem (sem dados pesados como variations completas)
+const PRODUCT_LIST_FIELDS = `
+  id,
+  name,
+  sku,
+  type,
+  price,
+  regular_price,
+  stock_status,
+  stock_quantity,
+  categories,
+  images,
+  attributes,
+  description,
+  short_description,
+  precos_por_quantidade,
+  is_active,
+  synced_at
+`;
+
 /**
- * Busca produtos do cache
+ * Busca produtos do cache (otimizado para listagem)
  */
 export async function getCachedProducts(options: ProductSearchOptions = {}): Promise<CachedProduct[]> {
   const {
@@ -37,9 +57,10 @@ export async function getCachedProducts(options: ProductSearchOptions = {}): Pro
     offset = 0,
   } = options;
 
+  // Usar campos selecionados para performance (evita carregar variations pesadas)
   let query = supabase
     .from('wc_products_cache')
-    .select('*')
+    .select(PRODUCT_LIST_FIELDS)
     .order('name', { ascending: true });
 
   if (!includeInactive) {
@@ -80,7 +101,7 @@ export async function getCachedProducts(options: ProductSearchOptions = {}): Pro
 }
 
 /**
- * Busca um produto por ID
+ * Busca um produto por ID (com todos os campos)
  */
 export async function getCachedProductById(id: number): Promise<CachedProduct | null> {
   const { data, error } = await supabase
