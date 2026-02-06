@@ -52,7 +52,6 @@ export async function getCachedProducts(options: ProductSearchOptions = {}): Pro
     category,
     sku,
     includeInactive = false,
-    includeNonInterno = false,
     limit = 100,
     offset = 0,
   } = options;
@@ -67,13 +66,8 @@ export async function getCachedProducts(options: ProductSearchOptions = {}): Pro
     query = query.eq('is_active', true);
   }
 
-  // Filtrar por categoria "Interno" ou "Interna" por padrão
-  if (!includeNonInterno) {
-    // Usar @> (contains) para buscar em array JSON
-    query = query.or(
-      'categories@>[{"name":"Interno"}],categories@>[{"name":"Interna"}]'
-    );
-  }
+  // Removido filtro de categoria "Interno/Interna" - será filtrado no cliente
+  // (O filtro via PostgREST estava causando erros de sintaxe)
 
   if (search) {
     query = query.textSearch('search_vector', search.replace(/\s+/g, ' & '), {

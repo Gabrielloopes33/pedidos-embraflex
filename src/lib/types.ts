@@ -241,7 +241,6 @@ export interface ProductSearchOptions {
   category?: string;
   sku?: string;
   includeInactive?: boolean;
-  includeNonInterno?: boolean;
   limit?: number;
   offset?: number;
 }

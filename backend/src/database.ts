@@ -46,7 +46,8 @@ async function initializeDb(): Promise<SupabaseClient> {
           id TEXT PRIMARY KEY,
           username TEXT UNIQUE NOT NULL,
           password TEXT NOT NULL,
-          role TEXT NOT NULL CHECK(role IN ('admin', 'vendedor'))
+          role TEXT NOT NULL CHECK(role IN ('admin', 'vendedor')),
+          created_at TIMESTAMPTZ DEFAULT NOW()
         );
 
         -- Tabela de pedidos

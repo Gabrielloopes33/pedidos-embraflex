@@ -60,6 +60,17 @@ BEGIN
   END IF;
 END $$;
 
+-- Adicionar coluna created_at se não existir
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'created_at'
+  ) THEN
+    ALTER TABLE users ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW();
+  END IF;
+END $$;
+
 -- Adicionar coluna updated_at se não existir
 DO $$
 BEGIN
