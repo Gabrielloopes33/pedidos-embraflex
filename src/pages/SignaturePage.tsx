@@ -37,15 +37,27 @@ interface PublicQuoteData {
     quantity: number;
     price: number;
     subtotal: number;
+    discriminacaoProduto?: string;
+    larguraCm?: number;
+    alturaCm?: number;
+    comprimentoCm?: number;
+    tipoImpressao?: string;
     finishing?: {
       hotStamp?: boolean;
+      hotStampCor?: string;
+      hotStampCorManual?: string;
       eyelets?: boolean;
+      ilhosCorManual?: string;
       cord?: boolean;
+      cordao?: string;
+      corCordao?: string;
+      cordaoCorManual?: string;
     };
   }>;
   totalPrice: number;
   expiresAt: string;
   status: 'draft' | 'sent' | 'approved' | 'rejected';
+  condicoesPagamento?: string;
 }
 
 export default function SignaturePage() {
@@ -337,16 +349,45 @@ export default function SignaturePage() {
                         <div>
                           <p className="font-medium">{product.name}</p>
                           <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                          {/* Discriminação/Descrição do produto */}
+                          {product.discriminacaoProduto && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {product.discriminacaoProduto}
+                            </p>
+                          )}
+                          {/* Dimensões */}
+                          {(product.larguraCm || product.alturaCm || product.comprimentoCm) && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Dimensões: {product.larguraCm || '-'}cm x {product.alturaCm || '-'}cm
+                              {product.comprimentoCm ? ` x ${product.comprimentoCm}cm` : ''}
+                            </p>
+                          )}
+                          {/* Tipo de Impressão */}
+                          {product.tipoImpressao && (
+                            <p className="text-xs text-muted-foreground">
+                              Impressão: {product.tipoImpressao}
+                            </p>
+                          )}
+                          {/* Acabamentos */}
                           {product.finishing && (
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1 mt-2">
                               {product.finishing.hotStamp && (
-                                <Badge variant="outline" className="text-xs">Hot Stamp</Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  Hot Stamp{product.finishing.hotStampCor ? ` (${product.finishing.hotStampCor})` : ''}
+                                  {product.finishing.hotStampCorManual ? ` - ${product.finishing.hotStampCorManual}` : ''}
+                                </Badge>
                               )}
                               {product.finishing.eyelets && (
-                                <Badge variant="outline" className="text-xs">Ilhós</Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  Ilhós{product.finishing.ilhosCorManual ? ` (${product.finishing.ilhosCorManual})` : ''}
+                                </Badge>
                               )}
-                              {product.finishing.cord && (
-                                <Badge variant="outline" className="text-xs">Cordão</Badge>
+                              {(product.finishing.cord || product.finishing.cordao) && (
+                                <Badge variant="outline" className="text-xs">
+                                  Cordão{product.finishing.cordao ? ` ${product.finishing.cordao}` : ''}
+                                  {product.finishing.corCordao ? ` (${product.finishing.corCordao})` : ''}
+                                  {product.finishing.cordaoCorManual ? ` - ${product.finishing.cordaoCorManual}` : ''}
+                                </Badge>
                               )}
                             </div>
                           )}
@@ -413,6 +454,9 @@ export default function SignaturePage() {
               </li>
               <li className="text-muted-foreground leading-relaxed">
                 O pagamento deverá ser realizado no ato do pedido, conforme as condições acordadas. O CLIENTE será responsável por eventuais custos decorrentes de inadimplemento, incluindo taxas judiciais, conforme a legislação vigente. A primeira compra será efetuada à Vista.
+              </li>
+              <li className="text-muted-foreground leading-relaxed">
+                <strong>Pagamento no Cartão:</strong> Parcelamento em até 5x sem juros. Pagamentos à vista no cartão têm <strong>5% de desconto</strong> sobre o valor total.
               </li>
               <li className="text-muted-foreground leading-relaxed">
                 A EMPRESA reserva-se o direito de cancelar o pedido caso sejam identificadas restrições de crédito no cadastro do CLIENTE, desde a data da venda até a entrega.

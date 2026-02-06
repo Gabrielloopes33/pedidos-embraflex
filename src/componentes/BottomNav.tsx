@@ -1,9 +1,17 @@
 // BottomNav - Navegação inferior mobile-first
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FileText, ShoppingCart, Users } from 'lucide-react';
+import { FileText, ShoppingCart, Users, UserCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isAdmin } from '@/lib/auth';
 
-const navItems = [
+interface NavItem {
+  title: string;
+  icon: typeof FileText;
+  path: string;
+  adminOnly?: boolean;
+}
+
+const baseNavItems: NavItem[] = [
   {
     title: 'Nova Cotação',
     icon: FileText,
@@ -19,11 +27,21 @@ const navItems = [
     icon: Users,
     path: '/customers',
   },
+  {
+    title: 'Vendedores',
+    icon: UserCog,
+    path: '/users',
+    adminOnly: true,
+  },
 ];
 
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const userIsAdmin = isAdmin();
+
+  // Filtrar itens baseado no perfil do usuário
+  const navItems = baseNavItems.filter(item => !item.adminOnly || userIsAdmin);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-lg md:hidden">
@@ -44,8 +62,8 @@ export function BottomNav() {
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className={cn('h-6 w-6', isActive && 'stroke-[2.5]')} />
-              <span className="text-xs">{item.title}</span>
+              <Icon className={cn('h-5 w-5', isActive && 'stroke-[2.5]')} />
+              <span className="text-[10px]">{item.title}</span>
             </button>
           );
         })}

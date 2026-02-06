@@ -148,29 +148,29 @@ const Orders = () => {
                   {filteredApprovedQuotes.map((quote) => (
                     <div
                       key={quote.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-all cursor-pointer border border-transparent hover:border-primary/20"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-all cursor-pointer border border-transparent hover:border-primary/20 gap-2"
                       onClick={() => navigate(`/quotes/${quote.id}`)}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <p className="font-semibold text-foreground text-xl">{quote.customerName}</p>
-                          <Badge className="bg-green-500">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <p className="font-semibold text-foreground text-lg sm:text-xl truncate max-w-[200px] sm:max-w-none">{quote.customerName}</p>
+                          <Badge className="bg-green-500 shrink-0">
                             Assinado
                           </Badge>
                           {isAdmin() && quote.createdByName && (
-                            <Badge variant="outline" className="gap-1">
+                            <Badge variant="outline" className="gap-1 shrink-0">
                               <User className="w-3 h-3" />
-                              {quote.createdByName}
+                              <span className="truncate max-w-[80px]">{quote.createdByName}</span>
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground opacity-70">Cotação: {quote.quoteNumber}</p>
+                        <p className="text-xs text-muted-foreground opacity-70 truncate">Cotação: {quote.quoteNumber}</p>
                         <p className="text-xs text-muted-foreground mt-1">{quote.products.length} produto(s)</p>
                         <p className="text-sm text-primary font-semibold mt-1">
                           Total: R$ {quote.totalPrice.toFixed(2).replace('.', ',')}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right shrink-0">
                         <p className="text-sm text-muted-foreground">{format(new Date(quote.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
                       </div>
                     </div>
@@ -237,34 +237,34 @@ const Orders = () => {
                   {filteredQuotes.map((quote) => (
                     <div
                       key={quote.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-all cursor-pointer border border-transparent hover:border-primary/20"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-all cursor-pointer border border-transparent hover:border-primary/20 gap-2"
                       onClick={() => navigate(`/quotes/${quote.id}`)}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <p className="font-semibold text-foreground text-xl">{quote.customerName}</p>
-                          <Badge className={quoteStatusConfig[quote.status as keyof typeof quoteStatusConfig].color}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <p className="font-semibold text-foreground text-lg sm:text-xl truncate max-w-[200px] sm:max-w-none">{quote.customerName}</p>
+                          <Badge className={`${quoteStatusConfig[quote.status as keyof typeof quoteStatusConfig].color} shrink-0`}>
                             {quoteStatusConfig[quote.status as keyof typeof quoteStatusConfig].label}
                           </Badge>
                           {quote.viewCount > 0 && (
-                            <Badge variant="outline" className="gap-1">
-                              {quote.viewCount} visualizaç{quote.viewCount === 1 ? 'ão' : 'ões'}
+                            <Badge variant="outline" className="gap-1 shrink-0">
+                              {quote.viewCount} viz.
                             </Badge>
                           )}
                           {isAdmin() && quote.createdByName && (
-                            <Badge variant="outline" className="gap-1">
+                            <Badge variant="outline" className="gap-1 shrink-0">
                               <User className="w-3 h-3" />
-                              {quote.createdByName}
+                              <span className="truncate max-w-[80px]">{quote.createdByName}</span>
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground opacity-70">Cotação: {quote.quoteNumber}</p>
+                        <p className="text-xs text-muted-foreground opacity-70 truncate">Cotação: {quote.quoteNumber}</p>
                         <p className="text-xs text-muted-foreground mt-1">{quote.products.length} produto(s)</p>
                         <p className="text-sm text-primary font-semibold mt-1">
                           Total: R$ {quote.totalPrice.toFixed(2).replace('.', ',')}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right shrink-0">
                         <p className="text-sm text-muted-foreground">{format(new Date(quote.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
                         {quote.expiresAt && (
                           <p className="text-xs text-muted-foreground mt-1">

@@ -1,6 +1,7 @@
 import { Label } from "@/componentes/ui/label";
 import { Checkbox } from "@/componentes/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/componentes/ui/radio-group";
+import { Input } from "@/componentes/ui/input";
 import type { ProductItem } from "../types";
 import { FINISHING_PRICES } from "../types";
 
@@ -61,7 +62,9 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                       ...item.finishing,
                       [option.key]: checked === true,
                       // Se desmarcou hot stamp, limpar cor
-                      ...(option.key === 'hotStamp' && !checked ? { hotStampCor: '' } : {}),
+                      ...(option.key === 'hotStamp' && !checked ? { hotStampCor: '', hotStampCorManual: '' } : {}),
+                      // Se desmarcou ilhós, limpar cor manual
+                      ...(option.key === 'ilhos' && !checked ? { ilhosCorManual: '' } : {}),
                     });
                   }}
                 />
@@ -87,6 +90,24 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
             );
           })}
         </div>
+
+        {/* Campo de cor manual para Ilhós */}
+        {item.finishing?.ilhos && (
+          <div className="mt-3 ml-6">
+            <Label className="text-xs text-muted-foreground mb-1 block">Cor do Ilhós (opcional):</Label>
+            <Input
+              placeholder="Ex: Dourado, Prata, Preto... (padrão: prata)"
+              value={item.finishing?.ilhosCorManual || ''}
+              onChange={(e) => {
+                onUpdate('finishing', {
+                  ...item.finishing,
+                  ilhosCorManual: e.target.value,
+                });
+              }}
+              className="max-w-xs"
+            />
+          </div>
+        )}
       </div>
 
       {/* Cor do Hot Stamp (apenas se Hot Stamp marcado) */}
@@ -101,14 +122,16 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
               onUpdate('finishing', {
                 ...item.finishing,
                 hotStampCor: value as any,
+                // Limpar cor manual se não for colorido
+                hotStampCorManual: value === 'colorido' ? item.finishing?.hotStampCorManual : '',
               });
             }}
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-md">
               {coresHotStamp.map((option) => (
                 <div key={option.value} className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value={option.value} 
+                  <RadioGroupItem
+                    value={option.value}
                     id={`${item.productId}-hotstamp-${option.value}`}
                   />
                   <label
@@ -124,6 +147,23 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
               ))}
             </div>
           </RadioGroup>
+          {/* Campo de cor manual para Hot Stamp colorido */}
+          {item.finishing?.hotStampCor === 'colorido' && (
+            <div className="mt-3">
+              <Label className="text-xs text-muted-foreground mb-1 block">Especifique a cor:</Label>
+              <Input
+                placeholder="Ex: Vermelho, Azul Royal, Rosa Pink..."
+                value={item.finishing?.hotStampCorManual || ''}
+                onChange={(e) => {
+                  onUpdate('finishing', {
+                    ...item.finishing,
+                    hotStampCorManual: e.target.value,
+                  });
+                }}
+                className="max-w-xs"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -190,6 +230,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
               onUpdate('finishing', {
                 ...item.finishing,
                 corCordao: value as any,
+                // Limpar cor manual se não for colorido
+                cordaoCorManual: value === 'colorido' ? item.finishing?.cordaoCorManual : '',
               });
             }}
           >
@@ -210,6 +252,43 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
               ))}
             </div>
           </RadioGroup>
+          {/* Campo de cor manual para Cordão colorido */}
+          {item.finishing?.corCordao === 'colorido' && (
+            <div className="mt-3">
+              <Label className="text-xs text-muted-foreground mb-1 block">Especifique a cor:</Label>
+              <Input
+                placeholder="Ex: Vermelho, Azul, Rosa..."
+                value={item.finishing?.cordaoCorManual || ''}
+                onChange={(e) => {
+                  onUpdate('finishing', {
+                    ...item.finishing,
+                    cordaoCorManual: e.target.value,
+                  });
+                }}
+                className="max-w-xs"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Campo de cor manual para cordão tipo "colorido" */}
+      {item.finishing?.cordao === 'colorido' && (
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-muted-foreground">
+            Especifique a cor do cordão:
+          </Label>
+          <Input
+            placeholder="Ex: Vermelho, Azul, Rosa..."
+            value={item.finishing?.cordaoCorManual || ''}
+            onChange={(e) => {
+              onUpdate('finishing', {
+                ...item.finishing,
+                cordaoCorManual: e.target.value,
+              });
+            }}
+            className="max-w-xs"
+          />
         </div>
       )}
     </div>

@@ -4,14 +4,17 @@ export interface Finishing {
   // Acessórios
   hotStamp: boolean;
   hotStampCor: 'dourado' | 'prata' | 'colorido' | ''; // Cor do hot stamp
+  hotStampCorManual?: string; // Cor manual para hot stamp colorido
   ilhos: boolean;
+  ilhosCorManual?: string; // Cor manual para ilhós
   furoPresente: boolean;
-  
+
   // Cordão (apenas 1 selecionável)
   cordao: 'padrão' | 'colorido' | 'gorgurinho' | 'gorgurão' | 'são francisco' | '';
-  
+
   // Cor do Cordão (se padrão, gorgurinho, gorgurão ou são francisco)
   corCordao: 'preto' | 'branco' | 'bege' | 'colorido' | '';
+  cordaoCorManual?: string; // Cor manual para cordão colorido
 }
 
 export interface ProductItem {
