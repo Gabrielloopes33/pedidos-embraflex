@@ -18,7 +18,7 @@ async function createAdminUser() {
     password: 'admin123',
     email: 'admin@embraflex.com',
     full_name: 'Administrador',
-    role: 'admin' as 'admin',
+    role: 'admin' as const,
     is_active: true,
     created_by: null, // Admin não tem criador
   };
