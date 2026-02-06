@@ -28,7 +28,7 @@ const requireAdmin = (req: AuthenticatedRequest, res: Response, next: Function) 
  * Lista todos os usuários (admin only)
  * Query: ?role=admin|vendedor, ?isActive=true|false
  */
-router.get('/', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { role, isActive } = req.query;
 
@@ -71,7 +71,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
  * GET /api/users/stats
  * Obtém estatísticas dos usuários (admin only)
  */
-router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { data, error } = await supabase.rpc('get_user_stats');
 
@@ -93,7 +93,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
  * GET /api/users/:id
  * Busca um usuário por ID (admin only)
  */
-router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -128,7 +128,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
  * Cria um novo usuário (admin only)
  * Body: { username, password, email?, role, full_name? }
  */
-router.post('/', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { username, password, email, role, full_name } = req.body;
 
@@ -218,7 +218,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
  * Atualiza um usuário (admin only)
  * Body: { username?, email?, role?, full_name?, is_active?, password? }
  */
-router.put('/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { username, email, role, full_name, is_active, password } = req.body;
@@ -318,7 +318,7 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response) => {
  * Deleta um usuário (admin only)
  * Nota: Não permite deletar o próprio usuário
  */
-router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -364,7 +364,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
  * GET /api/users/:id/audit-logs
  * Busca logs de auditoria de um usuário (admin only)
  */
-router.get('/:id/audit-logs', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id/audit-logs', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -393,7 +393,7 @@ router.get('/:id/audit-logs', async (req: AuthenticatedRequest, res: Response) =
  * Altera senha de um usuário (admin only)
  * Body: { newPassword }
  */
-router.post('/:id/change-password', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/change-password', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { newPassword } = req.body;

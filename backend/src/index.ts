@@ -51,12 +51,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Register quote routes
-app.use('/api/quotes', quotesRouter);
-app.use('/api/signature', signatureRouter);
-app.use('/api/sync', syncRouter);
-app.use('/api/users', usersRouter);
-
 // Estendendo a interface Request do Express para incluir o usuário
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -88,6 +82,12 @@ const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextF
     next();
   });
 };
+
+// Register quote routes
+app.use('/api/quotes', quotesRouter);
+app.use('/api/signature', signatureRouter);
+app.use('/api/sync', syncRouter);
+app.use('/api/users', authenticateToken, usersRouter);
 
 
 initializeDb().then(() => {
