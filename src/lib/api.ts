@@ -63,35 +63,33 @@ apiClient.interceptors.response.use(
 export const login = async (credentials: { username: string; password: string; }) => {
   console.log('🔐 Tentando autenticar:', credentials.username);
 
-  // Tentar autenticar via API do backend PRIMEIRO
+  // Autenticar via API do backend (sem fallback para evitar tokens inválidos)
   try {
-    const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 10000 });
+    const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 30000 });
     console.log('✅ JWT recebido do backend!');
-    
+
     // Usar token JWT real do backend
     return {
       accessToken: response.data.accessToken,
       user: response.data.user
     };
   } catch (error: any) {
-    // Se backend falhar, tentar validar localmente (FALLBACK)
-    console.warn('⚠️ Backend indisponível, tentando validação local...', error?.message);
-    
-    const localUser = authenticateUser(credentials.username, credentials.password);
-    
-    if (!localUser) {
-      // Se não estiver nem no backend nem na lista local, lançar erro
-      throw new Error('Credenciais inválidas');
+    console.error('❌ Erro no login:', error?.message);
+
+    // Verificar tipo de erro para mensagem mais clara
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      throw new Error('Servidor demorou para responder. Tente novamente.');
     }
-    
-    console.log('✅ Usuário local válido, usando token local fallback');
-    
-    // FALLBACK: usar token local se backend falhar
-    const localToken = `local-token-${localUser.id}-${Date.now()}`;
-    return {
-      accessToken: localToken,
-      user: localUser
-    };
+
+    if (error.response?.status === 401) {
+      throw new Error('Usuário ou senha incorretos.');
+    }
+
+    if (error.response?.status === 403) {
+      throw new Error('Usuário inativo. Contate o administrador.');
+    }
+
+    throw new Error('Erro ao conectar. Verifique sua conexão e tente novamente.');
   }
 };
 
