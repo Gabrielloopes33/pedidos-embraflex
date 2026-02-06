@@ -272,9 +272,7 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
     }
 
     // Preparar dados de atualização
-    const updates: any = {
-      updated_at: new Date().toISOString(),
-    };
+    const updates: any = {};
 
     if (username) updates.username = username;
     if (email !== undefined) updates.email = email || null;
@@ -424,7 +422,6 @@ router.post('/:id/change-password', requireAdmin, async (req: AuthenticatedReque
       .from('users')
       .update({
         password: passwordHash,
-        updated_at: new Date().toISOString(),
       })
       .eq('id', id);
 
