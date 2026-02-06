@@ -69,8 +69,9 @@ export async function getCachedProducts(options: ProductSearchOptions = {}): Pro
 
   // Filtrar por categoria "Interno" ou "Interna" por padrão
   if (!includeNonInterno) {
+    // Usar @> (contains) para buscar em array JSON
     query = query.or(
-      'categories.cs.{\\"name\\":\\"Interno\\"},categories.cs.{\\"name\\":\\"Interna\\"}'
+      'categories@>[{"name":"Interno"}],categories@>[{"name":"Interna"}]'
     );
   }
 

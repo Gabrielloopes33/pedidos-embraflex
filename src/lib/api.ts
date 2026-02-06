@@ -70,33 +70,28 @@ export const login = async (credentials: { username: string; password: string; }
     throw new Error('Credenciais inválidas');
   }
 
-  // Gerar token local imediatamente (login instantâneo)
-  const localToken = `local-token-${localUser.id}-${Date.now()}`;
-  console.log('✅ Login local instantâneo bem-sucedido');
+  console.log('✅ Usuário local válido, obtendo JWT do backend...');
 
-  // Tentar backend em BACKGROUND (não bloqueia o login)
-  // Se conseguir, atualiza o token silenciosamente
-  setTimeout(() => {
-    axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 10000 })
-      .then((response) => {
-        console.log('✅ Backend respondeu! Atualizando token real...');
-        localStorage.setItem('authToken', response.data.accessToken);
-        // Atualizar user se backend retornar dados mais completos
-        if (response.data.user) {
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-        }
-      })
-      .catch((error) => {
-        console.warn('⚠️ Backend indisponível, mantendo token local:', error.message);
-        // Mantém o token local, não afeta o usuário
-      });
-  }, 0);
-
-  // Retorna IMEDIATAMENTE com credenciais locais
-  return {
-    accessToken: localToken,
-    user: localUser
-  };
+  // Tentar obter JWT do backend (aguarda resposta)
+  try {
+    const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 10000 });
+    console.log('✅ JWT recebido do backend!');
+    
+    // Usar token JWT real do backend
+    return {
+      accessToken: response.data.accessToken,
+      user: response.data.user || localUser
+    };
+  } catch (error) {
+    console.warn('⚠️ Backend indisponível, usando token local fallback:', error);
+    
+    // FALLBACK: usar token local se backend falhar
+    const localToken = `local-token-${localUser.id}-${Date.now()}`;
+    return {
+      accessToken: localToken,
+      user: localUser
+    };
+  }
 };
 
 
