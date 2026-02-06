@@ -130,6 +130,12 @@ initializeDb().then(() => {
       }
 
       const user = users[0];
+      
+      // Verificar se usuário está ativo
+      if (user.is_active === false) {
+        return res.status(403).json({ message: 'Usuário inativo. Entre em contato com o administrador.' });
+      }
+      
       const match = await bcrypt.compare(password, user.password);
       if (!match) {
         return res.status(401).json({ message: 'Credenciais inválidas.' });

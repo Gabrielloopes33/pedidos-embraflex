@@ -63,16 +63,7 @@ apiClient.interceptors.response.use(
 export const login = async (credentials: { username: string; password: string; }) => {
   console.log('🔐 Tentando autenticar:', credentials.username);
 
-  // Validar localmente para feedback INSTANTÂNEO
-  const localUser = authenticateUser(credentials.username, credentials.password);
-
-  if (!localUser) {
-    throw new Error('Credenciais inválidas');
-  }
-
-  console.log('✅ Usuário local válido, obtendo JWT do backend...');
-
-  // Tentar obter JWT do backend (aguarda resposta)
+  // Tentar autenticar via API do backend PRIMEIRO
   try {
     const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials, { timeout: 10000 });
     console.log('✅ JWT recebido do backend!');
@@ -80,10 +71,20 @@ export const login = async (credentials: { username: string; password: string; }
     // Usar token JWT real do backend
     return {
       accessToken: response.data.accessToken,
-      user: response.data.user || localUser
+      user: response.data.user
     };
-  } catch (error) {
-    console.warn('⚠️ Backend indisponível, usando token local fallback:', error);
+  } catch (error: any) {
+    // Se backend falhar, tentar validar localmente (FALLBACK)
+    console.warn('⚠️ Backend indisponível, tentando validação local...', error?.message);
+    
+    const localUser = authenticateUser(credentials.username, credentials.password);
+    
+    if (!localUser) {
+      // Se não estiver nem no backend nem na lista local, lançar erro
+      throw new Error('Credenciais inválidas');
+    }
+    
+    console.log('✅ Usuário local válido, usando token local fallback');
     
     // FALLBACK: usar token local se backend falhar
     const localToken = `local-token-${localUser.id}-${Date.now()}`;
