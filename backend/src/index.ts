@@ -70,14 +70,19 @@ const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextF
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  console.log('🔐 [Auth] Rota:', req.path, '| Token presente:', !!token);
+
   if (token == null) {
-    return res.sendStatus(401); // Não autorizado se não houver token
+    console.log('❌ [Auth] Token ausente - retornando 401');
+    return res.status(401).json({ message: 'Token de autenticação não fornecido.', code: 'NO_TOKEN' });
   }
 
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
-      return res.sendStatus(403); // Proibido se o token for inválido
+      console.log('❌ [Auth] Token inválido:', err.message);
+      return res.status(403).json({ message: 'Token inválido ou expirado.', code: 'INVALID_TOKEN', error: err.message });
     }
+    console.log('✅ [Auth] Usuário autenticado:', user?.username, '| Role:', user?.role);
     req.user = user;
     next();
   });

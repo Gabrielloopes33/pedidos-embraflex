@@ -17,8 +17,14 @@ interface AuthenticatedRequest extends Request {
  * Middleware para verificar se é admin
  */
 const requireAdmin = (req: AuthenticatedRequest, res: Response, next: Function) => {
+  console.log('🔐 [RequireAdmin] User:', req.user?.username, '| Role:', req.user?.role);
   if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem acessar esta rota.' });
+    console.log('❌ [RequireAdmin] Acesso negado para:', req.user?.username || 'usuário não identificado');
+    return res.status(403).json({
+      message: 'Acesso negado. Apenas administradores podem acessar esta rota.',
+      code: 'NOT_ADMIN',
+      userRole: req.user?.role || 'undefined'
+    });
   }
   next();
 };
@@ -417,13 +423,21 @@ router.post('/:id/change-password', requireAdmin, async (req: AuthenticatedReque
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(newPassword, saltRounds);
 
-    // Atualizar senha
+    // Executar SQL direto para evitar problemas com RPC e schema cache
     const { error } = await supabase
       .from('users')
-      .update({
+      .update({ 
         password: passwordHash,
+        updated_at: new Date().toISOString()
       })
-      .eq('id', id);
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating password:', error);
+      throw error;
+    }
 
     if (error) {
       throw error;
