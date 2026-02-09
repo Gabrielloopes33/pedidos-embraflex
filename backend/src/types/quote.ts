@@ -9,10 +9,18 @@ export interface QuoteProduct {
   quantity: number;
   width?: number;
   height?: number;
+  color?: string;
+  attributes?: Record<string, string>;
   finishing: {
     hotStamp: boolean;
+    hotStampCor?: string;
     eyelets: boolean;
+    ilhosCorManual?: string;
+    furoPresente?: boolean;
     cord: boolean;
+    cordao?: string;
+    corCordao?: string;
+    cordaoCorManual?: string;
   };
   subtotal: number;
   imageUrl?: string;

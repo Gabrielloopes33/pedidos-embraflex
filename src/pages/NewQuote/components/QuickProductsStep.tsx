@@ -43,8 +43,12 @@ export function QuickProductsStep({
       attributes: config.attributes,
       finishing: config.finishing ? {
         hotStamp: config.finishing.hotStamp || false,
+        hotStampCor: config.finishing.hotStampCor || 'nenhum',
         eyelets: config.finishing.ilhos || false,
+        furoPresente: config.finishing.furoPresente || false,
         cord: config.finishing.cordao !== 'nenhum',
+        cordao: config.finishing.cordao || 'nenhum',
+        corCordao: config.finishing.corCordao || 'nenhum',
       } : {
         hotStamp: false,
         eyelets: false,
@@ -58,14 +62,18 @@ export function QuickProductsStep({
 
   const handleFinishingConfirm = (finishing: FinishingOptions, cost: number) => {
     if (editingProductIndex === null) return;
-    
+
     const product = products[editingProductIndex];
     const updatedProduct: QuoteProduct = {
       ...product,
       finishing: {
         hotStamp: finishing.hotStamp,
+        hotStampCor: finishing.hotStampCor || 'nenhum',
         eyelets: finishing.ilhos,
+        furoPresente: finishing.furoPresente || false,
         cord: finishing.cordao !== 'nenhum',
+        cordao: finishing.cordao || 'nenhum',
+        corCordao: finishing.corCordao || 'nenhum',
       },
       // Atualizar preço e subtotal com o custo dos acabamentos
       subtotal: product.quantity * (product.price + cost / product.quantity),
@@ -188,13 +196,21 @@ export function QuickProductsStep({
                               </Badge>
                             )}
                             {product.finishing?.hotStamp && (
-                              <Badge variant="outline">Hot Stamp</Badge>
+                              <Badge variant="outline">
+                                Hot Stamp{product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' ? ` (${product.finishing.hotStampCor})` : ''}
+                              </Badge>
                             )}
                             {product.finishing?.eyelets && (
                               <Badge variant="outline">Ilhós</Badge>
                             )}
+                            {product.finishing?.furoPresente && (
+                              <Badge variant="outline">Furo de Presente</Badge>
+                            )}
                             {product.finishing?.cord && (
-                              <Badge variant="outline">Cordão</Badge>
+                              <Badge variant="outline">
+                                Cordão{product.finishing.cordao && product.finishing.cordao !== 'nenhum' ? ` ${product.finishing.cordao}` : ''}
+                                {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum' ? ` (${product.finishing.corCordao})` : ''}
+                              </Badge>
                             )}
                           </div>
 
@@ -261,10 +277,11 @@ export function QuickProductsStep({
           onConfirm={handleFinishingConfirm}
           initialFinishing={{
             hotStamp: products[editingProductIndex]?.finishing?.hotStamp || false,
+            hotStampCor: products[editingProductIndex]?.finishing?.hotStampCor || 'nenhum',
             ilhos: products[editingProductIndex]?.finishing?.eyelets || false,
-            furoPresente: false,
-            cordao: products[editingProductIndex]?.finishing?.cord ? 'padrao' : 'nenhum',
-            corCordao: 'nenhum',
+            furoPresente: products[editingProductIndex]?.finishing?.furoPresente || false,
+            cordao: products[editingProductIndex]?.finishing?.cordao || (products[editingProductIndex]?.finishing?.cord ? 'padrao' : 'nenhum'),
+            corCordao: products[editingProductIndex]?.finishing?.corCordao || 'nenhum',
           }}
           quantity={products[editingProductIndex]?.quantity || 1000}
         />

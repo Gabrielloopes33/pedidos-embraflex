@@ -285,7 +285,7 @@ export function QuoteSummaryStep({
                           )}
                           {product.finishing.hotStamp && (
                             <Badge variant="outline" className="text-xs">
-                              Hot Stamp
+                              Hot Stamp{product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' ? ` (${product.finishing.hotStampCor})` : ''}
                             </Badge>
                           )}
                           {product.finishing.eyelets && (
@@ -293,9 +293,15 @@ export function QuoteSummaryStep({
                               Ilhós
                             </Badge>
                           )}
+                          {product.finishing.furoPresente && (
+                            <Badge variant="outline" className="text-xs">
+                              Furo de Presente
+                            </Badge>
+                          )}
                           {product.finishing.cord && (
                             <Badge variant="outline" className="text-xs">
-                              Cordão
+                              Cordão{product.finishing.cordao && product.finishing.cordao !== 'nenhum' ? ` ${product.finishing.cordao}` : ''}
+                              {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum' ? ` (${product.finishing.corCordao})` : ''}
                             </Badge>
                           )}
                         </div>

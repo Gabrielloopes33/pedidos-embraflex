@@ -12,10 +12,16 @@ export interface QuoteProduct {
   attributes?: Record<string, string>;
   width?: number;
   height?: number;
-  finishing?: {
-    hotStamp?: boolean;
-    eyelets?: boolean;
-    cord?: boolean;
+  finishing: {
+    hotStamp: boolean;
+    hotStampCor?: 'nenhum' | 'dourado' | 'prata' | 'colorido';
+    eyelets: boolean;
+    ilhosCorManual?: string;
+    furoPresente?: boolean;
+    cord: boolean;
+    cordao?: 'nenhum' | 'padrao' | 'gorgurao' | 'saoFrancisco' | 'colorido' | 'gorgurinho';
+    corCordao?: 'nenhum' | 'preto' | 'branco' | 'colorido';
+    cordaoCorManual?: string;
   };
   subtotal: number;
   imageUrl?: string;

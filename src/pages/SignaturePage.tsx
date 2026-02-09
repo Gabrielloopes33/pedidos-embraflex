@@ -37,6 +37,10 @@ interface PublicQuoteData {
     quantity: number;
     price: number;
     subtotal: number;
+    width?: number;
+    height?: number;
+    color?: string;
+    attributes?: Record<string, string>;
     discriminacaoProduto?: string;
     larguraCm?: number;
     alturaCm?: number;
@@ -48,6 +52,7 @@ interface PublicQuoteData {
       hotStampCorManual?: string;
       eyelets?: boolean;
       ilhosCorManual?: string;
+      furoPresente?: boolean;
       cord?: boolean;
       cordao?: string;
       corCordao?: string;
@@ -326,83 +331,140 @@ export default function SignaturePage() {
           </CardHeader>
         </Card>
 
-        {/* Products Table */}
+        {/* Products - Detailed Cards */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Produtos</CardTitle>
+            <CardTitle>Detalhes do Pedido</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-center">Qtd</TableHead>
-                    <TableHead className="text-right">Preço Unit.</TableHead>
-                    <TableHead className="text-right">Subtotal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Array.isArray(quote?.products) && quote.products.map((product, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
-                          {/* Discriminação/Descrição do produto */}
-                          {product.discriminacaoProduto && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {product.discriminacaoProduto}
-                            </p>
-                          )}
-                          {/* Dimensões */}
-                          {(product.larguraCm || product.alturaCm || product.comprimentoCm) && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Dimensões: {product.larguraCm || '-'}cm x {product.alturaCm || '-'}cm
-                              {product.comprimentoCm ? ` x ${product.comprimentoCm}cm` : ''}
-                            </p>
-                          )}
-                          {/* Tipo de Impressão */}
-                          {product.tipoImpressao && (
-                            <p className="text-xs text-muted-foreground">
-                              Impressão: {product.tipoImpressao}
-                            </p>
-                          )}
-                          {/* Acabamentos */}
-                          {product.finishing && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {product.finishing.hotStamp && (
-                                <Badge variant="outline" className="text-xs">
-                                  Hot Stamp{product.finishing.hotStampCor ? ` (${product.finishing.hotStampCor})` : ''}
-                                  {product.finishing.hotStampCorManual ? ` - ${product.finishing.hotStampCorManual}` : ''}
-                                </Badge>
-                              )}
-                              {product.finishing.eyelets && (
-                                <Badge variant="outline" className="text-xs">
-                                  Ilhós{product.finishing.ilhosCorManual ? ` (${product.finishing.ilhosCorManual})` : ''}
-                                </Badge>
-                              )}
-                              {(product.finishing.cord || product.finishing.cordao) && (
-                                <Badge variant="outline" className="text-xs">
-                                  Cordão{product.finishing.cordao ? ` ${product.finishing.cordao}` : ''}
-                                  {product.finishing.corCordao ? ` (${product.finishing.corCordao})` : ''}
-                                  {product.finishing.cordaoCorManual ? ` - ${product.finishing.cordaoCorManual}` : ''}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">{product.quantity}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(product.subtotal)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <CardContent className="space-y-4">
+            {Array.isArray(quote?.products) && quote.products.map((product, index) => {
+              const hasFinishing = product.finishing && (
+                product.finishing.hotStamp ||
+                product.finishing.eyelets ||
+                product.finishing.furoPresente ||
+                (product.finishing.cord || (product.finishing.cordao && product.finishing.cordao !== 'nenhum'))
+              );
+
+              const hasDimensions = product.width || product.height || product.larguraCm || product.alturaCm || product.comprimentoCm;
+
+              return (
+                <div key={index} className="border rounded-lg p-4 space-y-3">
+                  {/* Product Name & SKU */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-base">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground">Código: {product.sku}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-sm px-3 py-1 flex-shrink-0">
+                      {product.quantity} un
+                    </Badge>
+                  </div>
+
+                  {/* Discriminação/Descrição do produto */}
+                  {product.discriminacaoProduto && (
+                    <p className="text-sm text-muted-foreground">
+                      {product.discriminacaoProduto}
+                    </p>
+                  )}
+
+                  {/* Color */}
+                  {product.color && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Cor: </span>
+                      <span className="font-medium">{product.color}</span>
+                    </div>
+                  )}
+
+                  {/* Attributes */}
+                  {product.attributes && Object.keys(product.attributes).length > 0 && (
+                    <div className="text-sm">
+                      {Object.entries(product.attributes).map(([key, value]) => (
+                        <span key={key} className="mr-3">
+                          <span className="text-muted-foreground">{key}: </span>
+                          <span className="font-medium">{value}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Dimensions */}
+                  {hasDimensions && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Dimensões: </span>
+                      <span className="font-medium">
+                        {(product.width || product.larguraCm || '-')}cm x {(product.height || product.alturaCm || '-')}cm
+                        {product.comprimentoCm ? ` x ${product.comprimentoCm}cm` : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Tipo de Impressão */}
+                  {product.tipoImpressao && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Impressão: </span>
+                      <span className="font-medium">{product.tipoImpressao}</span>
+                    </div>
+                  )}
+
+                  {/* Acabamentos - Detailed Section */}
+                  {hasFinishing && (
+                    <div className="bg-muted/50 rounded-md p-3 space-y-2">
+                      <p className="text-sm font-semibold">Acabamentos:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {product.finishing!.hotStamp && (
+                          <Badge variant="outline" className="text-xs py-1">
+                            Hot Stamp
+                            {product.finishing!.hotStampCor && product.finishing!.hotStampCor !== 'nenhum'
+                              ? ` - ${product.finishing!.hotStampCor}`
+                              : ''}
+                            {product.finishing!.hotStampCorManual
+                              ? ` (${product.finishing!.hotStampCorManual})`
+                              : ''}
+                          </Badge>
+                        )}
+                        {product.finishing!.eyelets && (
+                          <Badge variant="outline" className="text-xs py-1">
+                            Ilhós
+                            {product.finishing!.ilhosCorManual
+                              ? ` (${product.finishing!.ilhosCorManual})`
+                              : ''}
+                          </Badge>
+                        )}
+                        {product.finishing!.furoPresente && (
+                          <Badge variant="outline" className="text-xs py-1">
+                            Furo de Presente
+                          </Badge>
+                        )}
+                        {(product.finishing!.cord || (product.finishing!.cordao && product.finishing!.cordao !== 'nenhum')) && (
+                          <Badge variant="outline" className="text-xs py-1">
+                            Cordão
+                            {product.finishing!.cordao && product.finishing!.cordao !== 'nenhum'
+                              ? ` ${product.finishing!.cordao}`
+                              : ''}
+                            {product.finishing!.corCordao && product.finishing!.corCordao !== 'nenhum'
+                              ? ` - ${product.finishing!.corCordao}`
+                              : ''}
+                            {product.finishing!.cordaoCorManual
+                              ? ` (${product.finishing!.cordaoCorManual})`
+                              : ''}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price Row */}
+                  <div className="flex items-baseline justify-between pt-2 border-t">
+                    <span className="text-sm text-muted-foreground">
+                      {formatCurrency(product.price)} x {product.quantity} un
+                    </span>
+                    <span className="text-lg font-semibold">
+                      {formatCurrency(product.subtotal)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
 
             <Separator className="my-4" />
 
