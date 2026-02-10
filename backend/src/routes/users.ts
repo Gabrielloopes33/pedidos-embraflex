@@ -186,6 +186,8 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
     // Gerar ID único
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    console.log('Creating user:', username, 'with role:', role);
+
     // Criar usuário
     const { data, error } = await supabase
       .from('users')
@@ -203,8 +205,16 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
       .single();
 
     if (error) {
+      console.error('Supabase insert error:', error);
       throw error;
     }
+
+    if (!data) {
+      console.error('No data returned from insert');
+      throw new Error('Falha ao criar usuário - nenhum dado retornado');
+    }
+
+    console.log('User created successfully:', data.id);
 
     // Remover senha da resposta
     const { password: _, ...userWithoutPassword } = data;
@@ -278,7 +288,9 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
     }
 
     // Preparar dados de atualização
-    const updates: any = {};
+    const updates: any = {
+      updated_at: new Date().toISOString()
+    };
 
     if (username) updates.username = username;
     if (email !== undefined) updates.email = email || null;
@@ -292,6 +304,8 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
       updates.password = await bcrypt.hash(password, saltRounds);
     }
 
+    console.log('Updating user:', id, 'with data:', { ...updates, password: password ? '[REDACTED]' : undefined });
+
     // Atualizar usuário
     const { data, error } = await supabase
       .from('users')
@@ -301,8 +315,16 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
       .single();
 
     if (error) {
+      console.error('Supabase update error:', error);
       throw error;
     }
+
+    if (!data) {
+      console.error('No data returned from update');
+      throw new Error('Falha ao atualizar usuário - nenhum dado retornado');
+    }
+
+    console.log('User updated successfully:', data.id);
 
     // Remover senha da resposta
     const { password: _, ...userWithoutPassword } = data;
@@ -398,33 +420,55 @@ router.get('/:id/audit-logs', requireAdmin, async (req: AuthenticatedRequest, re
  * Body: { newPassword }
  */
 router.post('/:id/change-password', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  console.log('🔑 [Change Password] Iniciando alteração de senha...');
+  console.log('🔑 [Change Password] User ID:', req.params.id);
+  console.log('🔑 [Change Password] Request body:', { ...req.body, newPassword: req.body.newPassword ? '[REDACTED]' : undefined });
+  
   try {
     const { id } = req.params;
     const { newPassword } = req.body;
 
     if (!newPassword) {
+      console.log('❌ [Change Password] Nova senha não fornecida');
       return res.status(400).json({
         message: 'Nova senha é obrigatória.',
       });
     }
 
+    console.log('🔍 [Change Password] Verificando se usuário existe...');
+    
     // Verificar se usuário existe
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: checkError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, username')
       .eq('id', id)
       .single();
 
+    if (checkError) {
+      console.error('❌ [Change Password] Erro ao verificar usuário:', checkError);
+      return res.status(500).json({ 
+        message: 'Erro ao verificar usuário.',
+        error: checkError.message,
+        details: checkError
+      });
+    }
+
     if (!existingUser) {
+      console.log('❌ [Change Password] Usuário não encontrado:', id);
       return res.status(404).json({ message: 'Usuário não encontrado.' });
     }
 
+    console.log('✅ [Change Password] Usuário encontrado:', existingUser.username);
+
     // Hash da nova senha
+    console.log('🔐 [Change Password] Gerando hash da senha...');
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+    console.log('✅ [Change Password] Hash gerado com sucesso');
 
-    // Executar SQL direto para evitar problemas com RPC e schema cache
-    const { error } = await supabase
+    // Executar update
+    console.log('💾 [Change Password] Atualizando senha no banco...');
+    const { data, error } = await supabase
       .from('users')
       .update({ 
         password: passwordHash,
@@ -435,20 +479,34 @@ router.post('/:id/change-password', requireAdmin, async (req: AuthenticatedReque
       .single();
 
     if (error) {
-      console.error('Error updating password:', error);
-      throw error;
+      console.error('❌ [Change Password] Erro no update:', error);
+      return res.status(500).json({
+        message: 'Erro ao atualizar senha no banco de dados.',
+        error: error.message,
+        details: error,
+        hint: 'Verifique se RLS está desabilitado e se a coluna "password" existe na tabela users.'
+      });
     }
 
-    if (error) {
-      throw error;
+    if (!data) {
+      console.error('❌ [Change Password] Nenhum dado retornado do update');
+      return res.status(500).json({
+        message: 'Nenhum dado retornado após atualização.',
+        hint: 'Possível problema com RLS ou permissões.'
+      });
     }
 
-    res.json({ message: 'Senha alterada com sucesso.' });
+    console.log('✅ [Change Password] Senha atualizada com sucesso para:', data.username);
+    res.json({ 
+      message: 'Senha alterada com sucesso.',
+      user: { id: data.id, username: data.username }
+    });
   } catch (error) {
-    console.error('Error changing password:', error);
+    console.error('❌ [Change Password] Erro geral:', error);
     res.status(500).json({
       message: 'Erro ao alterar senha',
       error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 });

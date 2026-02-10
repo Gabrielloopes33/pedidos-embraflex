@@ -36,9 +36,10 @@ const convertToProductItem = (product: ProductionProduct): ProductItem => {
     tipoImpressao: product.tipoImpressao || '',
     finishing: {
       hotStamp: product.finishing?.acessorios?.hotStampSacola || false,
+      hotStampCor: '',
       ilhos: product.finishing?.acessorios?.ilhos || false,
       furoPresente: product.furosPresente === 'sim',
-      cordao: product.finishing?.cordao === 'colorido' ? 'colorido' : 
+      cordao: product.finishing?.cordao === 'colorido' ? 'colorido' :
               product.finishing?.acessorios?.gorgurinho35cm ? 'gorgurinho' :
               product.finishing?.acessorios?.gorgurao35cm ? 'gorgurão' :
               product.finishing?.acessorios?.sFrancisco35cm ? 'são francisco' :
@@ -126,6 +127,7 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
     tipoImpressao: '',
     finishing: {
       hotStamp: false,
+      hotStampCor: '',
       ilhos: false,
       furoPresente: false,
       cordao: '',
@@ -429,20 +431,22 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
                     </div>
                   </div>
                   
-                  {/* Campo de Desconto */}
+                  {/* Campo de Acréscimo/Desconto */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-muted-foreground">Desconto (máx. 11%):</label>
+                      <label className="text-sm font-medium text-muted-foreground">Acréscimo/Desconto %:</label>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          min="0"
-                          max="11"
+                          min="-50"
+                          max="50"
                           step="0.1"
                           value={orderDiscount}
                           onChange={(e) => {
                             const value = parseFloat(e.target.value) || 0;
-                            setOrderDiscount(Math.min(Math.max(value, 0), 11));
+                            if (value >= -50 && value <= 50) {
+                              setOrderDiscount(value);
+                            }
                           }}
                           disabled={!isEditable}
                           className="w-20 px-3 py-1.5 text-sm border rounded-md text-center font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
@@ -450,11 +454,11 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
                         <span className="text-sm font-medium">%</span>
                       </div>
                     </div>
-                    {orderDiscount > 0 && (
-                      <div className="flex justify-between text-sm text-destructive">
-                        <span>Desconto aplicado:</span>
+                    {orderDiscount !== 0 && (
+                      <div className={`flex justify-between text-sm ${orderDiscount > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                        <span>{orderDiscount > 0 ? 'Acréscimo aplicado:' : 'Desconto aplicado:'}</span>
                         <span className="font-semibold">
-                          - R$ {(orderTotal * (orderDiscount / 100)).toFixed(2).replace('.', ',')}
+                          {orderDiscount > 0 ? '+' : '-'} R$ {Math.abs(orderTotal * (orderDiscount / 100)).toFixed(2).replace('.', ',')}
                         </span>
                       </div>
                     )}

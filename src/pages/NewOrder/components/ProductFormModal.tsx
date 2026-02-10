@@ -9,7 +9,7 @@ import { ProductSearch } from "./ProductSearch";
 import { ProductBasicInfo } from "./ProductBasicInfo";
 import { ProductDimensions } from "./ProductDimensions";
 import { ProductFinishing } from "./ProductFinishing";
-import { calculateFinishingCosts, calculateItemTotal } from "../utils/pricing";
+import { calculateFinishingCosts, calculateItemTotal, getFinishingDetailsWithTotal } from "../utils/pricing";
 import { useEffect, useState } from "react";
 import { getProductVariations } from "@/lib/woocommerce";
 
@@ -451,12 +451,22 @@ export function ProductFormModal({ open, onOpenChange, item, onSave, selectedLin
               </span>
             </div>
             {finishingCost > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Acabamentos (unitário):</span>
-                <span className="font-medium text-primary">
-                  + R$ {finishingCost.toFixed(2).replace('.', ',')}
-                </span>
-              </div>
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Acabamentos (total):</span>
+                  <span className="font-medium text-primary">
+                    + R$ {(finishingCost * editedItem.quantity).toFixed(2).replace('.', ',')}
+                  </span>
+                </div>
+                <div className="pl-4 space-y-1">
+                  {getFinishingDetailsWithTotal(editedItem.finishing, editedItem.quantity).map((detail, idx) => (
+                    <div key={idx} className="flex justify-between text-xs text-muted-foreground">
+                      <span>{detail.label}:</span>
+                      <span>R$ {detail.unitValue.toFixed(2).replace('.', ',')}/un × {editedItem.quantity} = R$ {detail.total.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
             <div className="flex justify-between text-sm pt-2 border-t">
               <span className="text-muted-foreground">Valor unitário final:</span>
@@ -475,31 +485,33 @@ export function ProductFormModal({ open, onOpenChange, item, onSave, selectedLin
               </span>
             </div>
             
-            {/* Campo de Desconto */}
+            {/* Campo de Acréscimo/Desconto */}
             <div className="space-y-2 pt-2 border-t">
               <div className="flex items-center gap-2">
-                <label className="text-sm text-muted-foreground flex-1">Desconto (máx. 11%):</label>
+                <label className="text-sm text-muted-foreground flex-1">Acréscimo/Desconto %:</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    min="0"
-                    max="11"
+                    min="-50"
+                    max="50"
                     step="0.1"
                     value={editedItem.discountPercent || 0}
                     onChange={(e) => {
                       const value = parseFloat(e.target.value) || 0;
-                      handleUpdate('discountPercent', Math.min(Math.max(value, 0), 11));
+                      if (value >= -50 && value <= 50) {
+                        handleUpdate('discountPercent', value);
+                      }
                     }}
                     className="w-20 px-2 py-1 text-sm border rounded-md text-center"
                   />
                   <span className="text-sm font-medium">%</span>
                 </div>
               </div>
-              {editedItem.discountPercent && editedItem.discountPercent > 0 && (
-                <div className="flex justify-between text-sm text-destructive">
-                  <span>Desconto aplicado:</span>
+              {editedItem.discountPercent && editedItem.discountPercent !== 0 && (
+                <div className={`flex justify-between text-sm ${editedItem.discountPercent > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                  <span>{editedItem.discountPercent > 0 ? 'Acréscimo aplicado:' : 'Desconto aplicado:'}</span>
                   <span className="font-medium">
-                    - R$ {((unitWithFinishing * editedItem.quantity) * (editedItem.discountPercent / 100)).toFixed(2).replace('.', ',')}
+                    {editedItem.discountPercent > 0 ? '+' : '-'} R$ {Math.abs((unitWithFinishing * editedItem.quantity) * (editedItem.discountPercent / 100)).toFixed(2).replace('.', ',')}
                   </span>
                 </div>
               )}

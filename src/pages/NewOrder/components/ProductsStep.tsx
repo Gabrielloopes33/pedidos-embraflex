@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, Settings } from "lucide-react";
 import type { ProductItem } from "../types";
 import { ProductFormModal } from "./ProductFormModal";
 import { FinishingModal } from "./FinishingModal";
-import { calculateOrderTotal, calculateFinishingCosts, calculateItemTotal, getFinishingDetails } from "../utils/pricing";
+import { calculateOrderTotal, calculateFinishingCosts, calculateItemTotal, getFinishingDetailsWithTotal } from "../utils/pricing";
 import { useState } from "react";
 
 interface ProductsStepProps {
@@ -211,13 +211,13 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                       {(product.finishing.hotStamp || product.finishing.ilhos || product.finishing.furoPresente || product.finishing.cordao) && (
                         <div className="flex flex-wrap gap-1">
                           {(() => {
-                            const finishingDetails = getFinishingDetails(product.finishing);
+                            const finishingDetails = getFinishingDetailsWithTotal(product.finishing, product.quantity);
                             return finishingDetails.map((detail, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
+                              <Badge key={idx} variant="secondary" className="text-xs flex-wrap">
                                 {detail.label}
-                                {detail.value > 0 && (
+                                {detail.unitValue > 0 && (
                                   <span className="ml-1 text-xs opacity-75">
-                                    - R$ {detail.value.toFixed(2).replace('.', ',')}
+                                    - R$ {detail.unitValue.toFixed(2).replace('.', ',')}/un × {product.quantity} = R$ {detail.total.toFixed(2).replace('.', ',')}
                                   </span>
                                 )}
                               </Badge>

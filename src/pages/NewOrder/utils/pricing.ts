@@ -50,18 +50,18 @@ export function calculateFinishingCosts(finishing: Finishing): number {
 }
 
 /**
- * Calcula o valor total de um item (preço unitário + acabamentos) * quantidade, com desconto aplicado
+ * Calcula o valor total de um item (preço unitário + acabamentos) * quantidade, com desconto/acréscimo aplicado
  */
 export function calculateItemTotal(product: ProductItem): number {
   const finishingCost = calculateFinishingCosts(product.finishing);
   const unitWithFinishing = product.unitPrice + finishingCost;
   const subtotal = unitWithFinishing * product.quantity;
-  
-  // Aplicar desconto se houver (máximo 11%)
-  const discount = product.discountPercent ? Math.min(product.discountPercent, 11) : 0;
+
+  // Aplicar desconto/acréscimo se houver (valores negativos = desconto, positivos = acréscimo)
+  const discount = product.discountPercent || 0;
   const discountAmount = subtotal * (discount / 100);
-  
-  return subtotal - discountAmount;
+
+  return subtotal + discountAmount;
 }
 
 /**
@@ -108,7 +108,7 @@ export function getFinishingDetails(finishing: Finishing): { label: string; valu
   if (finishing.cordao) {
     let cordaoLabel = 'Cordão';
     let cordaoValue = 0;
-    
+
     if (finishing.cordao === 'padrão') {
       cordaoLabel = `Cordão Padrão${finishing.corCordao ? ` (${finishing.corCordao})` : ''}`;
       cordaoValue = 0;
@@ -126,7 +126,7 @@ export function getFinishingDetails(finishing: Finishing): { label: string; valu
         cordaoValue = FINISHING_PRICES.cordaoEspecialPretoBranco;
       }
     }
-    
+
     if (cordaoValue > 0) {
       details.push({ label: cordaoLabel, value: cordaoValue });
     } else {
@@ -135,4 +135,16 @@ export function getFinishingDetails(finishing: Finishing): { label: string; valu
   }
 
   return details;
+}
+
+/**
+ * Retorna uma lista formatada com os detalhes e valores dos acabamentos, incluindo o valor total multiplicado pela quantidade
+ */
+export function getFinishingDetailsWithTotal(finishing: Finishing, quantity: number): { label: string; unitValue: number; total: number }[] {
+  const details = getFinishingDetails(finishing);
+  return details.map(d => ({
+    label: d.label,
+    unitValue: d.value,
+    total: d.value * quantity
+  }));
 }
