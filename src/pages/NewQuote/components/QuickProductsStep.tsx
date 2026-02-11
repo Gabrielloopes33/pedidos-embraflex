@@ -405,13 +405,7 @@ export function QuickProductsStep({
 
       {/* Modal de Desconto */}
       {showDiscountModal && editingDiscountIndex !== null && (
-        <Dialog open={showDiscountModal} onOpenChange={(open) => {
-          setShowDiscountModal(open);
-          if (!open) {
-            setEditingDiscountIndex(null);
-            setDiscountValue('');
-          }
-        }}>
+        <Dialog open={showDiscountModal}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Desconto/Acréscimo</DialogTitle>
@@ -445,38 +439,26 @@ export function QuickProductsStep({
                   autoFocus
                   className="text-center text-2xl font-bold h-16"
                 />
-                <div className="flex justify-center gap-2 text-xs text-muted-foreground mt-2">
-                  <Badge variant="outline" className="text-green-600">-11%</Badge>
-                  <span>a</span>
-                  <Badge variant="outline" className="text-blue-600">+11%</Badge>
-                </div>
+                 <div className="flex justify-center gap-2 text-xs text-muted-foreground mt-2">
+                   <Badge variant="outline" className="text-red-600">-11%</Badge>
+                   <span>a</span>
+                   <Badge variant="outline" className="text-blue-600">+11%</Badge>
+                 </div>
               </div>
 
               {/* Botões rápidos de 0,5% */}
               <div className="grid grid-cols-3 gap-2 mt-4">
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
                     const current = parseFloat(prev.replace(',', '.')) || 0;
-                    const newVal = Math.max(-11, current - 5);
+                    const newVal = Math.max(-11, current - 0.5);
                     return newVal.toString();
                   })}
                   className="h-14 text-base font-semibold"
                 >
-                  -5,0%
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setDiscountValue((prev) => {
-                    const current = parseFloat(prev.replace(',', '.')) || 0;
-                    const newVal = Math.max(-11, current - 2.5);
-                    return newVal.toString();
-                  })}
-                  className="h-14 text-base font-semibold"
-                >
-                  -2,5%
+                  -0,5%
                 </Button>
                 <Button
                   variant="secondary"
@@ -491,32 +473,44 @@ export function QuickProductsStep({
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
                     const current = parseFloat(prev.replace(',', '.')) || 0;
-                    const newVal = Math.min(11, current + 2.5);
+                    const newVal = Math.min(11, current + 0.5);
                     return newVal.toString();
                   })}
-                  className="h-14 text-base font-semibold"
+                  className="h-14 text-base font-semibold text-green-600 border-green-600 hover:bg-green-50"
                 >
-                  +2,5%
+                  +0,5%
                 </Button>
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
                     const current = parseFloat(prev.replace(',', '.')) || 0;
-                    const newVal = Math.min(11, current + 5);
+                    const newVal = Math.min(11, current + 1);
                     return newVal.toString();
                   })}
-                  className="h-14 text-base font-semibold"
+                  className="h-14 text-base font-semibold text-red-600 border-red-600 hover:bg-red-50"
                 >
-                  +5,0%
+                  +1%
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setDiscountValue((prev) => {
+                    const current = parseFloat(prev.replace(',', '.')) || 0;
+                    const newVal = Math.min(11, current + 1);
+                    return newVal.toString();
+                  })}
+                  className="h-14 text-base font-semibold text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  +1%
                 </Button>
                 <Button
                   variant="default"
                   size="lg"
                   onClick={() => setDiscountValue('11')}
-                  className="h-14 text-base font-semibold"
+                  className="h-14 text-base font-semibold bg-green-600 text-white hover:bg-green-700"
                 >
-                  +11%
+                  OK
                 </Button>
               </div>
             </div>
