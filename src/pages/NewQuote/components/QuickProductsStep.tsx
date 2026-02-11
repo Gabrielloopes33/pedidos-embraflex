@@ -113,18 +113,32 @@ export function QuickProductsStep({
       return;
     }
 
-    // Parse valor (permite -11 ou 11)
-    const value = parseInt(discountValue);
+    // Parse valor (permite decimais)
+    const value = parseFloat(discountValue.replace(',', '.'));
 
     // Validação: entre -11 e 11
     if (value < -11 || value > 11) {
       return;
     }
 
-    // Atualizar produto
+    // Atualizar produto com lógica corrigida
     const product = products[editingDiscountIndex];
-    const discountAmount = product.price * product.quantity * (value / 100);
-    const newSubtotal = product.price * product.quantity - discountAmount;
+    const basePrice = product.price * product.quantity;
+
+    let newSubtotal: number;
+
+    if (value < 0) {
+      // Desconto (negativo): remove valor do total
+      const discountAmount = basePrice * Math.abs(value / 100);
+      newSubtotal = basePrice - discountAmount;
+    } else if (value > 0) {
+      // Acrécimo (positivo): adiciona valor ao total
+      const markupAmount = basePrice * (value / 100);
+      newSubtotal = basePrice + markupAmount;
+    } else {
+      // Zero: mantém valor original
+      newSubtotal = basePrice;
+    }
 
     onUpdateProduct(editingDiscountIndex, {
       ...product,
@@ -402,7 +416,7 @@ export function QuickProductsStep({
             <DialogHeader>
               <DialogTitle>Desconto/Acréscimo</DialogTitle>
               <DialogDescription className="text-center">
-                Digite o percentual (-11% a +11%)
+                Digite o percentual ou use os botões rápidos
               </DialogDescription>
             </DialogHeader>
 
@@ -414,7 +428,7 @@ export function QuickProductsStep({
                   type="number"
                   min="-11"
                   max="11"
-                  step="1"
+                  step="0.1"
                   placeholder="0"
                   value={discountValue}
                   onChange={(e) => setDiscountValue(e.target.value)}
@@ -436,6 +450,74 @@ export function QuickProductsStep({
                   <span>a</span>
                   <Badge variant="outline" className="text-blue-600">+11%</Badge>
                 </div>
+              </div>
+
+              {/* Botões rápidos de 0,5% */}
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setDiscountValue((prev) => {
+                    const current = parseFloat(prev.replace(',', '.')) || 0;
+                    const newVal = Math.max(-11, current - 5);
+                    return newVal.toString();
+                  })}
+                  className="h-14 text-base font-semibold"
+                >
+                  -5,0%
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setDiscountValue((prev) => {
+                    const current = parseFloat(prev.replace(',', '.')) || 0;
+                    const newVal = Math.max(-11, current - 2.5);
+                    return newVal.toString();
+                  })}
+                  className="h-14 text-base font-semibold"
+                >
+                  -2,5%
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => setDiscountValue('0')}
+                  className="h-14 text-base font-semibold"
+                >
+                  Reset
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setDiscountValue((prev) => {
+                    const current = parseFloat(prev.replace(',', '.')) || 0;
+                    const newVal = Math.min(11, current + 2.5);
+                    return newVal.toString();
+                  })}
+                  className="h-14 text-base font-semibold"
+                >
+                  +2,5%
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setDiscountValue((prev) => {
+                    const current = parseFloat(prev.replace(',', '.')) || 0;
+                    const newVal = Math.min(11, current + 5);
+                    return newVal.toString();
+                  })}
+                  className="h-14 text-base font-semibold"
+                >
+                  +5,0%
+                </Button>
+                <Button
+                  variant="default"
+                  size="lg"
+                  onClick={() => setDiscountValue('11')}
+                  className="h-14 text-base font-semibold"
+                >
+                  +11%
+                </Button>
               </div>
             </div>
           </DialogContent>

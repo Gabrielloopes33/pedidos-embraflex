@@ -1,6 +1,6 @@
 // useQuoteWizard - Hook para gerenciar estado do wizard de cotação
 import { useState, useEffect, useCallback } from 'react';
-import { QuoteProduct } from '@/lib/quotes';
+import { QuoteProduct, QuotePayment } from '@/lib/quotes';
 
 export interface QuoteCustomerData {
   name: string;
@@ -27,6 +27,7 @@ export interface QuoteFormData {
   customer: QuoteCustomerData;
   products: QuoteProduct[];
   notes?: string;
+  paymentMethod?: QuotePayment;
 }
 
 const STORAGE_KEY = 'embraflex_quote_draft';
@@ -54,6 +55,7 @@ export function useQuoteWizard() {
       },
       products: [],
       notes: '',
+      paymentMethod: undefined,
     };
   });
 
@@ -121,6 +123,14 @@ export function useQuoteWizard() {
     }));
   }, []);
 
+  // Payment method
+  const updatePaymentMethod = useCallback((paymentMethod: QuotePayment) => {
+    setFormData((prev) => ({
+      ...prev,
+      paymentMethod,
+    }));
+  }, []);
+
   // Reset/clear
   const clearForm = useCallback(() => {
     const emptyForm: QuoteFormData = {
@@ -132,6 +142,7 @@ export function useQuoteWizard() {
       },
       products: [],
       notes: '',
+      paymentMethod: undefined,
     };
     setFormData(emptyForm);
     setCurrentStep(1);
@@ -203,6 +214,9 @@ export function useQuoteWizard() {
 
     // Notes
     updateNotes,
+
+    // Payment method
+    updatePaymentMethod,
 
     // Utility
     clearForm,

@@ -37,6 +37,8 @@ function parseQuote(row: any): Quote {
     rejectionReason: row.rejection_reason,
     convertedToOrderId: row.converted_to_order_id,
     notes: row.notes,
+    condicoesPagamento: row.condicoes_pagamento,
+    paymentMethod: row.condicoes_pagamento ? JSON.parse(row.condicoes_pagamento) : undefined,
   };
 }
 
@@ -124,7 +126,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const body: CreateQuoteRequest = req.body;
-    const { customerName, customerEmail, customerPhone, products, notes } = body;
+    const { customerName, customerEmail, customerPhone, products, notes, paymentMethod } = body;
 
     if (!customerName || !products || products.length === 0) {
       return res.status(400).json({ message: 'Nome do cliente e produtos são obrigatórios.' });
@@ -148,6 +150,7 @@ router.post('/', async (req: Request, res: Response) => {
       created_by_id: createdById || null,
       created_by_name: createdByName || null,
       notes: notes || null,
+      condicoes_pagamento: paymentMethod ? JSON.stringify(paymentMethod) : null,
     };
 
     const { data, error } = await supabase
@@ -173,7 +176,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
   try {
     const body: UpdateQuoteRequest = req.body;
-    const { customerName, customerEmail, customerPhone, products, notes } = body;
+    const { customerName, customerEmail, customerPhone, products, notes, paymentMethod } = body;
 
     // Get current quote
     const { data: currentQuote, error: fetchError } = await supabase
@@ -199,7 +202,11 @@ router.put('/:id', async (req: Request, res: Response) => {
       updateData.total_price = products.reduce((sum, p) => sum + p.subtotal, 0);
     }
 
-    // If quote was already sent (has signature link), invalidate the link
+    if (paymentMethod !== undefined) {
+      updateData.condicoes_pagamento = paymentMethod ? JSON.stringify(paymentMethod) : null;
+    }
+
+    // If quote was already sent (has signature link), invalidate link
     if (currentQuote.status === 'sent' && currentQuote.signature_link) {
       updateData.signature_link = null;
       updateData.signature_link_created_at = null;

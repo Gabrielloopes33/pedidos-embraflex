@@ -477,6 +477,224 @@ export default function SignaturePage() {
           </CardContent>
         </Card>
 
+        {/* Payment Method Display */}
+        {quote?.condicoesPagamento && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-xl text-primary">Forma de Pagamento</CardTitle>
+              <CardDescription>
+                Conforme combinado com o vendedor
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(() => {
+                let paymentData;
+                try {
+                  paymentData = typeof quote.condicoesPagamento === 'string'
+                    ? JSON.parse(quote.condicoesPagamento)
+                    : quote.condicoesPagamento;
+                } catch (e) {
+                  console.error('Failed to parse payment method:', e);
+                  paymentData = null;
+                }
+
+                if (!paymentData) return null;
+
+                switch (paymentData.type) {
+                  case 'pix':
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                          <span className="text-2xl">📱</span>
+                          <div>
+                            <p className="font-semibold text-lg">Pagamento via Pix</p>
+                            {paymentData.pix?.key && (
+                              <p className="text-sm text-muted-foreground">
+                                Chave: <span className="font-mono bg-muted px-2 py-1 rounded">{paymentData.pix.key}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+
+                  case 'credit_card':
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                          <span className="text-2xl">💳</span>
+                          <div>
+                            <p className="font-semibold text-lg">Cartão de Crédito</p>
+                            {paymentData.cards?.[0]?.brand && (
+                              <p className="text-sm text-muted-foreground">
+                                Bandeira: <span className="font-medium">{paymentData.cards[0].brand.toUpperCase()}</span>
+                              </p>
+                            )}
+                            {paymentData.cards?.[0]?.installmentCount && paymentData.cards[0].installmentCount > 1 && (
+                              <p className="text-sm text-muted-foreground">
+                                Parcelamento: <span className="font-medium">{paymentData.cards[0].installmentCount}x</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+
+                  case 'debit_card':
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                          <span className="text-2xl">💳</span>
+                          <div>
+                            <p className="font-semibold text-lg">Cartão de Débito</p>
+                            {paymentData.cards?.[0]?.brand && (
+                              <p className="text-sm text-muted-foreground">
+                                Bandeira: <span className="font-medium">{paymentData.cards[0].brand.toUpperCase()}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+
+                  case 'cash':
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+                          <span className="text-2xl">💵</span>
+                          <div>
+                            <p className="font-semibold text-lg">Dinheiro à Vista</p>
+                            {paymentData.cash?.amount && (
+                              <p className="text-sm text-muted-foreground">
+                                Valor: <span className="font-medium">{formatCurrency(paymentData.cash.amount)}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+
+                  case 'boleto':
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+                          <span className="text-2xl">📄</span>
+                          <div>
+                            <p className="font-semibold text-lg">Pagamento via Boleto</p>
+                            {paymentData.boleto?.dueDate && (
+                              <p className="text-sm text-muted-foreground">
+                                Vencimento: <span className="font-medium">{formatDate(paymentData.boleto.dueDate)}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {paymentData.boleto?.instructions && (
+                          <div className="mt-4 p-3 bg-muted rounded-lg">
+                            <p className="text-sm font-medium">Instruções:</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {paymentData.boleto.instructions}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+
+                  case 'combined':
+                    return (
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-lg mb-3">Pagamento Combinado</h3>
+
+                        {paymentData.combined?.method1 && (
+                          <div className="space-y-2 p-3 bg-muted rounded-lg">
+                            <p className="font-medium text-base">
+                              {paymentData.combined.method1.type === 'pix' && '📱 Pix'}
+                              {paymentData.combined.method1.type === 'credit_card' && '💳 Cartão de Crédito'}
+                              {paymentData.combined.method1.type === 'debit_card' && '💳 Cartão de Débito'}
+                              {paymentData.combined.method1.type === 'cash' && '💵 Dinheiro'}
+                              {paymentData.combined.method1.type === 'boleto' && '📄 Boleto'}
+                            </p>
+                            {paymentData.combined.method1.card?.brand && (
+                              <p className="text-sm text-muted-foreground">
+                                Bandeira: {paymentData.combined.method1.card.brand.toUpperCase()}
+                              </p>
+                            )}
+                            {paymentData.combined.method1.card?.installmentCount && paymentData.combined.method1.card.installmentCount > 1 && (
+                              <p className="text-sm text-muted-foreground">
+                                {paymentData.combined.method1.card.installmentCount}x
+                              </p>
+                            )}
+                            {paymentData.combined.method1.amount && (
+                              <p className="text-sm text-muted-foreground">
+                                Valor: {formatCurrency(paymentData.combined.method1.amount)}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {paymentData.combined?.method2 && (
+                          <div className="space-y-2 p-3 bg-muted rounded-lg">
+                            <p className="font-medium text-base">
+                              {paymentData.combined.method2.type === 'pix' && '📱 Pix'}
+                              {paymentData.combined.method2.type === 'credit_card' && '💳 Cartão de Crédito'}
+                              {paymentData.combined.method2.type === 'debit_card' && '💳 Cartão de Débito'}
+                              {paymentData.combined.method2.type === 'cash' && '💵 Dinheiro'}
+                              {paymentData.combined.method2.type === 'boleto' && '📄 Boleto'}
+                            </p>
+                            {paymentData.combined.method2.card?.brand && (
+                              <p className="text-sm text-muted-foreground">
+                                Bandeira: {paymentData.combined.method2.card.brand.toUpperCase()}
+                              </p>
+                            )}
+                            {paymentData.combined.method2.card?.installmentCount && paymentData.combined.method2.card.installmentCount > 1 && (
+                              <p className="text-sm text-muted-foreground">
+                                {paymentData.combined.method2.card.installmentCount}x
+                              </p>
+                            )}
+                            {paymentData.combined.method2.amount && (
+                              <p className="text-sm text-muted-foreground">
+                                Valor: {formatCurrency(paymentData.combined.method2.amount)}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+
+                  default:
+                    return null;
+                }
+              })()}
+
+              {(() => {
+                try {
+                  const paymentData = typeof quote.condicoesPagamento === 'string'
+                    ? JSON.parse(quote.condicoesPagamento)
+                    : quote.condicoesPagamento;
+                  return paymentData?.notes;
+                } catch (e) {
+                  return null;
+                }
+              })() && (
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <p className="text-sm font-medium">Observações:</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {(() => {
+                      try {
+                        const paymentData = typeof quote.condicoesPagamento === 'string'
+                          ? JSON.parse(quote.condicoesPagamento)
+                          : quote.condicoesPagamento;
+                        return paymentData?.notes;
+                      } catch (e) {
+                        return '';
+                      }
+                    })()}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Terms and Conditions */}
         <Card className="mb-6">
           <CardHeader>

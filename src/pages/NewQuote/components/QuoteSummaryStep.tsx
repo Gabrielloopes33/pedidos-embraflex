@@ -5,6 +5,7 @@ import { Button } from '@/componentes/ui/button';
 import { Badge } from '@/componentes/ui/badge';
 import { Textarea } from '@/componentes/ui/textarea';
 import { Label } from '@/componentes/ui/label';
+import { Input } from '@/componentes/ui/input';
 import {
   Table,
   TableBody,
@@ -20,9 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/componentes/ui/dialog';
-import { ChevronLeft, Link2, Copy, Check, FileDown, Save, Loader2 } from 'lucide-react';
+import { Link2, Copy, Check, Save, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { QuoteProduct } from '@/lib/quotes';
+import { QuoteProduct, QuotePayment, PaymentMethodType } from '@/lib/quotes';
 import { QuoteCustomerData } from '../hooks/useQuoteWizard';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
@@ -34,6 +35,8 @@ interface QuoteSummaryStepProps {
   products: QuoteProduct[];
   notes?: string;
   onUpdateNotes: (notes: string) => void;
+  paymentMethod?: QuotePayment;
+  onUpdatePaymentMethod: (paymentMethod: QuotePayment) => void;
   onSuccess: () => void;
 }
 
@@ -42,6 +45,8 @@ export function QuoteSummaryStep({
   products,
   notes,
   onUpdateNotes,
+  paymentMethod,
+  onUpdatePaymentMethod,
   onSuccess,
 }: QuoteSummaryStepProps) {
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -127,7 +132,7 @@ export function QuoteSummaryStep({
           title: 'Criando cliente...',
           description: 'Cadastrando cliente no WooCommerce.',
         });
-        
+
         try {
           await createOrUpdateCustomer({
             name: customerData.name,
@@ -144,7 +149,7 @@ export function QuoteSummaryStep({
             city: customerData.city,
             state: customerData.state,
           });
-          
+
           toast({
             title: 'Cliente cadastrado!',
             description: 'Cliente criado/atualizado no WooCommerce com sucesso.',
@@ -154,7 +159,7 @@ export function QuoteSummaryStep({
           // Não mostrar toast de erro - continuar silenciosamente com a criação da cotação
         }
       }
-      
+
       // Create the quote (usando nome unificado)
       const quote = await createQuoteMutation.mutateAsync({
         customerName: customerData.name || customerData.customerName || '',
@@ -162,6 +167,7 @@ export function QuoteSummaryStep({
         customerPhone: customerData.phone || customerData.customerPhone,
         products,
         notes,
+        paymentMethod,
       });
 
       // Then generate signature link
@@ -342,6 +348,407 @@ export function QuoteSummaryStep({
             rows={4}
             className="resize-none"
           />
+        </CardContent>
+      </Card>
+
+      {/* Payment Method */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Forma de Pagamento</CardTitle>
+          <CardDescription>Selecione a forma de pagamento do cliente</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Tipo de Pagamento - Seleção Principal */}
+          <div className="space-y-3">
+            <Label>Tipo de Pagamento</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <Button
+                variant={paymentMethod?.type === 'pix' ? 'default' : 'outline'}
+                onClick={() => onUpdatePaymentMethod({ type: 'pix', totalAmount: calculateTotal() })}
+                className="h-14 text-base"
+              >
+                Pix
+              </Button>
+              <Button
+                variant={paymentMethod?.type === 'credit_card' ? 'default' : 'outline'}
+                onClick={() => onUpdatePaymentMethod({ type: 'credit_card', totalAmount: calculateTotal() })}
+                className="h-14 text-base"
+              >
+                Cartão de Crédito
+              </Button>
+              <Button
+                variant={paymentMethod?.type === 'debit_card' ? 'default' : 'outline'}
+                onClick={() => onUpdatePaymentMethod({ type: 'debit_card', totalAmount: calculateTotal() })}
+                className="h-14 text-base"
+              >
+                Cartão de Débito
+              </Button>
+              <Button
+                variant={paymentMethod?.type === 'cash' ? 'default' : 'outline'}
+                onClick={() => onUpdatePaymentMethod({ type: 'cash', totalAmount: calculateTotal() })}
+                className="h-14 text-base"
+              >
+                Dinheiro à Vista
+              </Button>
+              <Button
+                variant={paymentMethod?.type === 'boleto' ? 'default' : 'outline'}
+                onClick={() => onUpdatePaymentMethod({ type: 'boleto', boleto: {}, totalAmount: calculateTotal() })}
+                className="h-14 text-base"
+              >
+                Boleto
+              </Button>
+              <Button
+                variant={paymentMethod?.type === 'combined' ? 'default' : 'outline'}
+                onClick={() => onUpdatePaymentMethod({ type: 'combined', combined: { method1: { type: 'pix' as PaymentMethodType }, method2: undefined }, totalAmount: calculateTotal() })}
+                className="h-14 text-base"
+              >
+                Combinação
+              </Button>
+            </div>
+          </div>
+
+          {/* Detalhes baseados no tipo selecionado */}
+          {paymentMethod?.type === 'pix' && (
+            <div className="space-y-2 p-4 bg-muted rounded-lg">
+              <Label htmlFor="pix-key">Chave Pix</Label>
+              <Input
+                id="pix-key"
+                placeholder="CPF, Email, Telefone ou Chave Aleatória"
+                value={paymentMethod.pix?.key || ''}
+                onChange={(e) => onUpdatePaymentMethod({ ...paymentMethod, pix: { key: e.target.value }, totalAmount: calculateTotal() })}
+              />
+            </div>
+          )}
+
+          {(paymentMethod?.type === 'credit_card' || paymentMethod?.type === 'debit_card') && (
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <div className="space-y-2">
+                <Label>Bandeira do Cartão</Label>
+                <div className="grid grid-cols-3 gap-2">
+                      {['visa', 'mastercard', 'elo'].map((brand) => (
+                        <Button
+                          key={brand}
+                          variant={paymentMethod.cards?.[0]?.brand === brand ? 'default' : 'outline'}
+                          onClick={() => onUpdatePaymentMethod({
+                            ...paymentMethod,
+                            cards: [{ type: paymentMethod.type === 'credit_card' ? 'credit' : 'debit', brand: brand as 'visa' | 'mastercard' | 'elo' }],
+                            totalAmount: calculateTotal(),
+                          })}
+                          className="h-12"
+                        >
+                          {brand.toUpperCase()}
+                        </Button>
+                      ))}
+                </div>
+              </div>
+
+              {paymentMethod?.type === 'credit_card' && (
+                <div className="space-y-2">
+                  <Label>Parcelamento</Label>
+                  <select
+                    className="w-full p-2 border rounded-md bg-background"
+                    value={paymentMethod.cards?.[0]?.installmentCount?.toString() || '1'}
+                    onChange={(e) => onUpdatePaymentMethod({
+                      ...paymentMethod,
+                      cards: [{ ...paymentMethod.cards?.[0], installmentCount: parseInt(e.target.value) }],
+                      totalAmount: calculateTotal(),
+                    })}
+                  >
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((installments) => (
+                      <option key={installments} value={installments.toString()}>
+                        {installments}x
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {paymentMethod?.type === 'cash' && (
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <Label htmlFor="cash-amount">Valor à Vista</Label>
+              <Input
+                id="cash-amount"
+                type="number"
+                placeholder={formatCurrency(calculateTotal())}
+                value={paymentMethod.cash?.amount?.toString() || ''}
+                onChange={(e) => onUpdatePaymentMethod({
+                  ...paymentMethod,
+                  cash: { amount: parseFloat(e.target.value) || undefined },
+                  totalAmount: parseFloat(e.target.value) || calculateTotal(),
+                })}
+                className="text-lg font-semibold h-14"
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                Deixe em branco para usar o valor total da cotação ({formatCurrency(calculateTotal())})
+              </p>
+            </div>
+          )}
+
+          {paymentMethod?.type === 'boleto' && (
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <div className="space-y-2">
+                <Label htmlFor="boleto-due-date">Data de Vencimento (Opcional)</Label>
+                <Input
+                  id="boleto-due-date"
+                  type="date"
+                  placeholder="DD/MM/AAAA"
+                  value={paymentMethod.boleto?.dueDate || ''}
+                  onChange={(e) => onUpdatePaymentMethod({
+                    ...paymentMethod,
+                    boleto: { ...paymentMethod.boleto, dueDate: e.target.value },
+                    totalAmount: calculateTotal(),
+                  })}
+                  className="h-12"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="boleto-instructions">Instruções (Opcional)</Label>
+                <Textarea
+                  id="boleto-instructions"
+                  placeholder="Ex: Pagável em qualquer banco até a data de vencimento..."
+                  value={paymentMethod.boleto?.instructions || ''}
+                  onChange={(e) => onUpdatePaymentMethod({
+                    ...paymentMethod,
+                    boleto: { ...paymentMethod.boleto, instructions: e.target.value },
+                    totalAmount: calculateTotal(),
+                  })}
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {paymentMethod?.type === 'combined' && (
+            <div className="space-y-6 p-4 bg-muted rounded-lg">
+              <h3 className="font-semibold text-lg mb-4">Pagamento Combinado</h3>
+
+              {/* Método 1 */}
+              <div className="space-y-3 border-b pb-4">
+                <h4 className="font-medium">1ª Forma</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['pix', 'credit_card', 'debit_card', 'cash', 'boleto'].map((type) => (
+                    <Button
+                      key={type}
+                      variant={paymentMethod.combined?.method1?.type === type ? 'default' : 'outline'}
+                      onClick={() => {
+                        onUpdatePaymentMethod({
+                          ...paymentMethod,
+                          combined: {
+                            method1: { type: type as PaymentMethodType },
+                            method2: paymentMethod.combined?.method2 || {},
+                          },
+                          totalAmount: calculateTotal(),
+                        });
+                      }}
+                      className="h-12"
+                    >
+                      {type === 'pix' && 'Pix'}
+                      {type === 'credit_card' && 'Crédito'}
+                      {type === 'debit_card' && 'Débito'}
+                      {type === 'cash' && 'Dinheiro'}
+                      {type === 'boleto' && 'Boleto'}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Detalhes do método 1 */}
+                {paymentMethod.combined?.method1?.type === 'credit_card' && (
+                  <div className="space-y-2 mt-2">
+                    <Label>Bandeira</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['visa', 'mastercard', 'elo'].map((brand) => (
+                        <Button key={brand} variant={paymentMethod.combined?.method1?.card?.brand === brand ? 'default' : 'outline'}
+                      onClick={() => onUpdatePaymentMethod({
+                        ...paymentMethod,
+                        combined: {
+                          method1: { ...paymentMethod.combined?.method1, card: { brand: brand as 'visa' | 'mastercard' | 'elo', type: 'credit' } },
+                          method2: paymentMethod.combined?.method2 || undefined,
+                        },
+                        totalAmount: calculateTotal(),
+                      })}
+                      className="h-12">{brand.toUpperCase()}</Button>
+                      ))}
+                    </div>
+                    <Label>Parcelas</Label>
+                    <select
+                      className="w-full p-2 border rounded-md bg-background"
+                      value={paymentMethod.combined?.method1?.card?.installmentCount?.toString() || '1'}
+                      onChange={(e) => onUpdatePaymentMethod({
+                        ...paymentMethod,
+                        combined: {
+                          method1: { ...paymentMethod.combined?.method1, card: { ...paymentMethod.combined?.method1?.card, installmentCount: parseInt(e.target.value) } },
+                          method2: paymentMethod.combined?.method2 || {},
+                        },
+                        totalAmount: calculateTotal(),
+                      })}
+                    >
+                      {Array.from({ length: 10 }, (_, i) => i + 1).map((installments) => (
+                        <option key={installments} value={installments.toString()}>
+                          {installments}x
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {paymentMethod.combined?.method1?.type === 'cash' && (
+                  <div className="space-y-2 mt-2">
+                    <Label htmlFor="cash-amount-1">Valor em Dinheiro</Label>
+                    <Input id="cash-amount-1" type="number" placeholder="R$ 0,00" value={paymentMethod.combined?.method1?.amount?.toString() || ''}
+                      onChange={(e) => onUpdatePaymentMethod({
+                        ...paymentMethod,
+                        combined: {
+                          method1: { ...paymentMethod.combined?.method1, amount: parseFloat(e.target.value) || undefined },
+                          method2: paymentMethod.combined?.method2 || {},
+                        },
+                        totalAmount: calculateTotal(),
+                      })}
+                      className="h-12" />
+                  </div>
+                )}
+
+                {paymentMethod.combined?.method1?.type === 'boleto' && (
+                  <div className="space-y-2 mt-2">
+                    <Label htmlFor="boleto-due-date-1">Data de Vencimento (Opcional)</Label>
+                    <Input id="boleto-due-date-1" type="date" placeholder="DD/MM/AAAA"
+                      value={paymentMethod.combined?.method1?.boleto?.dueDate || ''}
+                      onChange={(e) => onUpdatePaymentMethod({
+                        ...paymentMethod,
+                        combined: {
+                          method1: { ...paymentMethod.combined?.method1, boleto: { ...paymentMethod.combined?.method1?.boleto, dueDate: e.target.value } },
+                          method2: paymentMethod.combined?.method2 || {},
+                        },
+                        totalAmount: calculateTotal(),
+                      })}
+                      className="h-12" />
+                  </div>
+                )}
+              </div>
+
+              {/* Método 2 */}
+              <div className="space-y-3 pt-4">
+                <h4 className="font-medium">2ª Forma (Opcional)</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['pix', 'credit_card', 'debit_card', 'cash', 'boleto'].map((type) => (
+                    <Button
+                      key={type}
+                      variant={paymentMethod.combined?.method2?.type === type ? 'default' : 'outline'}
+                      onClick={() => {
+                        onUpdatePaymentMethod({
+                          ...paymentMethod,
+                          combined: {
+                            method1: paymentMethod.combined?.method1 || {},
+                            method2: { type: type as PaymentMethodType },
+                          },
+                          totalAmount: calculateTotal(),
+                        });
+                      }}
+                      className="h-12"
+                    >
+                      {type === 'pix' && 'Pix'}
+                      {type === 'credit_card' && 'Crédito'}
+                      {type === 'debit_card' && 'Débito'}
+                      {type === 'cash' && 'Dinheiro'}
+                      {type === 'boleto' && 'Boleto'}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Detalhes do método 2 */}
+                {paymentMethod.combined?.method2?.type === 'credit_card' && (
+                  <div className="space-y-2 mt-2">
+                    <Label>Bandeira</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['visa', 'mastercard', 'elo'].map((brand) => (
+                        <Button key={brand} variant={paymentMethod.combined?.method2?.card?.brand === brand ? 'default' : 'outline'}
+                          onClick={() => onUpdatePaymentMethod({
+                            ...paymentMethod,
+                            combined: {
+                              method1: paymentMethod.combined?.method1 || {},
+                              method2: { ...paymentMethod.combined?.method2, card: { brand: brand as const, type: 'credit' as const } },
+                            },
+                            totalAmount: calculateTotal(),
+                          })}
+                          className="h-12">{brand.toUpperCase()}</Button>
+                      ))}
+                    </div>
+                    <Label>Parcelas</Label>
+                    <select
+                      className="w-full p-2 border rounded-md bg-background"
+                      value={paymentMethod.combined?.method2?.card?.installmentCount?.toString() || '1'}
+                      onChange={(e) => onUpdatePaymentMethod({
+                        ...paymentMethod,
+                        combined: {
+                          method1: paymentMethod.combined?.method1 || {},
+                          method2: { ...paymentMethod.combined?.method2, card: { ...paymentMethod.combined?.method2?.card, installmentCount: parseInt(e.target.value) } },
+                        },
+                        totalAmount: calculateTotal(),
+                      })}
+                    >
+                      {Array.from({ length: 10 }, (_, i) => i + 1).map((installments) => (
+                        <option key={installments} value={installments.toString()}>
+                          {installments}x
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {paymentMethod.combined?.method2?.type === 'cash' && (
+                  <div className="space-y-2 mt-2">
+                    <Label htmlFor="cash-amount-2">Valor em Dinheiro</Label>
+                    <Input id="cash-amount-2" type="number" placeholder="R$ 0,00" value={paymentMethod.combined?.method2?.amount?.toString() || ''}
+                      onChange={(e) => onUpdatePaymentMethod({
+                        ...paymentMethod,
+                        combined: {
+                          method1: paymentMethod.combined?.method1 || {},
+                          method2: { ...paymentMethod.combined?.method2, amount: parseFloat(e.target.value) || undefined },
+                        },
+                        totalAmount: calculateTotal(),
+                      })}
+                      className="h-12" />
+                  </div>
+                )}
+
+                {paymentMethod.combined?.method2?.type === 'boleto' && (
+                  <div className="space-y-2 mt-2">
+                    <Label htmlFor="boleto-due-date-2">Data de Vencimento (Opcional)</Label>
+                    <Input id="boleto-due-date-2" type="date" placeholder="DD/MM/AAAA"
+                      value={paymentMethod.combined?.method2?.boleto?.dueDate || ''}
+                      onChange={(e) => onUpdatePaymentMethod({
+                        ...paymentMethod,
+                        combined: {
+                          method1: paymentMethod.combined?.method1 || {},
+                          method2: { ...paymentMethod.combined?.method2, boleto: { ...paymentMethod.combined?.method2?.boleto, dueDate: e.target.value } },
+                        },
+                        totalAmount: calculateTotal(),
+                      })}
+                      className="h-12" />
+                  </div>
+                )}
+              </div>
+
+              {/* Observações de pagamento */}
+              <div className="space-y-2 pt-4 border-t">
+                <Label htmlFor="payment-notes">Observações do Pagamento</Label>
+                <Textarea
+                  id="payment-notes"
+                  placeholder="Ex: Cliente prefere pagar com cartão Visa..."
+                  value={paymentMethod?.notes || ''}
+                  onChange={(e) => onUpdatePaymentMethod({
+                    ...paymentMethod,
+                    notes: e.target.value,
+                  })}
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

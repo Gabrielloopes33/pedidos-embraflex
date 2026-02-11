@@ -162,6 +162,8 @@ export default function NewQuote() {
                 products={wizard.formData.products}
                 notes={wizard.formData.notes}
                 onUpdateNotes={wizard.updateNotes}
+                paymentMethod={wizard.formData.paymentMethod}
+                onUpdatePaymentMethod={wizard.updatePaymentMethod}
                 onSuccess={handleSuccess}
               />
             )}
