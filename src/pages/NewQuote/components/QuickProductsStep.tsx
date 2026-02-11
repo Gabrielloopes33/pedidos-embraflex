@@ -405,8 +405,15 @@ export function QuickProductsStep({
 
       {/* Modal de Desconto */}
       {showDiscountModal && editingDiscountIndex !== null && (
-        <Dialog open={showDiscountModal}>
-          <DialogContent className="max-w-sm">
+        <Dialog open={showDiscountModal} onOpenChange={(open) => {
+          // Só permite fechar quando open é false via botão OK ou X
+          if (!open) {
+            setShowDiscountModal(false);
+            setEditingDiscountIndex(null);
+            setDiscountValue('');
+          }
+        }}>
+          <DialogContent className="max-w-sm" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Desconto/Acréscimo</DialogTitle>
               <DialogDescription className="text-center">
@@ -449,6 +456,7 @@ export function QuickProductsStep({
               {/* Botões rápidos de 0,5% */}
               <div className="grid grid-cols-3 gap-2 mt-4">
                 <Button
+                  type="button"
                   variant="destructive"
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
@@ -461,6 +469,7 @@ export function QuickProductsStep({
                   -0,5%
                 </Button>
                 <Button
+                  type="button"
                   variant="default"
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
@@ -473,6 +482,7 @@ export function QuickProductsStep({
                   +0,5%
                 </Button>
                 <Button
+                  type="button"
                   variant="secondary"
                   size="lg"
                   onClick={() => setDiscountValue('0')}
@@ -481,6 +491,7 @@ export function QuickProductsStep({
                   Reset
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
@@ -493,6 +504,7 @@ export function QuickProductsStep({
                   -1%
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
@@ -505,6 +517,7 @@ export function QuickProductsStep({
                   +1%
                 </Button>
                 <Button
+                  type="button"
                   variant="default"
                   size="lg"
                   onClick={() => {
