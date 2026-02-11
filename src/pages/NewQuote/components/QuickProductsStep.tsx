@@ -461,6 +461,18 @@ export function QuickProductsStep({
                   -0,5%
                 </Button>
                 <Button
+                  variant="default"
+                  size="lg"
+                  onClick={() => setDiscountValue((prev) => {
+                    const current = parseFloat(prev.replace(',', '.')) || 0;
+                    const newVal = Math.min(11, current + 0.5);
+                    return newVal.toString();
+                  })}
+                  className="h-14 text-base font-semibold bg-green-600 text-white hover:bg-green-700"
+                >
+                  +0,5%
+                </Button>
+                <Button
                   variant="secondary"
                   size="lg"
                   onClick={() => setDiscountValue('0')}
@@ -473,19 +485,7 @@ export function QuickProductsStep({
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
                     const current = parseFloat(prev.replace(',', '.')) || 0;
-                    const newVal = Math.min(11, current + 0.5);
-                    return newVal.toString();
-                  })}
-                  className="h-14 text-base font-semibold text-red-600 border-red-600 hover:bg-red-50"
-                >
-                  -1%
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setDiscountValue((prev) => {
-                    const current = parseFloat(prev.replace(',', '.')) || 0;
-                    const newVal = Math.min(11, current + 0.5);
+                    const newVal = Math.max(-11, current - 1);
                     return newVal.toString();
                   })}
                   className="h-14 text-base font-semibold text-red-600 border-red-600 hover:bg-red-50"
@@ -508,10 +508,9 @@ export function QuickProductsStep({
                   variant="default"
                   size="lg"
                   onClick={() => {
-                    setDiscountValue('11');
+                    handleDiscountBlur();
                     setShowDiscountModal(false);
                     setEditingDiscountIndex(null);
-                    setDiscountValue('');
                   }}
                   className="h-14 text-base font-semibold bg-green-600 text-white hover:bg-green-700"
                 >
