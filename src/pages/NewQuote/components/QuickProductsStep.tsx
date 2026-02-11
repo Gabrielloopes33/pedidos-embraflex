@@ -433,10 +433,9 @@ export function QuickProductsStep({
                   placeholder="0"
                   value={discountValue}
                   onChange={(e) => setDiscountValue(e.target.value)}
-                  onBlur={handleDiscountBlur}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      e.currentTarget.blur();
+                      handleDiscountBlur();
                     } else if (e.key === 'Escape') {
                       setShowDiscountModal(false);
                       setEditingDiscountIndex(null);
