@@ -3,18 +3,19 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/componentes/ui/card';
 import { Button } from '@/componentes/ui/button';
 import { Badge } from '@/componentes/ui/badge';
-import { Plus, Trash2, ShoppingCart, Sparkles } from 'lucide-react';
+import { Plus, Trash2, ShoppingCart, Sparkles, Pencil } from 'lucide-react';
 import { QuoteProduct } from '@/lib/quotes';
 import { ProductNavigator, ProductConfig } from './ProductNavigator';
 import { FinishingModal, FinishingOptions } from './FinishingModal';
-import type { WooCommerceProduct } from '@/lib/woocommerce';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/componentes/ui/dialog';
+import { Input } from '@/componentes/ui/input';
+import { Label } from '@/componentes/ui/label';
 
 interface QuickProductsStepProps {
   products: QuoteProduct[];
   onAddProduct: (product: QuoteProduct) => void;
   onUpdateProduct: (index: number, product: QuoteProduct) => void;
   onRemoveProduct: (index: number) => void;
-  isValid: boolean;
 }
 
 export function QuickProductsStep({
@@ -22,11 +23,12 @@ export function QuickProductsStep({
   onAddProduct,
   onUpdateProduct,
   onRemoveProduct,
-  isValid,
 }: QuickProductsStepProps) {
   const [showNavigator, setShowNavigator] = useState(products.length === 0);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
+  const [editingProduct, setEditingProduct] = useState<QuoteProduct | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const handleProductSelected = (config: ProductConfig) => {
     // Converter formato do ProductNavigator para QuoteProduct
@@ -78,9 +80,23 @@ export function QuickProductsStep({
       // Atualizar preço e subtotal com o custo dos acabamentos
       subtotal: product.quantity * (product.price + cost / product.quantity),
     };
-    
+
     onUpdateProduct(editingProductIndex, updatedProduct);
     setEditingProductIndex(null);
+  };
+
+  const handleEditProduct = (product: QuoteProduct, index: number) => {
+    setEditingProduct({ ...product });
+    setEditingProductIndex(index);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = (updatedProduct: QuoteProduct) => {
+    if (editingProductIndex !== null) {
+      onUpdateProduct(editingProductIndex, updatedProduct);
+    }
+    setShowEditModal(false);
+    setEditingProduct(null);
   };
 
   const formatCurrency = (value: number) => {
@@ -168,6 +184,14 @@ export function QuickProductsStep({
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleEditProduct(product, index)}
+                              className="hover:bg-primary/10"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => onRemoveProduct(index)}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -248,6 +272,32 @@ export function QuickProductsStep({
                             {formatCurrency(product.subtotal)}
                           </span>
                         </div>
+
+                        {/* Desconto/Acréscimo */}
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                          <label className="text-xs text-muted-foreground">Desconto/Acréscimo %:</label>
+                          <input
+                            type="number"
+                            min="-50"
+                            max="50"
+                            step="0.1"
+                            value={product.discountPercent || 0}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              if (value >= -50 && value <= 50) {
+                                const discountAmount = product.price * product.quantity * (value / 100);
+                                const newSubtotal = product.price * product.quantity - discountAmount;
+
+                                onUpdateProduct(index, {
+                                  ...product,
+                                  discountPercent: value,
+                                  subtotal: newSubtotal,
+                                });
+                              }
+                            }}
+                            className="w-20 px-2 py-1 text-sm border rounded-md text-center"
+                          />
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -285,6 +335,71 @@ export function QuickProductsStep({
           }}
           quantity={products[editingProductIndex]?.quantity || 1000}
         />
+      )}
+
+      {/* Modal de Edição de Produto */}
+      {showEditModal && editingProduct && (
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar Produto</DialogTitle>
+              <DialogDescription>
+                Altere quantidade e desconto do produto
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Quantidade</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={editingProduct.quantity}
+                  onChange={(e) => {
+                    const newQuantity = parseInt(e.target.value) || 1;
+                    const discountAmount = editingProduct.discountPercent || 0
+                      ? editingProduct.price * newQuantity * ((editingProduct.discountPercent || 0) / 100)
+                      : 0;
+                    setEditingProduct({
+                      ...editingProduct,
+                      quantity: newQuantity,
+                      subtotal: editingProduct.price * newQuantity - discountAmount,
+                    });
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Desconto/Acréscimo %</Label>
+                <Input
+                  type="number"
+                  min="-50"
+                  max="50"
+                  step="0.1"
+                  value={editingProduct.discountPercent || 0}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    const discountAmount = editingProduct.price * editingProduct.quantity * (value / 100);
+                    setEditingProduct({
+                      ...editingProduct,
+                      discountPercent: value,
+                      subtotal: editingProduct.price * editingProduct.quantity - discountAmount,
+                    });
+                  }}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={() => handleSaveEdit(editingProduct)}>
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
       )}

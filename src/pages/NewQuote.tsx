@@ -145,7 +145,6 @@ export default function NewQuote() {
                 onAddProduct={wizard.addProduct}
                 onUpdateProduct={wizard.updateProduct}
                 onRemoveProduct={wizard.removeProduct}
-                isValid={wizard.isStep2Valid()}
               />
             )}
 

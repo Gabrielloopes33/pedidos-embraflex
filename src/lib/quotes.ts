@@ -7,6 +7,7 @@ export interface QuoteProduct {
   sku: string;
   price: number;
   quantity: number;
+  discountPercent?: number;
   variationId?: number;
   color?: string;
   attributes?: Record<string, string>;

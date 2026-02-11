@@ -174,7 +174,13 @@ export function useQuoteWizard() {
 
   // Calculate total
   const calculateTotal = useCallback(() => {
-    return formData.products.reduce((sum, product) => sum + product.subtotal, 0);
+    return formData.products.reduce((sum, product) => {
+      // Considerar desconto se existir
+      const discountAmount = product.discountPercent
+        ? product.price * product.quantity * (product.discountPercent / 100)
+        : 0;
+      return sum + (product.price * product.quantity) - discountAmount;
+    }, 0);
   }, [formData.products]);
 
   return {
