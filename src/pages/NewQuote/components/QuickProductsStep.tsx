@@ -476,21 +476,21 @@ export function QuickProductsStep({
                     const newVal = Math.min(11, current + 0.5);
                     return newVal.toString();
                   })}
-                  className="h-14 text-base font-semibold text-green-600 border-green-600 hover:bg-green-50"
+                  className="h-14 text-base font-semibold text-red-600 border-red-600 hover:bg-red-50"
                 >
-                  +0,5%
+                  -1%
                 </Button>
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => setDiscountValue((prev) => {
                     const current = parseFloat(prev.replace(',', '.')) || 0;
-                    const newVal = Math.min(11, current + 1);
+                    const newVal = Math.min(11, current + 0.5);
                     return newVal.toString();
                   })}
                   className="h-14 text-base font-semibold text-red-600 border-red-600 hover:bg-red-50"
                 >
-                  +1%
+                  -1%
                 </Button>
                 <Button
                   variant="outline"
@@ -507,7 +507,12 @@ export function QuickProductsStep({
                 <Button
                   variant="default"
                   size="lg"
-                  onClick={() => setDiscountValue('11')}
+                  onClick={() => {
+                    setDiscountValue('11');
+                    setShowDiscountModal(false);
+                    setEditingDiscountIndex(null);
+                    setDiscountValue('');
+                  }}
                   className="h-14 text-base font-semibold bg-green-600 text-white hover:bg-green-700"
                 >
                   OK
