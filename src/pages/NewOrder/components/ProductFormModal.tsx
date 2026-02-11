@@ -356,7 +356,7 @@ export function ProductFormModal({ open, onOpenChange, item, onSave, selectedLin
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editedItem?.unitPrice, editedItem?.quantity, editedItem?.finishing, editedItem?.tipoImpressao]);
+  }, [editedItem?.unitPrice, editedItem?.quantity, editedItem?.finishing, editedItem?.tipoImpressao, editedItem?.discountPercent]);
 
   const handleSave = () => {
     if (editedItem) {

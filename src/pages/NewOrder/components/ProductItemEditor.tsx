@@ -355,7 +355,7 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       onUpdate(index, { ...item, total });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.unitPrice, item.quantity, item.finishing, item.tipoImpressao]);
+  }, [item.unitPrice, item.quantity, item.finishing, item.tipoImpressao, item.discountPercent]);
 
   const finishingCost = calculateFinishingCosts(item.finishing);
   const unitWithFinishing = item.unitPrice + finishingCost;

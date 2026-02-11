@@ -25,6 +25,7 @@ const INITIAL_PRODUCT: ProductItem = {
     cordao: '',
     corCordao: '',
   },
+  discountPercent: 0,
 };
 
 const INITIAL_CUSTOMER: CustomerData = {
