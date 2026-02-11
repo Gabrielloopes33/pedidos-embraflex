@@ -21,10 +21,16 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import ProductionPage from "./pages/Production";
 import UserManagement from "./pages/UserManagement";
-import { warmupBackend } from "./lib/warmup";
+import { warmupBackendWithRetry } from "./lib/warmup";
 
-// Aquecer o backend assim que o app carrega
-warmupBackend();
+// Aquecer o backend em background com retries (não bloqueia o carregamento)
+warmupBackendWithRetry(3).then((result) => {
+  if (result.success) {
+    console.log('✅ Backend aquecido com sucesso no startup!');
+  } else {
+    console.warn('⚠️ Warmup no startup falhou, mas login tentará aquecer quando necessário');
+  }
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
