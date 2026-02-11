@@ -70,14 +70,38 @@ router.get('/:token', async (req: Request, res: Response) => {
       ? JSON.parse(quote.products) 
       : quote.products;
 
-    // Return public quote data (no sensitive information)
+    // Parse payment method if exists
+    let condicoesPagamento = quote.condicoes_pagamento;
+    if (condicoesPagamento && typeof condicoesPagamento === 'string') {
+      try {
+        condicoesPagamento = JSON.parse(condicoesPagamento);
+      } catch (e) {
+        // Keep as string if parsing fails
+      }
+    }
+
+    // Return public quote data with full customer info
     const publicData: PublicQuoteData = {
       quoteNumber: quote.quote_number,
       customerName: quote.customer_name,
+      customerEmail: quote.customer_email || undefined,
+      customerPhone: quote.customer_phone || undefined,
+      customerCompany: quote.customer_company || undefined,
+      customerCpf: quote.customer_cpf || undefined,
+      customerCnpj: quote.customer_cnpj || undefined,
+      customerCep: quote.customer_cep || undefined,
+      customerAddress: quote.customer_address || undefined,
+      customerNumber: quote.customer_number || undefined,
+      customerComplement: quote.customer_complement || undefined,
+      customerNeighborhood: quote.customer_neighborhood || undefined,
+      customerCity: quote.customer_city || undefined,
+      customerState: quote.customer_state || undefined,
       products: products,
       totalPrice: parseFloat(quote.total_price),
       expiresAt: quote.expires_at,
       status: quote.status,
+      condicoesPagamento: condicoesPagamento || undefined,
+      createdByName: quote.created_by_name || undefined,
     };
 
     res.json(publicData);

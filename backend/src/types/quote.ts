@@ -97,6 +97,16 @@ export interface Quote {
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;
+  customerCompany?: string;
+  customerCpf?: string;
+  customerCnpj?: string;
+  customerCep?: string;
+  customerAddress?: string;
+  customerNumber?: string;
+  customerComplement?: string;
+  customerNeighborhood?: string;
+  customerCity?: string;
+  customerState?: string;
 
   // Products
   products: QuoteProduct[];
@@ -152,11 +162,38 @@ export interface QuoteView {
   };
 }
 
+// Customer full data interface
+export interface CustomerFullData {
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  cpf?: string;
+  cnpj?: string;
+  cep?: string;
+  address?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+}
+
 // Request/Response types
 export interface CreateQuoteRequest {
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;
+  customerCompany?: string;
+  customerCpf?: string;
+  customerCnpj?: string;
+  customerCep?: string;
+  customerAddress?: string;
+  customerNumber?: string;
+  customerComplement?: string;
+  customerNeighborhood?: string;
+  customerCity?: string;
+  customerState?: string;
   products: QuoteProduct[];
   notes?: string;
   paymentMethod?: QuotePayment;
@@ -166,6 +203,16 @@ export interface UpdateQuoteRequest {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  customerCompany?: string;
+  customerCpf?: string;
+  customerCnpj?: string;
+  customerCep?: string;
+  customerAddress?: string;
+  customerNumber?: string;
+  customerComplement?: string;
+  customerNeighborhood?: string;
+  customerCity?: string;
+  customerState?: string;
   products?: QuoteProduct[];
   notes?: string;
   paymentMethod?: QuotePayment;
@@ -179,11 +226,24 @@ export interface GenerateSignatureLinkResponse {
 export interface PublicQuoteData {
   quoteNumber: string;
   customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  customerCompany?: string;
+  customerCpf?: string;
+  customerCnpj?: string;
+  customerCep?: string;
+  customerAddress?: string;
+  customerNumber?: string;
+  customerComplement?: string;
+  customerNeighborhood?: string;
+  customerCity?: string;
+  customerState?: string;
   products: QuoteProduct[];
   totalPrice: number;
   expiresAt: string;
   status: QuoteStatus;
   condicoesPagamento?: string;
+  createdByName?: string;
 }
 
 export interface SignatureConfirmRequest {

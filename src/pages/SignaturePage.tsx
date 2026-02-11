@@ -31,6 +31,18 @@ import { apiClient } from '@/lib/api';
 interface PublicQuoteData {
   quoteNumber: string;
   customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  customerCompany?: string;
+  customerCpf?: string;
+  customerCnpj?: string;
+  customerCep?: string;
+  customerAddress?: string;
+  customerNumber?: string;
+  customerComplement?: string;
+  customerNeighborhood?: string;
+  customerCity?: string;
+  customerState?: string;
   products: Array<{
     name: string;
     sku: string;
@@ -62,7 +74,8 @@ interface PublicQuoteData {
   totalPrice: number;
   expiresAt: string;
   status: 'draft' | 'sent' | 'approved' | 'rejected';
-  condicoesPagamento?: string;
+  condicoesPagamento?: string | object;
+  createdByName?: string;
 }
 
 export default function SignaturePage() {
@@ -329,6 +342,83 @@ export default function SignaturePage() {
               </Badge>
             </div>
           </CardHeader>
+        </Card>
+
+        {/* Customer Details Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-xl text-primary">Dados do Cliente</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {quote?.customerEmail && (
+                <div>
+                  <span className="text-sm text-muted-foreground">E-mail:</span>
+                  <p className="font-medium">{quote.customerEmail}</p>
+                </div>
+              )}
+              {quote?.customerPhone && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Telefone:</span>
+                  <p className="font-medium">{quote.customerPhone}</p>
+                </div>
+              )}
+              {quote?.customerCompany && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Empresa:</span>
+                  <p className="font-medium">{quote.customerCompany}</p>
+                </div>
+              )}
+              {(quote?.customerCpf || quote?.customerCnpj) && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Documento:</span>
+                  <p className="font-medium">
+                    {quote.customerCpf || quote.customerCnpj}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Address */}
+            {(quote?.customerAddress || quote?.customerCep) && (
+              <>
+                <Separator />
+                <div>
+                  <span className="text-sm text-muted-foreground">Endereço:</span>
+                  <p className="font-medium">
+                    {quote.customerAddress}
+                    {quote.customerNumber && `, ${quote.customerNumber}`}
+                    {quote.customerComplement && ` - ${quote.customerComplement}`}
+                  </p>
+                  {(quote.customerNeighborhood || quote.customerCity || quote.customerState) && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {quote.customerNeighborhood && `${quote.customerNeighborhood} - `}
+                      {quote.customerCity && quote.customerState 
+                        ? `${quote.customerCity}/${quote.customerState}` 
+                        : quote.customerCity || quote.customerState}
+                    </p>
+                  )}
+                  {quote.customerCep && (
+                    <p className="text-sm text-muted-foreground">
+                      CEP: {quote.customerCep}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Vendedor */}
+            {quote?.createdByName && (
+              <>
+                <Separator />
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <span className="text-sm text-muted-foreground">Vendedor Responsável:</span>
+                  <p className="font-semibold text-primary">{quote.createdByName}</p>
+                </div>
+              </>
+            )}
+          </CardContent>
         </Card>
 
         {/* Products - Detailed Cards */}
