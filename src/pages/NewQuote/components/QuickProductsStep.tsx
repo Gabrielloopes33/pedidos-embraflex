@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/componentes/ui/card';
 import { Button } from '@/componentes/ui/button';
 import { Badge } from '@/componentes/ui/badge';
-import { Plus, Trash2, ShoppingCart, Sparkles, Pencil } from 'lucide-react';
+import { Plus, Trash2, ShoppingCart, Sparkles, Pencil, Hash } from 'lucide-react';
 import { QuoteProduct } from '@/lib/quotes';
 import { ProductNavigator, ProductConfig } from './ProductNavigator';
 import { FinishingModal, FinishingOptions } from './FinishingModal';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/componentes/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/componentes/ui/dialog';
 import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 
@@ -26,9 +26,13 @@ export function QuickProductsStep({
 }: QuickProductsStepProps) {
   const [showNavigator, setShowNavigator] = useState(products.length === 0);
   const [showFinishingModal, setShowFinishingModal] = useState(false);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [editingDiscountIndex, setEditingDiscountIndex] = useState<number | null>(null);
+  const [editingQuantityIndex, setEditingQuantityIndex] = useState<number | null>(null);
+  const [discountValue, setDiscountValue] = useState('');
+  const [quantityValue, setQuantityValue] = useState('');
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
-  const [editingProduct, setEditingProduct] = useState<QuoteProduct | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   const handleProductSelected = (config: ProductConfig) => {
     // Converter formato do ProductNavigator para QuoteProduct
@@ -85,18 +89,88 @@ export function QuickProductsStep({
     setEditingProductIndex(null);
   };
 
-  const handleEditProduct = (product: QuoteProduct, index: number) => {
-    setEditingProduct({ ...product });
-    setEditingProductIndex(index);
-    setShowEditModal(true);
+  const openDiscountModal = (index: number) => {
+    const product = products[index];
+    setEditingDiscountIndex(index);
+    setDiscountValue(product.discountPercent?.toString() || '');
+    setShowDiscountModal(true);
   };
 
-  const handleSaveEdit = (updatedProduct: QuoteProduct) => {
-    if (editingProductIndex !== null) {
-      onUpdateProduct(editingProductIndex, updatedProduct);
+  const openQuantityModal = (index: number) => {
+    const product = products[index];
+    setEditingQuantityIndex(index);
+    setQuantityValue(product.quantity.toString());
+    setShowQuantityModal(true);
+  };
+
+  const handleDiscountBlur = () => {
+    if (editingDiscountIndex === null) return;
+
+    // Se vazio, fecha sem alterar
+    if (!discountValue.trim()) {
+      setShowDiscountModal(false);
+      setEditingDiscountIndex(null);
+      return;
     }
-    setShowEditModal(false);
-    setEditingProduct(null);
+
+    // Parse valor (permite -11 ou 11)
+    const value = parseInt(discountValue);
+
+    // Validação: entre -11 e 11
+    if (value < -11 || value > 11) {
+      return;
+    }
+
+    // Atualizar produto
+    const product = products[editingDiscountIndex];
+    const discountAmount = product.price * product.quantity * (value / 100);
+    const newSubtotal = product.price * product.quantity - discountAmount;
+
+    onUpdateProduct(editingDiscountIndex, {
+      ...product,
+      discountPercent: value,
+      subtotal: newSubtotal,
+    });
+
+    setShowDiscountModal(false);
+    setEditingDiscountIndex(null);
+    setDiscountValue('');
+  };
+
+  const handleQuantityBlur = () => {
+    if (editingQuantityIndex === null) return;
+
+    // Se vazio, fecha sem alterar
+    if (!quantityValue.trim()) {
+      setShowQuantityModal(false);
+      setEditingQuantityIndex(null);
+      return;
+    }
+
+    // Parse valor
+    const value = parseInt(quantityValue);
+
+    // Validação: mínimo 1
+    if (value < 1) {
+      return;
+    }
+
+    // Atualizar produto
+    const product = products[editingQuantityIndex];
+    const discountAmount = product.discountPercent
+      ? product.price * value * ((product.discountPercent || 0) / 100)
+      : 0;
+    const newSubtotal = product.price * value - discountAmount;
+
+    onUpdateProduct(editingQuantityIndex, {
+      ...product,
+      quantity: value,
+      subtotal: newSubtotal,
+    });
+
+    setShowQuantityModal(false);
+    setEditingQuantityIndex(null);
+    setQuantityValue('');
   };
 
   const formatCurrency = (value: number) => {
@@ -170,25 +244,17 @@ export function QuickProductsStep({
                       {/* Product Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <div>
-                            <h4 className="font-medium text-base leading-tight">
-                              {product.name}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              SKU: {product.sku}
-                            </p>
-                          </div>
+                           <div>
+                             <h4 className="font-medium text-base leading-tight">
+                               {product.name}
+                             </h4>
+                             <p className="text-sm text-muted-foreground">
+                               SKU: {product.sku}
+                             </p>
+                           </div>
 
-                          {/* Actions */}
+                          {/* Actions - apenas botão remover */}
                           <div className="flex gap-2 flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditProduct(product, index)}
-                              className="hover:bg-primary/10"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -211,7 +277,13 @@ export function QuickProductsStep({
                           )}
 
                           <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            <Badge 
+                              variant="secondary" 
+                              className="bg-green-100 text-green-800 cursor-pointer hover:bg-green-200 transition-colors group relative"
+                              onClick={() => openQuantityModal(index)}
+                              title="Clique para alterar quantidade"
+                            >
+                              <Hash className="absolute -left-4 top-1/2 -translate-y-1/2 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                               Qtd: {product.quantity}
                             </Badge>
                             {product.color && (
@@ -268,35 +340,15 @@ export function QuickProductsStep({
                           <span className="text-sm text-muted-foreground">
                             {formatCurrency(product.price)} x {product.quantity} =
                           </span>
-                          <span className="text-lg font-semibold">
+                          <span
+                            className="text-lg font-semibold cursor-pointer hover:bg-primary/10 rounded px-2 py-1 transition-colors group relative"
+                            onClick={() => openDiscountModal(index)}
+                            title="Clique para aplicar desconto"
+                          >
                             {formatCurrency(product.subtotal)}
+                            {/* Ícone de lápis pequeno que aparece no hover */}
+                            <Pencil className="absolute -right-6 top-1/2 -translate-y-1/2 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </span>
-                        </div>
-
-                        {/* Desconto/Acréscimo */}
-                        <div className="flex items-center gap-2 mt-2 pt-2 border-t">
-                          <label className="text-xs text-muted-foreground">Desconto/Acréscimo %:</label>
-                          <input
-                            type="number"
-                            min="-50"
-                            max="50"
-                            step="0.1"
-                            value={product.discountPercent || 0}
-                            onChange={(e) => {
-                              const value = parseFloat(e.target.value) || 0;
-                              if (value >= -50 && value <= 50) {
-                                const discountAmount = product.price * product.quantity * (value / 100);
-                                const newSubtotal = product.price * product.quantity - discountAmount;
-
-                                onUpdateProduct(index, {
-                                  ...product,
-                                  discountPercent: value,
-                                  subtotal: newSubtotal,
-                                });
-                              }
-                            }}
-                            className="w-20 px-2 py-1 text-sm border rounded-md text-center"
-                          />
                         </div>
                       </div>
                     </div>
@@ -337,67 +389,102 @@ export function QuickProductsStep({
         />
       )}
 
-      {/* Modal de Edição de Produto */}
-      {showEditModal && editingProduct && (
-        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent className="max-w-md">
+      {/* Modal de Desconto */}
+      {showDiscountModal && editingDiscountIndex !== null && (
+        <Dialog open={showDiscountModal} onOpenChange={(open) => {
+          setShowDiscountModal(open);
+          if (!open) {
+            setEditingDiscountIndex(null);
+            setDiscountValue('');
+          }
+        }}>
+          <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle>Editar Produto</DialogTitle>
-              <DialogDescription>
-                Altere quantidade e desconto do produto
+              <DialogTitle>Desconto/Acréscimo</DialogTitle>
+              <DialogDescription className="text-center">
+                Digite o percentual (-11% a +11%)
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div className="py-6 space-y-4">
               <div className="space-y-2">
-                <Label>Quantidade</Label>
+                <Label htmlFor="discount-input" className="text-center">Percentual (%)</Label>
                 <Input
+                  id="discount-input"
+                  type="number"
+                  min="-11"
+                  max="11"
+                  step="1"
+                  placeholder="0"
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value)}
+                  onBlur={handleDiscountBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur();
+                    } else if (e.key === 'Escape') {
+                      setShowDiscountModal(false);
+                      setEditingDiscountIndex(null);
+                      setDiscountValue('');
+                    }
+                  }}
+                  autoFocus
+                  className="text-center text-2xl font-bold h-16"
+                />
+                <div className="flex justify-center gap-2 text-xs text-muted-foreground mt-2">
+                  <Badge variant="outline" className="text-green-600">-11%</Badge>
+                  <span>a</span>
+                  <Badge variant="outline" className="text-blue-600">+11%</Badge>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Modal de Quantidade */}
+      {showQuantityModal && editingQuantityIndex !== null && (
+        <Dialog open={showQuantityModal} onOpenChange={(open) => {
+          setShowQuantityModal(open);
+          if (!open) {
+            setEditingQuantityIndex(null);
+            setQuantityValue('');
+          }
+        }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Alterar Quantidade</DialogTitle>
+              <DialogDescription className="text-center">
+                Digite a nova quantidade do produto
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="quantity-input" className="text-center">Quantidade</Label>
+                <Input
+                  id="quantity-input"
                   type="number"
                   min="1"
-                  value={editingProduct.quantity}
-                  onChange={(e) => {
-                    const newQuantity = parseInt(e.target.value) || 1;
-                    const discountAmount = editingProduct.discountPercent || 0
-                      ? editingProduct.price * newQuantity * ((editingProduct.discountPercent || 0) / 100)
-                      : 0;
-                    setEditingProduct({
-                      ...editingProduct,
-                      quantity: newQuantity,
-                      subtotal: editingProduct.price * newQuantity - discountAmount,
-                    });
+                  step="1"
+                  placeholder="1"
+                  value={quantityValue}
+                  onChange={(e) => setQuantityValue(e.target.value)}
+                  onBlur={handleQuantityBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur();
+                    } else if (e.key === 'Escape') {
+                      setShowQuantityModal(false);
+                      setEditingQuantityIndex(null);
+                      setQuantityValue('');
+                    }
                   }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Desconto/Acréscimo %</Label>
-                <Input
-                  type="number"
-                  min="-50"
-                  max="50"
-                  step="0.1"
-                  value={editingProduct.discountPercent || 0}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    const discountAmount = editingProduct.price * editingProduct.quantity * (value / 100);
-                    setEditingProduct({
-                      ...editingProduct,
-                      discountPercent: value,
-                      subtotal: editingProduct.price * editingProduct.quantity - discountAmount,
-                    });
-                  }}
+                  autoFocus
+                  className="text-center text-2xl font-bold h-16"
                 />
               </div>
             </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditModal(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={() => handleSaveEdit(editingProduct)}>
-                Salvar
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
