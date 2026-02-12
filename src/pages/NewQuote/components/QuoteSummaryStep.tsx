@@ -296,53 +296,59 @@ export function QuoteSummaryStep({
                   <TableHead className="text-right">Subtotal</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {products.map((product, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {product.width && product.height && (
-                            <Badge variant="outline" className="text-xs">
-                              {product.width} x {product.height} cm
-                            </Badge>
-                          )}
-                          {product.finishing.hotStamp && (
-                            <Badge variant="outline" className="text-xs">
-                              Hot Stamp{product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' ? ` (${product.finishing.hotStampCor})` : ''}
-                            </Badge>
-                          )}
-                          {product.finishing.eyelets && (
-                            <Badge variant="outline" className="text-xs">
-                              Ilhós
-                            </Badge>
-                          )}
-                          {product.finishing.furoPresente && (
-                            <Badge variant="outline" className="text-xs">
-                              Furo de Presente
-                            </Badge>
-                          )}
-                          {product.finishing.cord && (
-                            <Badge variant="outline" className="text-xs">
-                              Cordão{product.finishing.cordao && product.finishing.cordao !== 'nenhum' ? ` ${product.finishing.cordao}` : ''}
-                              {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum' ? ` (${product.finishing.corCordao})` : ''}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">{product.quantity}</TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(product.price)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(product.subtotal)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+               <TableBody>
+                 {products.map((product, index) => (
+                   <TableRow key={index}>
+                     <TableCell>
+                       <div className="space-y-2">
+                         <div>
+                           <p className="font-medium">{product.name}</p>
+                           <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                         </div>
+                         <div className="flex flex-wrap gap-1 mt-1">
+                           {product.width && product.height && (
+                             <Badge variant="outline" className="text-xs">
+                               {product.width} x {product.height} cm
+                             </Badge>
+                           )}
+                         </div>
+                         {product.finishing && (
+                           <div className="flex flex-wrap gap-1">
+                             {product.finishing.hotStamp && (
+                               <Badge variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-700">
+                                 Hot Stamp{product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' ? ` (${product.finishing.hotStampCor})` : ''}
+                               </Badge>
+                             )}
+                             {product.finishing.eyelets && (
+                               <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+                                 Ilhós
+                               </Badge>
+                             )}
+                             {product.finishing.furoPresente && (
+                               <Badge variant="outline" className="text-xs bg-pink-50 border-pink-200 text-pink-700">
+                                 Furo de Presente
+                               </Badge>
+                             )}
+                             {product.finishing.cord && (
+                               <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-700">
+                                 Cordão{product.finishing.cordao && product.finishing.cordao !== 'nenhum' ? ` ${product.finishing.cordao}` : ''}
+                                 {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum' ? ` (${product.finishing.corCordao})` : ''}
+                               </Badge>
+                             )}
+                           </div>
+                         )}
+                       </div>
+                     </TableCell>
+                     <TableCell className="text-center">{product.quantity}</TableCell>
+                     <TableCell className="text-right">
+                       {formatCurrency(product.price)}
+                     </TableCell>
+                     <TableCell className="text-right font-medium">
+                       {formatCurrency(product.subtotal)}
+                     </TableCell>
+                   </TableRow>
+                 ))}
+               </TableBody>
             </Table>
           </div>
 

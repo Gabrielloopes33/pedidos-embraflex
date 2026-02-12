@@ -290,39 +290,42 @@ export function QuickProductsStep({
                             </p>
                           )}
 
-                          <div className="flex flex-wrap gap-2">
-                            <Badge 
-                              variant="secondary" 
-                              className="bg-green-100 text-green-800 cursor-pointer hover:bg-green-200 transition-colors group relative"
-                              onClick={() => openQuantityModal(index)}
-                              title="Clique para alterar quantidade"
-                            >
-                              <Hash className="absolute -left-4 top-1/2 -translate-y-1/2 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              Qtd: {product.quantity}
-                            </Badge>
-                            {product.color && (
-                              <Badge variant="outline">
-                                {product.color}
-                              </Badge>
-                            )}
-                            {product.finishing?.hotStamp && (
-                              <Badge variant="outline">
-                                Hot Stamp{product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' ? ` (${product.finishing.hotStampCor})` : ''}
-                              </Badge>
-                            )}
-                            {product.finishing?.eyelets && (
-                              <Badge variant="outline">Ilhós</Badge>
-                            )}
-                            {product.finishing?.furoPresente && (
-                              <Badge variant="outline">Furo de Presente</Badge>
-                            )}
-                            {product.finishing?.cord && (
-                              <Badge variant="outline">
-                                Cordão{product.finishing.cordao && product.finishing.cordao !== 'nenhum' ? ` ${product.finishing.cordao}` : ''}
-                                {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum' ? ` (${product.finishing.corCordao})` : ''}
-                              </Badge>
-                            )}
-                          </div>
+                           <div className="flex flex-wrap gap-2">
+                             <Badge 
+                               variant="secondary" 
+                               className="bg-green-100 text-green-800 cursor-pointer hover:bg-green-200 transition-colors group relative"
+                               onClick={() => openQuantityModal(index)}
+                               title="Clique para alterar quantidade"
+                             >
+                               <Hash className="absolute -left-4 top-1/2 -translate-y-1/2 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                               Qtd: {product.quantity}
+                             </Badge>
+                             {product.color && (
+                               <Badge variant="outline">
+                                 {product.color}
+                               </Badge>
+                             )}
+                           </div>
+
+                           <div className="flex flex-wrap gap-2">
+                             {product.finishing?.hotStamp && (
+                               <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-700 font-medium">
+                                 Hot Stamp{product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' ? ` (${product.finishing.hotStampCor})` : ''}
+                               </Badge>
+                             )}
+                             {product.finishing?.eyelets && (
+                               <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-700 font-medium">Ilhós</Badge>
+                             )}
+                             {product.finishing?.furoPresente && (
+                               <Badge variant="outline" className="bg-pink-50 border-pink-200 text-pink-700 font-medium">Furo de Presente</Badge>
+                             )}
+                             {product.finishing?.cord && (
+                               <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700 font-medium">
+                                 Cordão{product.finishing.cordao && product.finishing.cordao !== 'nenhum' ? ` ${product.finishing.cordao}` : ''}
+                                 {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum' ? ` (${product.finishing.corCordao})` : ''}
+                               </Badge>
+                             )}
+                           </div>
 
                           {/* Botão Adicionar Acabamento - para sacolas de papel (Kraft e linhas Premium/Comercial/Econômica) */}
                           {(product.sku?.toLowerCase().startsWith('k-') ||

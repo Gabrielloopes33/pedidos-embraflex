@@ -427,28 +427,28 @@ export default function SignaturePage() {
             <CardTitle>Detalhes do Pedido</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {Array.isArray(quote?.products) && quote.products.map((product, index) => {
-              const hasFinishing = product.finishing && (
-                product.finishing.hotStamp ||
-                product.finishing.eyelets ||
-                product.finishing.furoPresente ||
-                (product.finishing.cord || (product.finishing.cordao && product.finishing.cordao !== 'nenhum'))
-              );
+               {Array.isArray(quote?.products) && quote.products.map((product, index) => {
+               const hasFinishing = product.finishing && (
+                 product.finishing.hotStamp ||
+                 product.finishing.eyelets ||
+                 product.finishing.furoPresente ||
+                 (product.finishing.cord || (product.finishing.cordao && product.finishing.cordao !== 'nenhum'))
+               );
 
-              const hasDimensions = product.width || product.height || product.larguraCm || product.alturaCm || product.comprimentoCm;
+               const hasDimensions = product.width || product.height || product.larguraCm || product.alturaCm || product.comprimentoCm;
 
-              return (
-                <div key={index} className="border rounded-lg p-4 space-y-3">
-                  {/* Product Name & SKU */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-base">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">Código: {product.sku}</p>
-                    </div>
-                    <Badge variant="secondary" className="text-sm px-3 py-1 flex-shrink-0">
-                      {product.quantity} un
-                    </Badge>
-                  </div>
+               return (
+                 <div key={index} className="border rounded-lg p-4 space-y-3 bg-card">
+                   {/* Product Name & SKU */}
+                   <div className="flex items-start justify-between gap-4">
+                     <div className="flex-1">
+                       <h3 className="font-semibold text-base">{product.name}</h3>
+                       <p className="text-sm text-muted-foreground font-medium">SKU: {product.sku}</p>
+                     </div>
+                     <Badge variant="secondary" className="text-sm px-3 py-1 flex-shrink-0 bg-primary text-primary-foreground">
+                       {product.quantity} un
+                     </Badge>
+                   </div>
 
                   {/* Discriminação/Descrição do produto */}
                   {product.discriminacaoProduto && (
@@ -496,62 +496,65 @@ export default function SignaturePage() {
                     </div>
                   )}
 
-                  {/* Acabamentos - Detailed Section */}
-                  {hasFinishing && (
-                    <div className="bg-muted/50 rounded-md p-3 space-y-2">
-                      <p className="text-sm font-semibold">Acabamentos:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {product.finishing!.hotStamp && (
-                          <Badge variant="outline" className="text-xs py-1">
-                            Hot Stamp
-                            {product.finishing!.hotStampCor && product.finishing!.hotStampCor !== 'nenhum'
-                              ? ` - ${product.finishing!.hotStampCor}`
-                              : ''}
-                            {product.finishing!.hotStampCorManual
-                              ? ` (${product.finishing!.hotStampCorManual})`
-                              : ''}
-                          </Badge>
-                        )}
-                        {product.finishing!.eyelets && (
-                          <Badge variant="outline" className="text-xs py-1">
-                            Ilhós
-                            {product.finishing!.ilhosCorManual
-                              ? ` (${product.finishing!.ilhosCorManual})`
-                              : ''}
-                          </Badge>
-                        )}
-                        {product.finishing!.furoPresente && (
-                          <Badge variant="outline" className="text-xs py-1">
-                            Furo de Presente
-                          </Badge>
-                        )}
-                        {(product.finishing!.cord || (product.finishing!.cordao && product.finishing!.cordao !== 'nenhum')) && (
-                          <Badge variant="outline" className="text-xs py-1">
-                            Cordão
-                            {product.finishing!.cordao && product.finishing!.cordao !== 'nenhum'
-                              ? ` ${product.finishing!.cordao}`
-                              : ''}
-                            {product.finishing!.corCordao && product.finishing!.corCordao !== 'nenhum'
-                              ? ` - ${product.finishing!.corCordao}`
-                              : ''}
-                            {product.finishing!.cordaoCorManual
-                              ? ` (${product.finishing!.cordaoCorManual})`
-                              : ''}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                   {/* Acabamentos - Detailed Section */}
+                   {hasFinishing && (
+                     <div className="bg-primary/5 border border-primary/20 rounded-md p-3 space-y-2">
+                       <p className="text-sm font-semibold text-primary flex items-center gap-2">
+                         <span className="w-2 h-2 rounded-full bg-primary"></span>
+                         Acabamentos:
+                       </p>
+                       <div className="flex flex-wrap gap-2">
+                         {product.finishing!.hotStamp && (
+                           <Badge variant="outline" className="text-xs py-1 bg-purple-100 border-purple-300 text-purple-800 font-medium">
+                             Hot Stamp
+                             {product.finishing!.hotStampCor && product.finishing!.hotStampCor !== 'nenhum'
+                               ? ` - ${product.finishing!.hotStampCor}`
+                               : ''}
+                             {product.finishing!.hotStampCorManual
+                               ? ` (${product.finishing!.hotStampCorManual})`
+                               : ''}
+                           </Badge>
+                         )}
+                         {product.finishing!.eyelets && (
+                           <Badge variant="outline" className="text-xs py-1 bg-blue-100 border-blue-300 text-blue-800 font-medium">
+                             Ilhós
+                             {product.finishing!.ilhosCorManual
+                               ? ` (${product.finishing!.ilhosCorManual})`
+                               : ''}
+                           </Badge>
+                         )}
+                         {product.finishing!.furoPresente && (
+                           <Badge variant="outline" className="text-xs py-1 bg-pink-100 border-pink-300 text-pink-800 font-medium">
+                             Furo de Presente
+                           </Badge>
+                         )}
+                         {(product.finishing!.cord || (product.finishing!.cordao && product.finishing!.cordao !== 'nenhum')) && (
+                           <Badge variant="outline" className="text-xs py-1 bg-amber-100 border-amber-300 text-amber-800 font-medium">
+                             Cordão
+                             {product.finishing!.cordao && product.finishing!.cordao !== 'nenhum'
+                               ? ` ${product.finishing!.cordao}`
+                               : ''}
+                             {product.finishing!.corCordao && product.finishing!.corCordao !== 'nenhum'
+                               ? ` - ${product.finishing!.corCordao}`
+                               : ''}
+                             {product.finishing!.cordaoCorManual
+                               ? ` (${product.finishing!.cordaoCorManual})`
+                               : ''}
+                           </Badge>
+                         )}
+                       </div>
+                     </div>
+                   )}
 
-                  {/* Price Row */}
-                  <div className="flex items-baseline justify-between pt-2 border-t">
-                    <span className="text-sm text-muted-foreground">
-                      {formatCurrency(product.price)} x {product.quantity} un
-                    </span>
-                    <span className="text-lg font-semibold">
-                      {formatCurrency(product.subtotal)}
-                    </span>
-                  </div>
+                   {/* Price Row */}
+                   <div className="flex items-baseline justify-between pt-2 border-t bg-muted/30 px-3 py-2 -mx-3 rounded">
+                     <span className="text-sm text-muted-foreground">
+                       {formatCurrency(product.price)} x {product.quantity} un
+                     </span>
+                     <span className="text-lg font-semibold text-primary">
+                       {formatCurrency(product.subtotal)}
+                     </span>
+                   </div>
                 </div>
               );
             })}
