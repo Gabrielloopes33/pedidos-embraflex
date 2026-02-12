@@ -114,6 +114,11 @@ export function QuoteSummaryStep({
     }
   };
 
+  const validateEmail = (email: string): boolean => {
+    if (!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleSaveDraft = async () => {
     await createQuoteMutation.mutateAsync({
       customerName: customerData.name || customerData.customerName || '',
@@ -136,8 +141,19 @@ export function QuoteSummaryStep({
 
   const handleGenerateLink = async () => {
     try {
-      // Se configurado para criar no WooCommerce, criar/atualizar cliente primeiro
-      if (customerData.createInWooCommerce && customerData.name && customerData.email && customerData.phone) {
+      const emailToUse = customerData.email || customerData.customerEmail;
+      
+      // Validar email antes de criar cliente no WooCommerce
+      if (customerData.createInWooCommerce && customerData.name && emailToUse && customerData.phone) {
+        if (!validateEmail(emailToUse)) {
+          toast({
+            title: 'Email inválido',
+            description: 'Por favor, verifique o endereço de email do cliente.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
         toast({
           title: 'Criando cliente...',
           description: 'Cadastrando cliente no WooCommerce.',
@@ -146,7 +162,7 @@ export function QuoteSummaryStep({
         try {
           await createOrUpdateCustomer({
             name: customerData.name,
-            email: customerData.email,
+            email: emailToUse,
             phone: customerData.phone,
             company: customerData.company,
             cpf: customerData.cpf,
@@ -166,14 +182,18 @@ export function QuoteSummaryStep({
           });
         } catch (error: any) {
           console.error('Erro ao criar cliente no WooCommerce:', error);
-          // Não mostrar toast de erro - continuar silenciosamente com a criação da cotação
+          toast({
+            title: 'Erro ao cadastrar cliente',
+            description: 'Não foi possível cadastrar no WooCommerce, mas a cotação será criada.',
+            variant: 'destructive',
+          });
         }
       }
 
       // Create the quote (usando nome unificado)
       const quote = await createQuoteMutation.mutateAsync({
         customerName: customerData.name || customerData.customerName || '',
-        customerEmail: customerData.email || customerData.customerEmail,
+        customerEmail: emailToUse,
         customerPhone: customerData.phone || customerData.customerPhone,
         customerCompany: customerData.company,
         customerCpf: customerData.cpf,
