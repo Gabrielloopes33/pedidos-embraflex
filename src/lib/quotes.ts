@@ -186,11 +186,24 @@ export interface GenerateSignatureLinkResponse {
 export interface PublicQuoteData {
   quoteNumber: string;
   customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  customerCompany?: string;
+  customerCpf?: string;
+  customerCnpj?: string;
+  customerCep?: string;
+  customerAddress?: string;
+  customerNumber?: string;
+  customerComplement?: string;
+  customerNeighborhood?: string;
+  customerCity?: string;
+  customerState?: string;
   products: QuoteProduct[];
   totalPrice: number;
   expiresAt: string;
   status: QuoteStatus;
   condicoesPagamento?: string;
+  createdByName?: string;
 }
 
 export interface QuoteListFilters {
