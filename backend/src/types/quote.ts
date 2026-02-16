@@ -62,6 +62,7 @@ export interface QuoteProduct {
   height?: number;
   color?: string;
   attributes?: Record<string, string>;
+  paperType?: string; // Tipo de papel selecionado (ex: "Kraft", "Duplex")
   finishing: {
     hotStamp: boolean;
     hotStampCor?: string;

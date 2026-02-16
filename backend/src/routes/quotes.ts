@@ -155,6 +155,13 @@ router.post('/', async (req: Request, res: Response) => {
       paymentMethod 
     } = body;
 
+    console.log('📝 Creating quote with data:', {
+      customerName,
+      customerEmail,
+      productsCount: products?.length,
+      paymentMethod: paymentMethod ? JSON.stringify(paymentMethod) : 'undefined',
+    });
+
     if (!customerName || !products || products.length === 0) {
       return res.status(400).json({ message: 'Nome do cliente e produtos são obrigatórios.' });
     }
@@ -166,6 +173,18 @@ router.post('/', async (req: Request, res: Response) => {
     // For now, we'll use a placeholder - this should come from JWT token
     const createdById = (req as any).user?.id;
     const createdByName = (req as any).user?.name;
+
+    // Safely stringify payment method
+    let paymentMethodString = null;
+    if (paymentMethod) {
+      try {
+        paymentMethodString = JSON.stringify(paymentMethod);
+        console.log('💳 Payment method stringified:', paymentMethodString);
+      } catch (stringifyError) {
+        console.warn('⚠️ Failed to stringify paymentMethod:', stringifyError);
+        paymentMethodString = null;
+      }
+    }
 
     const newQuote = {
       customer_name: customerName,
@@ -187,8 +206,10 @@ router.post('/', async (req: Request, res: Response) => {
       created_by_id: createdById || null,
       created_by_name: createdByName || null,
       notes: notes || null,
-      condicoes_pagamento: paymentMethod ? JSON.stringify(paymentMethod) : null,
+      condicoes_pagamento: paymentMethodString,
     };
+
+    console.log('💾 Attempting to insert quote into database...');
 
     const { data, error } = await supabase
       .from('quotes')
@@ -196,7 +217,10 @@ router.post('/', async (req: Request, res: Response) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Database error:', error);
+      throw error;
+    }
 
     const quote = parseQuote(data);
     console.log(`✅ Quote created: ${quote.quoteNumber}`);
@@ -232,6 +256,13 @@ router.put('/:id', async (req: Request, res: Response) => {
       paymentMethod 
     } = body;
 
+    console.log('📝 Updating quote:', id, 'with data:', {
+      customerName,
+      customerEmail,
+      productsCount: products?.length,
+      paymentMethod: paymentMethod ? JSON.stringify(paymentMethod) : 'undefined',
+    });
+
     // Get current quote
     const { data: currentQuote, error: fetchError } = await supabase
       .from('quotes')
@@ -266,8 +297,15 @@ router.put('/:id', async (req: Request, res: Response) => {
       updateData.total_price = products.reduce((sum, p) => sum + p.subtotal, 0);
     }
 
+    // Safely stringify payment method
     if (paymentMethod !== undefined) {
-      updateData.condicoes_pagamento = paymentMethod ? JSON.stringify(paymentMethod) : null;
+      try {
+        updateData.condicoes_pagamento = paymentMethod ? JSON.stringify(paymentMethod) : null;
+        console.log('💳 Payment method updated:', updateData.condicoes_pagamento);
+      } catch (stringifyError) {
+        console.warn('⚠️ Failed to stringify paymentMethod on update:', stringifyError);
+        updateData.condicoes_pagamento = null;
+      }
     }
 
     // If quote was already sent (has signature link), invalidate link

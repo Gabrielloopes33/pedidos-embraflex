@@ -1,8 +1,8 @@
 // ProductNavigator - Navegação hierárquica de produtos (Categoria → Subcategoria → Produto → Variações)
-// v2.1 - Suporte a atributo PAPEL para divisão extra
-console.log('🚀 ProductNavigator v2.1 carregado - com suporte a atributo PAPEL');
+// v2.2 - Etapa de seleção de tipo de papel para Sacolas de Papel
+console.log('🚀 ProductNavigator v2.2 carregado - com etapa de seleção de tipo de papel');
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/componentes/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import { ChevronLeft, Loader2, X } from 'lucide-react';
@@ -61,9 +61,10 @@ export interface ProductConfig {
   attributes?: Record<string, string>;
   finishing?: FinishingOptions;
   displayName?: string; // Nome completo para exibição (ex: "Boca Vazada - 25x35 cm")
+  paperType?: string; // Tipo de papel selecionado (ex: "Kraft", "Duplex")
 }
 
-type NavigationStep = 'line' | 'category' | 'subcategory' | 'product' | 'variation';
+type NavigationStep = 'line' | 'category' | 'subcategory' | 'product' | 'paperType' | 'variation';
 
 // Interface para produtos agrupados por SKU
 interface GroupedProduct {
@@ -162,6 +163,7 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
   const [selectedLine, setSelectedLine] = useState<Category | null>(null); // Linha Premium, Boca Vazada
   const [selectedPlasticProduct, setSelectedPlasticProduct] = useState<WooCommerceProduct | null>(null); // Para sacolas plásticas: Boca Vazada, Alça Fita, etc.
   const [selectedGroupedProduct, setSelectedGroupedProduct] = useState<GroupedProduct | null>(null);
+  const [selectedPaperType, setSelectedPaperType] = useState<string | null>(null); // Tipo de papel selecionado
   const [breadcrumb, setBreadcrumb] = useState<string[]>(['Escolha a Categoria']);
 
   // Buscar TODOS os produtos
@@ -491,6 +493,38 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
     staleTime: 2 * 60 * 1000,
   });
 
+  // Decidir se mostra step de papel ou vai direto para variações
+  useEffect(() => {
+    if (allGroupVariations && selectedGroupedProduct && currentStep === 'variation') {
+      // Verificar se é categoria Sacola de Papel
+      const isPaperBagCategory = selectedCategory?.name.toLowerCase().includes('sacola') && 
+                                 selectedCategory?.name.toLowerCase().includes('papel');
+      
+      if (!isPaperBagCategory) {
+        // Não é sacola de papel, não mostrar step
+        return;
+      }
+
+      const paperTypes = getUniquePaperTypes(allGroupVariations);
+      
+      // Se tem múltiplos tipos de papel E não selecionou ainda, mostrar step de papel
+      if (paperTypes.length > 1 && selectedPaperType === null) {
+        setCurrentStep('paperType');
+        setBreadcrumb([
+          'Escolha a Categoria',
+          selectedCategory?.name,
+          selectedPlasticProduct?.name || selectedLine?.name,
+          selectedGroupedProduct.model || selectedGroupedProduct.sku,
+          'Escolha o Tipo de Papel'
+        ].filter(Boolean) as string[]);
+      }
+      // Se tem apenas 1 tipo ou já selecionou, auto-selecionar
+      else if (paperTypes.length === 1 && selectedPaperType === null) {
+        setSelectedPaperType(paperTypes[0]);
+      }
+    }
+  }, [allGroupVariations, selectedGroupedProduct, currentStep, selectedCategory, selectedPlasticProduct, selectedLine, selectedPaperType]);
+
   // Função auxiliar para calcular linhas disponíveis para uma categoria
   const getLinesForCategory = (category: Category) => {
     if (!allProducts || allProducts.length === 0) return [];
@@ -579,8 +613,9 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
 
   const handleGroupedProductSelect = (grouped: GroupedProduct) => {
     setSelectedGroupedProduct(grouped);
+    setSelectedPaperType(null); // Reset papel selecionado
 
-    // Ir direto para variações (com todos os tipos de papel)
+    // Ir para variações (será ajustado pelo useEffect se precisar mostrar step de papel)
     // Filtrar valores vazios para quando não há linha
     setBreadcrumb([
       'Escolha a Categoria',
@@ -588,6 +623,21 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       selectedPlasticProduct?.name || selectedLine?.name,
       grouped.model || grouped.sku,
     ].filter(Boolean) as string[]);
+    setCurrentStep('variation');
+  };
+
+  const handlePaperTypeSelect = (paperType: string) => {
+    setSelectedPaperType(paperType);
+    
+    // Atualizar breadcrumb
+    setBreadcrumb([
+      'Escolha a Categoria',
+      selectedCategory?.name,
+      selectedPlasticProduct?.name || selectedLine?.name,
+      selectedGroupedProduct?.model || selectedGroupedProduct?.sku,
+      `Papel: ${paperType}`,
+    ].filter(Boolean) as string[]);
+    
     setCurrentStep('variation');
   };
 
@@ -607,15 +657,43 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       attributes,
       finishing,
       displayName, // Nome completo para exibição
+      paperType: selectedPaperType || undefined, // Tipo de papel selecionado
     });
     onClose();
   };
 
   const handleBack = () => {
     if (currentStep === 'variation') {
+      // Verificar se veio de paperType
+      if (selectedPaperType !== null) {
+        // Voltar para seleção de papel
+        setSelectedPaperType(null);
+        setCurrentStep('paperType');
+        setBreadcrumb([
+          'Escolha a Categoria',
+          selectedCategory?.name || '',
+          selectedPlasticProduct?.name || selectedLine?.name || '',
+          selectedGroupedProduct?.model || selectedGroupedProduct?.sku || '',
+          'Escolha o Tipo de Papel'
+        ].filter(Boolean));
+        return;
+      }
+      
+      // Senão, voltar para product
       setSelectedGroupedProduct(null);
       setCurrentStep('product');
       setBreadcrumb(['Escolha a Categoria', selectedCategory?.name || '', selectedPlasticProduct?.name || selectedLine?.name || '', 'Escolha o Tamanho'].filter(Boolean));
+    } else if (currentStep === 'paperType') {
+      // Voltar de seleção de papel para seleção de produto
+      setSelectedGroupedProduct(null);
+      setSelectedPaperType(null);
+      setCurrentStep('product');
+      setBreadcrumb([
+        'Escolha a Categoria',
+        selectedCategory?.name || '',
+        selectedPlasticProduct?.name || selectedLine?.name || '',
+        'Produtos'
+      ].filter(Boolean));
     } else if (currentStep === 'product') {
       // Se veio de sacola plástica, voltar para seleção de tipo
       if (selectedPlasticProduct) {
@@ -845,14 +923,29 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
           </div>
         )}
 
+        {/* Step 3.5: Escolha do Tipo de Papel (apenas para Sacolas de Papel com atributo PAPEL) */}
+        {currentStep === 'paperType' && selectedGroupedProduct && (
+          <PaperTypeSelector
+            groupedProduct={selectedGroupedProduct}
+            variations={allGroupVariations || []}
+            loading={loadingVariations}
+            onSelect={handlePaperTypeSelect}
+          />
+        )}
+
         {/* Step 4: Variações agrupadas por tipo de papel (Cor/Quantidade) */}
         {currentStep === 'variation' && selectedGroupedProduct && (
           <VariationSelector
             groupedProduct={selectedGroupedProduct}
-            variations={allGroupVariations || []}
+            variations={
+              selectedPaperType
+                ? (allGroupVariations || []).filter(v => v.paperAttribute === selectedPaperType)
+                : (allGroupVariations || [])
+            }
             loading={loadingVariations}
             onSelect={handleVariationSelect}
             lineName={selectedLine?.name || selectedCategory?.name}
+            paperType={selectedPaperType}
           />
         )}
       </CardContent>
@@ -867,9 +960,69 @@ interface VariationSelectorProps {
   loading: boolean;
   onSelect: (variation: VariationWithProduct, quantity: number, finishing?: FinishingOptions, displayName?: string) => void;
   lineName?: string | null;
+  paperType?: string | null;
 }
 
-function VariationSelector({ groupedProduct, variations, loading, onSelect, lineName }: VariationSelectorProps) {
+// Componente para seleção de tipo de papel
+interface PaperTypeSelectorProps {
+  groupedProduct: GroupedProduct;
+  variations: VariationWithProduct[];
+  loading: boolean;
+  onSelect: (paperType: string) => void;
+}
+
+function PaperTypeSelector({ groupedProduct, variations, loading, onSelect }: PaperTypeSelectorProps) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Carregando tipos de papel...</p>
+      </div>
+    );
+  }
+
+  // Extrair tipos de papel únicos
+  const paperTypes = [...new Set(
+    variations
+      .map((v) => v.paperAttribute)
+      .filter((pt): pt is string => pt !== null && pt !== undefined && pt.trim().length > 0)
+  )];
+
+  if (paperTypes.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Nenhum tipo de papel disponível</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">Escolha o Tipo de Papel</h3>
+        <p className="text-sm text-muted-foreground">
+          Produto: {groupedProduct.model || groupedProduct.sku}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {paperTypes.map((paperType) => (
+          <Card
+            key={paperType}
+            onClick={() => onSelect(paperType)}
+            className="cursor-pointer hover:bg-accent transition-colors touch-manipulation"
+          >
+            <CardContent className="p-6 flex items-center justify-center min-h-[100px]">
+              <h4 className="text-xl font-semibold text-center">{paperType}</h4>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VariationSelector({ groupedProduct, variations, loading, onSelect, lineName, paperType }: VariationSelectorProps) {
   // Filtrar variações pelo modelo definido no grupo (se houver)
   const filteredVariations = groupedProduct.model
     ? variations.filter((v) => {
@@ -1365,6 +1518,9 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-2">{lineName || groupedProduct.sku}</h3>
+        {paperType && (
+          <p className="text-sm font-medium text-primary mb-1">Papel: {paperType}</p>
+        )}
         <p className="text-sm text-muted-foreground">Selecione o tipo e quantidade</p>
       </div>
 

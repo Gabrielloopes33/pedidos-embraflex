@@ -62,6 +62,7 @@ export interface QuoteProduct {
   variationId?: number;
   color?: string;
   attributes?: Record<string, string>;
+  paperType?: string; // Tipo de papel selecionado (ex: "Kraft", "Duplex")
   width?: number;
   height?: number;
   finishing: {

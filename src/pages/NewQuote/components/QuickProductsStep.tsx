@@ -47,6 +47,7 @@ export function QuickProductsStep({
       variationId: config.variationId,
       color: config.color,
       attributes: config.attributes,
+      paperType: config.paperType, // Tipo de papel selecionado
       finishing: config.finishing ? {
         hotStamp: config.finishing.hotStamp || false,
         hotStampCor: config.finishing.hotStampCor || 'nenhum',
