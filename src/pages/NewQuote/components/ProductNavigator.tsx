@@ -157,6 +157,13 @@ const extractPaperAttributeValue = (
   return null;
 };
 
+// Função auxiliar para extrair tipos únicos de papel das variações
+const getUniquePaperTypes = (variations: VariationWithProduct[]): string[] => {
+  if (!variations || variations.length === 0) return [];
+  const paperTypes = variations.map((v) => v.paperAttribute || v.paperType).filter(Boolean);
+  return [...new Set(paperTypes)];
+};
+
 export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProps) {
   const [currentStep, setCurrentStep] = useState<NavigationStep>('category');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null); // Sacola de Papel, Caixa, etc.
