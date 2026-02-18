@@ -495,6 +495,9 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
 
   // Decidir se mostra step de papel ou vai direto para variações
   useEffect(() => {
+    // Early return se já estamos no step de papel para evitar loop
+    if (currentStep === 'paperType') return;
+    
     if (allGroupVariations && selectedGroupedProduct && currentStep === 'variation') {
       // Verificar se é categoria Sacola de Papel
       const isPaperBagCategory = selectedCategory?.name.toLowerCase().includes('sacola') && 
@@ -523,7 +526,8 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
         setSelectedPaperType(paperTypes[0]);
       }
     }
-  }, [allGroupVariations, selectedGroupedProduct, currentStep, selectedCategory, selectedPlasticProduct, selectedLine, selectedPaperType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allGroupVariations, selectedGroupedProduct, selectedCategory, selectedPlasticProduct, selectedLine, selectedPaperType]);
 
   // Função auxiliar para calcular linhas disponíveis para uma categoria
   const getLinesForCategory = (category: Category) => {
