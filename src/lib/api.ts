@@ -15,7 +15,7 @@ console.log('🔧 API Configuration:', {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000, // 60 segundos (Render + Supabase podem ser lentos)
+  timeout: 120000, // Render Free pode levar > 60s para aquecer
 });
 
 // Interceptor para adicionar o token de autenticação a cada requisição

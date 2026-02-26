@@ -1,21 +1,34 @@
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-const HEALTH_TIMEOUT = 60000; // 60 segundos para cold start
+const HEALTH_TIMEOUT = Number(import.meta.env.VITE_HEALTH_TIMEOUT_MS || 120000); // Render Free pode levar > 60s
+
+const getHealthUrls = () => {
+  const urls = [`${API_BASE_URL}/health`];
+  if (API_BASE_URL.endsWith('/api')) {
+    urls.push(`${API_BASE_URL.slice(0, -4)}/health`);
+  }
+  return urls;
+};
 
 /**
  * Verifica se o backend está saudável
  */
 export const isBackendHealthy = async (): Promise<boolean> => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/health`, { 
-      timeout: HEALTH_TIMEOUT 
-    });
-    return response.data?.status === 'ok';
-  } catch (error) {
-    console.error('❌ Health check falhou:', error);
-    return false;
+  const healthUrls = getHealthUrls();
+
+  for (const healthUrl of healthUrls) {
+    try {
+      const response = await axios.get(healthUrl, {
+        timeout: HEALTH_TIMEOUT
+      });
+      return response.data?.status === 'ok';
+    } catch (error) {
+      console.error(`❌ Health check falhou (${healthUrl}):`, error);
+    }
   }
+
+  return false;
 };
 
 /**
