@@ -21,6 +21,79 @@ const port = process.env.PORT || 3001;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_super_secreto';
 
+const normalizeUsername = (value: string) => value.trim().toLowerCase();
+const isBcryptHash = (value: string) => /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(value);
+
+async function ensureDefaultAdminUser() {
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, username, password, role, is_active')
+      .ilike('username', 'admin')
+      .limit(10);
+
+    if (error) {
+      console.error('❌ Falha ao verificar usuário admin padrão:', error);
+      return;
+    }
+
+    const existingAdmin = (users || []).find((user: any) =>
+      normalizeUsername(String(user.username || '')) === 'admin'
+    );
+
+    if (!existingAdmin) {
+      const passwordHash = await bcrypt.hash('admin123', 10);
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: 'user-admin',
+          username: 'admin',
+          password: passwordHash,
+          role: 'admin',
+          is_active: true,
+        });
+
+      if (insertError) {
+        console.error('❌ Falha ao criar usuário admin padrão:', insertError);
+      } else {
+        console.log('✅ Usuário admin padrão criado (username: admin).');
+      }
+      return;
+    }
+
+    const updates: any = {};
+
+    if (normalizeUsername(String(existingAdmin.username || '')) !== 'admin') {
+      updates.username = 'admin';
+    }
+
+    if (existingAdmin.is_active === false) {
+      updates.is_active = true;
+    }
+
+    const currentPassword = String(existingAdmin.password || '');
+    if (!isBcryptHash(currentPassword)) {
+      const passwordToHash = currentPassword || 'admin123';
+      updates.password = await bcrypt.hash(passwordToHash, 10);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', existingAdmin.id);
+
+      if (updateError) {
+        console.error('❌ Falha ao normalizar usuário admin padrão:', updateError);
+      } else {
+        console.log('✅ Usuário admin padrão normalizado com sucesso.');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erro inesperado no bootstrap do admin padrão:', error);
+  }
+}
+
 console.log('🚀 Embraflex Backend API v2.0 - Autenticação simplificada');
 console.log('🔗 APP_URL configurado:', process.env.APP_URL || 'http://localhost:5173 (fallback)');
 
@@ -95,8 +168,9 @@ app.use('/api/sync', syncRouter);
 app.use('/api/users', authenticateToken, usersRouter);
 
 
-initializeDb().then(() => {
+initializeDb().then(async () => {
   console.log('Banco de dados Supabase conectado e inicializado.');
+  await ensureDefaultAdminUser();
 
   // --- ROTA DE HEALTH CHECK ---
   app.get('/health', (req, res) => {
@@ -123,25 +197,66 @@ initializeDb().then(() => {
       return res.status(400).json({ message: 'Usuário e senha são obrigatórios.' });
     }
 
+    const normalizedUsername = typeof username === 'string' ? normalizeUsername(username) : '';
+    if (!normalizedUsername) {
+      return res.status(400).json({ message: 'Usuário e senha são obrigatórios.' });
+    }
+
     try {
       const { data: users, error } = await supabase
         .from('users')
         .select('*')
-        .eq('username', username)
-        .limit(1);
+        .ilike('username', normalizedUsername)
+        .limit(10);
 
-      if (error || !users || users.length === 0) {
+      if (error) {
+        console.error('❌ Erro ao consultar usuários no login:', error);
+        return res.status(500).json({ message: 'Serviço de autenticação indisponível.' });
+      }
+
+      if (!users || users.length === 0) {
         return res.status(401).json({ message: 'Credenciais inválidas.' });
       }
 
-      const user = users[0];
+      const user = users.find((candidate: any) =>
+        normalizeUsername(String(candidate.username || '')) === normalizedUsername
+      );
+
+      if (!user) {
+        return res.status(401).json({ message: 'Credenciais inválidas.' });
+      }
       
       // Verificar se usuário está ativo
       if (user.is_active === false) {
         return res.status(403).json({ message: 'Usuário inativo. Entre em contato com o administrador.' });
       }
-      
-      const match = await bcrypt.compare(password, user.password);
+
+      const storedPassword = String(user.password || '');
+      let match = false;
+
+      if (isBcryptHash(storedPassword)) {
+        match = await bcrypt.compare(password, storedPassword);
+      } else {
+        match = password === storedPassword;
+
+        if (match) {
+          const passwordHash = await bcrypt.hash(password, 10);
+          const { error: upgradeError } = await supabase
+            .from('users')
+            .update({
+              password: passwordHash,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+
+          if (upgradeError) {
+            console.warn('⚠️ Não foi possível migrar senha legada para hash:', upgradeError.message);
+          } else {
+            console.log('✅ Senha legada migrada para bcrypt:', user.username);
+          }
+        }
+      }
+
       if (!match) {
         return res.status(401).json({ message: 'Credenciais inválidas.' });
       }

@@ -8,6 +8,9 @@
 import { supabase } from './src/supabase-client';
 import bcrypt from 'bcrypt';
 
+const normalizeUsername = (value: string) => value.trim().toLowerCase();
+const isBcryptHash = (value: string) => /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(value);
+
 async function createAdminUser() {
   console.log('🔧 Criando usuário admin...\n');
 
@@ -26,14 +29,52 @@ async function createAdminUser() {
   try {
     // 1. Verificar se admin já existe
     console.log('1️⃣ Verificando se admin já existe...');
-    const { data: existingAdmin } = await supabase
+    const { data: existingAdmins } = await supabase
       .from('users')
-      .select('id, username, role')
-      .eq('username', 'admin')
-      .single();
+      .select('id, username, role, password, is_active')
+      .ilike('username', 'admin')
+      .limit(10);
+
+    const existingAdmin = (existingAdmins || []).find(
+      (user: any) => normalizeUsername(String(user.username || '')) === 'admin'
+    );
 
     if (existingAdmin) {
-      console.log('✅ Admin já existe:', existingAdmin);
+      console.log('✅ Admin já existe, validando credenciais...');
+
+      let updatesNeeded = false;
+      const updates: any = {};
+
+      if (normalizeUsername(String(existingAdmin.username || '')) !== 'admin') {
+        updates.username = 'admin';
+        updatesNeeded = true;
+      }
+
+      if (existingAdmin.is_active !== true) {
+        updates.is_active = true;
+        updatesNeeded = true;
+      }
+
+      const existingPassword = String(existingAdmin.password || '');
+      if (!isBcryptHash(existingPassword) || !(await bcrypt.compare(adminData.password, existingPassword))) {
+        const passwordHash = await bcrypt.hash(adminData.password, 10);
+        updates.password = passwordHash;
+        updatesNeeded = true;
+      }
+
+      if (updatesNeeded) {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ ...updates, updated_at: new Date().toISOString() })
+          .eq('id', existingAdmin.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        console.log('✅ Admin atualizado com credenciais padrão.');
+      }
+
       console.log('\n📝 Para fazer login, use:');
       console.log('   Username: admin');
       console.log('   Password: admin123\n');

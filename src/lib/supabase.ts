@@ -14,7 +14,7 @@ import type {
 } from './types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://supa.agenciatouch.com.br';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0._G0caHkMnfr_HyJR9knteSCT0H9q3tDO5pL3AUb2mic';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzcyNDYwNzE4LCJleHAiOjIwODc4MjA3MTh9.zWPerH0B-u5sEk5D5D3TQvFJpXQPBtu6ioz9LCG5iRk';
 
 const BUILD_VERSION = 'v3.3-' + Date.now();
 console.log('🚀🚀🚀 VERSÃO:', BUILD_VERSION, '- Supabase DIRETO + NUNCA usa userId!');

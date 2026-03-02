@@ -13,6 +13,8 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+const normalizeUsername = (value: string) => value.trim().toLowerCase();
+
 /**
  * Middleware para verificar se é admin
  */
@@ -137,9 +139,10 @@ router.get('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
 router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { username, password, email, role, full_name } = req.body;
+    const normalizedUsername = typeof username === 'string' ? normalizeUsername(username) : '';
 
     // Validações
-    if (!username || !password || !role) {
+    if (!normalizedUsername || !password || !role) {
       return res.status(400).json({
         message: 'Username, password e role são obrigatórios.',
       });
@@ -154,11 +157,15 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
     // Verificar se username já existe
     const { data: existingUsername } = await supabase
       .from('users')
-      .select('id')
-      .eq('username', username)
-      .single();
+      .select('id, username')
+      .ilike('username', normalizedUsername)
+      .limit(10);
 
-    if (existingUsername) {
+    const hasUsernameConflict = (existingUsername || []).some(
+      (user: any) => normalizeUsername(String(user.username || '')) === normalizedUsername
+    );
+
+    if (hasUsernameConflict) {
       return res.status(400).json({
         message: 'Username já está em uso.',
       });
@@ -193,7 +200,7 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
       .from('users')
       .insert({
         id: userId,
-        username,
+        username: normalizedUsername,
         password: passwordHash,
         email: email || null,
         role,
@@ -238,6 +245,7 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
   try {
     const { id } = req.params;
     const { username, email, role, full_name, is_active, password } = req.body;
+    const normalizedUpdateUsername = typeof username === 'string' ? normalizeUsername(username) : undefined;
 
     // Verificar se usuário existe
     const { data: existingUser } = await supabase
@@ -257,15 +265,25 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
       });
     }
 
+    if (username !== undefined && !normalizedUpdateUsername) {
+      return res.status(400).json({
+        message: 'Username não pode estar vazio.',
+      });
+    }
+
     // Verificar se username já existe (se estiver sendo alterado)
-    if (username && username !== existingUser.username) {
+    if (normalizedUpdateUsername && normalizedUpdateUsername !== normalizeUsername(String(existingUser.username || ''))) {
       const { data: existingUsername } = await supabase
         .from('users')
-        .select('id')
-        .eq('username', username)
-        .single();
+        .select('id, username')
+        .ilike('username', normalizedUpdateUsername)
+        .limit(10);
 
-      if (existingUsername) {
+      const hasUsernameConflict = (existingUsername || []).some(
+        (user: any) => user.id !== id && normalizeUsername(String(user.username || '')) === normalizedUpdateUsername
+      );
+
+      if (hasUsernameConflict) {
         return res.status(400).json({
           message: 'Username já está em uso.',
         });
@@ -292,7 +310,7 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
       updated_at: new Date().toISOString()
     };
 
-    if (username) updates.username = username;
+    if (normalizedUpdateUsername) updates.username = normalizedUpdateUsername;
     if (email !== undefined) updates.email = email || null;
     if (role) updates.role = role;
     if (full_name !== undefined) updates.full_name = full_name || null;
