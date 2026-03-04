@@ -63,6 +63,8 @@ export interface QuoteProduct {
   color?: string;
   attributes?: Record<string, string>;
   paperType?: string; // Tipo de papel selecionado (ex: "Kraft", "Duplex")
+  modelo?: string; // Modelo do produto (ex: "25x35cm", "Boca Vazada")
+  lamination?: string; // Laminação (ex: "Laminado Brilho", "Laminado Fosco", "Verniz")
   finishing: {
     hotStamp: boolean;
     hotStampCor?: string;

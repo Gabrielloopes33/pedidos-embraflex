@@ -286,6 +286,56 @@ export function ProductItemEditor({ item, index, onUpdate, onRemove }: ProductIt
       }
     }
 
+    // Extrair atributos de MODELO, PAPEL e LAMINAÇÃO
+    // Modelo: pode ser atributo "Modelo", "Tamanho" ou "Medida"
+    const modelAttr = product.attributes?.find(attr => {
+      const name = attr.name?.toLowerCase() || '';
+      const slug = attr.slug?.toLowerCase() || '';
+      return name.includes('modelo') || name.includes('model') || 
+             name.includes('tamanho') || name.includes('medida') ||
+             slug.includes('modelo') || slug.includes('model');
+    });
+    
+    if (modelAttr?.options?.[0]) {
+      updatedItem.modelo = modelAttr.options[0];
+    }
+
+    // Papel: atributo "PAPEL" ou "Tipo de Papel"
+    const paperAttr = product.attributes?.find(attr => {
+      const name = attr.name?.toLowerCase() || '';
+      const slug = attr.slug?.toLowerCase() || '';
+      return name.includes('papel') || name === 'paper' ||
+             slug.includes('papel') || slug.includes('paper');
+    });
+    
+    if (paperAttr?.options?.[0]) {
+      updatedItem.paperType = paperAttr.options[0];
+    }
+
+    // Laminação: pode ser inferida do nome ou atributo específico
+    const laminationAttr = product.attributes?.find(attr => {
+      const name = attr.name?.toLowerCase() || '';
+      const slug = attr.slug?.toLowerCase() || '';
+      return name.includes('lamina') || name.includes('verniz') || name.includes('acabamento') ||
+             slug.includes('lamina') || slug.includes('verniz') || slug.includes('acabamento');
+    });
+    
+    if (laminationAttr?.options?.[0]) {
+      updatedItem.lamination = laminationAttr.options[0];
+    } else {
+      // Tentar inferir do nome do produto
+      const productNameLower = product.name?.toLowerCase() || '';
+      if (productNameLower.includes('laminado') && productNameLower.includes('brilho')) {
+        updatedItem.lamination = 'Laminado Brilho';
+      } else if (productNameLower.includes('laminado') && productNameLower.includes('fosco')) {
+        updatedItem.lamination = 'Laminado Fosco';
+      } else if (productNameLower.includes('verniz')) {
+        updatedItem.lamination = 'Verniz';
+      } else if (productNameLower.includes('laminado')) {
+        updatedItem.lamination = 'Laminado';
+      }
+    }
+
     onUpdate(index, updatedItem);
   };
 

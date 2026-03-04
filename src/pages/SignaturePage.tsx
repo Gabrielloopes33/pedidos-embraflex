@@ -58,6 +58,9 @@ interface PublicQuoteData {
     alturaCm?: number;
     comprimentoCm?: number;
     tipoImpressao?: string;
+    modelo?: string; // Modelo do produto
+    paperType?: string; // Tipo de papel
+    lamination?: string; // Laminação
     finishing?: {
       hotStamp?: boolean;
       hotStampCor?: string;
@@ -474,6 +477,30 @@ export default function SignaturePage() {
                           <span className="font-medium">{value}</span>
                         </span>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Modelo, Papel, Laminação */}
+                  {(product.modelo || product.paperType || product.lamination) && (
+                    <div className="bg-muted/50 rounded-md p-2 space-y-1">
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">Especificações do Produto:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {product.modelo && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Modelo: {product.modelo}
+                          </span>
+                        )}
+                        {product.paperType && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            Papel: {product.paperType}
+                          </span>
+                        )}
+                        {product.lamination && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Laminação: {product.lamination}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
 

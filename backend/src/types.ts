@@ -29,6 +29,10 @@ export interface ProductionProduct {
   outros: string;
   observacoes: string;
   unitPrice: number;
+  // Novos campos para exibição detalhada
+  modelo?: string; // Modelo do produto (ex: "25x35cm", "Boca Vazada")
+  paperType?: string; // Tipo de papel (ex: "Kraft", "Duplex")
+  lamination?: string; // Laminação (ex: "Laminado Brilho", "Laminado Fosco", "Verniz")
 }
 
 export interface ProductionOrder {

@@ -36,6 +36,10 @@ interface ProductItem {
   };
   observacoes: string;
   unitPrice: number;
+  // Novos campos para exibição detalhada
+  modelo?: string; // Modelo do produto (ex: "25x35cm", "Boca Vazada")
+  paperType?: string; // Tipo de papel (ex: "Kraft", "Duplex")
+  lamination?: string; // Laminação (ex: "Laminado Brilho", "Laminado Fosco", "Verniz")
 }
 
 export interface OrderData {
@@ -200,6 +204,19 @@ export const generateOrderPDF = (orderData: OrderData): jsPDF => {
     if (produto.discriminacaoProduto) {
       addMultilineText(`Discriminação: ${produto.discriminacaoProduto}`, 25, 150);
       yPosition += 2;
+    }
+
+    // Modelo, Papel e Laminação
+    const especificacoes = [];
+    if (produto.modelo) especificacoes.push(`Modelo: ${produto.modelo}`);
+    if (produto.paperType) especificacoes.push(`Papel: ${produto.paperType}`);
+    if (produto.lamination) especificacoes.push(`Laminação: ${produto.lamination}`);
+    
+    if (especificacoes.length > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Especificações: ${especificacoes.join(' | ')}`, 25, yPosition);
+      doc.setFont('helvetica', 'normal');
+      yPosition += 5;
     }
 
     // Dimensões

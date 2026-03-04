@@ -207,6 +207,30 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                         </div>
                       </div>
 
+                      {/* Atributos adicionais: Modelo, Papel, Laminação */}
+                      {(product.modelo || product.paperType || product.lamination) && (
+                        <div className="bg-muted/50 rounded-md p-2 space-y-1">
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">Especificações:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {product.modelo && (
+                              <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
+                                Modelo: {product.modelo}
+                              </Badge>
+                            )}
+                            {product.paperType && (
+                              <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-800">
+                                Papel: {product.paperType}
+                              </Badge>
+                            )}
+                            {product.lamination && (
+                              <Badge variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-800">
+                                Laminação: {product.lamination}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Acabamentos */}
                       {(product.finishing.hotStamp || product.finishing.ilhos || product.finishing.furoPresente || product.finishing.cordao) && (
                         <div className="flex flex-wrap gap-1">
