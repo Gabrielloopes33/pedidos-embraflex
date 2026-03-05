@@ -254,7 +254,7 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
       )}
 
       {/* CAMPO DE TEXTO: aparece quando Cor do Cordão é COLORIDO */}
-      {item.finishing?.corCordao === 'colorido' && (
+      {console.log('DEBUG corCordao:', JSON.stringify(item.finishing?.corCordao)) || item.finishing?.corCordao?.toLowerCase?.() === 'colorido' && (
         <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
           <Label className="text-sm font-medium text-blue-900 mb-2 block">
             Especifique a cor do cordão:
