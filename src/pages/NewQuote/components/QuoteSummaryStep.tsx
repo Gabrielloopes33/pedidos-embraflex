@@ -320,52 +320,61 @@ export function QuoteSummaryStep({
                  {products.map((product, index) => (
                    <TableRow key={index}>
                      <TableCell>
-                       <div className="space-y-2">
+                       <div className="space-y-3">
+                         {/* Nome e SKU */}
                          <div>
-                           <p className="font-medium">{product.name}</p>
+                           <p className="font-medium text-base">{product.name}</p>
                            <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
                          </div>
                          
-                         {/* Especificações do Produto */}
-                         {(product.modelo || product.paperType || product.lamination) && (
-                           <div className="bg-muted/50 rounded-md p-2 space-y-1">
-                             <p className="text-xs font-semibold text-muted-foreground">Especificações:</p>
-                             <div className="flex flex-wrap gap-1">
-                               {product.modelo && (
-                                 <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
-                                   Modelo: {product.modelo}
-                                 </Badge>
-                               )}
-                               {product.paperType && (
-                                 <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-800">
-                                   Papel: {product.paperType}
-                                 </Badge>
-                               )}
-                               {product.lamination && (
-                                 <Badge variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-800">
-                                   Laminação: {product.lamination}
-                                 </Badge>
-                               )}
-                             </div>
+                         {/* Atributos do Produto (Modelo, Tamanho, etc.) */}
+                         {product.attributes && Object.keys(product.attributes).length > 0 && (
+                           <div className="flex flex-wrap gap-1">
+                             {Object.entries(product.attributes).map(([key, value]) => (
+                               <Badge key={key} variant="outline" className="text-xs bg-gray-50">
+                                 {key}: {value}
+                               </Badge>
+                             ))}
+                           </div>
+                         )}
+                         
+                         {/* Cor do Produto */}
+                         {product.color && (
+                           <div className="flex items-center gap-2">
+                             <span className="text-xs text-muted-foreground">Cor:</span>
+                             <Badge variant="outline" className="text-xs bg-pink-50 border-pink-200 text-pink-800">
+                               {product.color}
+                             </Badge>
+                           </div>
+                         )}
+                         
+                         {/* Tipo de Papel */}
+                         {product.paperType && (
+                           <div className="flex items-center gap-2">
+                             <span className="text-xs text-muted-foreground">Tipo de Papel:</span>
+                             <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-800">
+                               {product.paperType}
+                             </Badge>
                            </div>
                          )}
                          
                          {/* Dimensões */}
-                         <div className="flex flex-wrap gap-1 mt-1">
-                           {product.width && product.height && (
-                             <Badge variant="outline" className="text-xs">
-                               {product.width} x {product.height} cm
-                             </Badge>
-                           )}
-                         </div>
+                         {(product.width || product.height) && (
+                           <div className="text-sm">
+                             <span className="text-muted-foreground">Dimensões: </span>
+                             <span className="font-medium">
+                               {product.width || '-'}cm x {product.height || '-'}cm
+                             </span>
+                           </div>
+                         )}
                          
                          {/* Acabamentos Detalhados */}
                          {product.finishing && (
-                           <div className="bg-primary/5 border border-primary/20 rounded-md p-2 space-y-1">
+                           <div className="bg-primary/5 border border-primary/20 rounded-md p-3 space-y-2">
                              <p className="text-xs font-semibold text-primary">Acabamentos:</p>
-                             <div className="flex flex-wrap gap-1">
+                             <div className="flex flex-wrap gap-2">
                                {product.finishing.hotStamp && (
-                                 <Badge variant="outline" className="text-xs bg-purple-50 border-purple-300 text-purple-700">
+                                 <Badge variant="outline" className="text-xs bg-purple-50 border-purple-300 text-purple-700 py-1">
                                    🔥 Hot Stamp
                                    {product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' 
                                      ? `: ${product.finishing.hotStampCor}` 
@@ -376,7 +385,7 @@ export function QuoteSummaryStep({
                                  </Badge>
                                )}
                                {product.finishing.eyelets && (
-                                 <Badge variant="outline" className="text-xs bg-blue-50 border-blue-300 text-blue-700">
+                                 <Badge variant="outline" className="text-xs bg-blue-50 border-blue-300 text-blue-700 py-1">
                                    ⭕ Ilhós
                                    {product.finishing.ilhosCorManual
                                      ? ` (${product.finishing.ilhosCorManual})`
@@ -384,12 +393,12 @@ export function QuoteSummaryStep({
                                  </Badge>
                                )}
                                {product.finishing.furoPresente && (
-                                 <Badge variant="outline" className="text-xs bg-pink-50 border-pink-300 text-pink-700">
+                                 <Badge variant="outline" className="text-xs bg-pink-50 border-pink-300 text-pink-700 py-1">
                                    🎁 Furo de Presente
                                  </Badge>
                                )}
                                {(product.finishing.cord || (product.finishing.cordao && product.finishing.cordao !== 'nenhum')) && (
-                                 <Badge variant="outline" className="text-xs bg-amber-50 border-amber-300 text-amber-700">
+                                 <Badge variant="outline" className="text-xs bg-amber-50 border-amber-300 text-amber-700 py-1">
                                    🧵 Cordão
                                    {product.finishing.cordao && product.finishing.cordao !== 'nenhum'
                                      ? `: ${product.finishing.cordao}`

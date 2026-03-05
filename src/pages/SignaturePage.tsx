@@ -480,6 +480,25 @@ export default function SignaturePage() {
                     </div>
                   )}
 
+                  {/* Atributos do Produto */}
+                  {product.attributes && Object.keys(product.attributes).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(product.attributes).map(([key, value]) => (
+                        <span key={key} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          {key}: {value}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Cor do Produto */}
+                  {product.color && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Cor: </span>
+                      <span className="font-medium">{product.color}</span>
+                    </div>
+                  )}
+
                   {/* Modelo, Papel, Laminação */}
                   {(product.modelo || product.paperType || product.lamination) && (
                     <div className="bg-muted/50 rounded-md p-2 space-y-1">
