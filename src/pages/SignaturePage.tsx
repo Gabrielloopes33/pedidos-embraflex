@@ -533,18 +533,18 @@ export default function SignaturePage() {
                        <div className="flex flex-wrap gap-2">
                          {product.finishing!.hotStamp && (
                            <Badge variant="outline" className="text-xs py-1 bg-purple-100 border-purple-300 text-purple-800 font-medium">
-                             Hot Stamp
+                             🔥 Hot Stamp
                              {product.finishing!.hotStampCor && product.finishing!.hotStampCor !== 'nenhum'
-                               ? ` - ${product.finishing!.hotStampCor}`
+                               ? `: ${product.finishing!.hotStampCor}`
                                : ''}
-                             {product.finishing!.hotStampCorManual
+                             {product.finishing!.hotStampCor === 'colorido' && product.finishing!.hotStampCorManual
                                ? ` (${product.finishing!.hotStampCorManual})`
                                : ''}
                            </Badge>
                          )}
                          {product.finishing!.eyelets && (
                            <Badge variant="outline" className="text-xs py-1 bg-blue-100 border-blue-300 text-blue-800 font-medium">
-                             Ilhós
+                             ⭕ Ilhós
                              {product.finishing!.ilhosCorManual
                                ? ` (${product.finishing!.ilhosCorManual})`
                                : ''}
@@ -552,19 +552,19 @@ export default function SignaturePage() {
                          )}
                          {product.finishing!.furoPresente && (
                            <Badge variant="outline" className="text-xs py-1 bg-pink-100 border-pink-300 text-pink-800 font-medium">
-                             Furo de Presente
+                             🎁 Furo de Presente
                            </Badge>
                          )}
                          {(product.finishing!.cord || (product.finishing!.cordao && product.finishing!.cordao !== 'nenhum')) && (
                            <Badge variant="outline" className="text-xs py-1 bg-amber-100 border-amber-300 text-amber-800 font-medium">
-                             Cordão
+                             🧵 Cordão
                              {product.finishing!.cordao && product.finishing!.cordao !== 'nenhum'
-                               ? ` ${product.finishing!.cordao}`
+                               ? `: ${product.finishing!.cordao}`
                                : ''}
                              {product.finishing!.corCordao && product.finishing!.corCordao !== 'nenhum'
                                ? ` - ${product.finishing!.corCordao}`
                                : ''}
-                             {product.finishing!.cordaoCorManual
+                             {product.finishing!.corCordao === 'colorido' && product.finishing!.cordaoCorManual
                                ? ` (${product.finishing!.cordaoCorManual})`
                                : ''}
                            </Badge>
