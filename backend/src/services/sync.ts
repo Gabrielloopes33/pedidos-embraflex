@@ -185,6 +185,7 @@ export class WooCommerceSyncService {
         const params: any = {
           page,
           per_page: batchSize,
+          status: 'any', // Incluir produtos em draft também
           // Se não for full sync, buscar apenas produtos modificados após último sync
           ...(lastSyncDate && {
             after: lastSyncDate.toISOString(),

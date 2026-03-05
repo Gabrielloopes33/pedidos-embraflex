@@ -9,7 +9,7 @@ import { ChevronLeft, Loader2, X } from 'lucide-react';
 import { getProducts as getProductsFromWC, getProductVariations } from '@/lib/woocommerce';
 import { getCachedProducts } from '@/lib/supabase';
 import type { WooCommerceProduct, CachedProduct } from '@/lib/types';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FinishingModal, FinishingOptions } from './FinishingModal';
 
 // Converter CachedProduct para WooCommerceProduct
@@ -201,6 +201,8 @@ const getUniquePaperTypes = (variations: VariationWithProduct[]): string[] => {
 };
 
 export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProps) {
+  const queryClient = useQueryClient();
+  
   const [currentStep, setCurrentStep] = useState<NavigationStep>('category');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null); // Sacola de Papel, Caixa, etc.
   const [selectedLine, setSelectedLine] = useState<Category | null>(null); // Linha Premium, Boca Vazada
@@ -509,26 +511,32 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
 
   // Buscar variações de TODOS os produtos do grupo selecionado
   const { data: allGroupVariations, isLoading: loadingVariations } = useQuery({
-    queryKey: ['group-variations', selectedGroupedProduct?.sku],
+    // Incluir IDs dos produtos na queryKey para garantir refetch quando mudar de produto
+    queryKey: ['group-variations', selectedGroupedProduct?.sku, selectedGroupedProduct?.products?.map(p => p.id).join(',')],
     queryFn: async () => {
-      if (!selectedGroupedProduct) return [];
+      if (!selectedGroupedProduct) {
+        console.log('⚠️ Nenhum produto selecionado');
+        return [];
+      }
+
+      console.log(`🔍 Buscando variações para ${selectedGroupedProduct.sku}:`, {
+        products: selectedGroupedProduct.products.map(p => ({ id: p.id, name: p.name, type: p.type }))
+      });
 
       // Buscar variações de todos os produtos do grupo em paralelo
       const variationsPromises = selectedGroupedProduct.products.map(async (product) => {
-        if (product.type !== 'variable') return [];
+        if (product.type !== 'variable') {
+          console.log(`ℹ️ Produto ${product.id} não é variable (${product.type})`);
+          return [];
+        }
 
+        console.log(`🌐 Buscando variações do produto ${product.id}...`);
         const variations = await getProductVariations(product.id);
+        console.log(`✅ Produto ${product.id}: ${variations.length} variações encontradas`);
 
         return variations.map((variation: WooCommerceProductVariation) => {
           const paperAttribute = extractPaperAttributeValue(product, variation);
           const fallbackPaperType = inferPaperTypeFromName(product.name);
-
-          // Debug: log detalhado da extração do atributo papel
-          console.log(`📄 Variação ${variation.id} do produto ${product.id}:`, {
-            variationAttributes: variation.attributes,
-            extractedPaperAttribute: paperAttribute,
-            fallbackPaperType,
-          });
 
           return {
             ...variation,
@@ -540,10 +548,13 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       });
 
       const results = await Promise.all(variationsPromises);
-      return results.flat() as VariationWithProduct[];
+      const flatResults = results.flat() as VariationWithProduct[];
+      console.log(`📊 Total de variações: ${flatResults.length}`);
+      return flatResults;
     },
-    enabled: !!selectedGroupedProduct,
-    staleTime: 2 * 60 * 1000,
+    enabled: !!selectedGroupedProduct && selectedGroupedProduct.products.length > 0,
+    staleTime: 0, // Sempre buscar dados frescos
+    refetchOnWindowFocus: false,
   });
 
   // Decidir se mostra step de papel ou vai direto para variações
@@ -669,6 +680,9 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
   };
 
   const handleGroupedProductSelect = (grouped: GroupedProduct) => {
+    // Limpar cache de variações do produto anterior
+    queryClient.removeQueries({ queryKey: ['group-variations'] });
+    
     setSelectedGroupedProduct(grouped);
     setSelectedPaperType(null); // Reset papel selecionado
 
@@ -1567,6 +1581,34 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Se não há variações carregadas, mostrar mensagem informativa
+  if (!filteredVariations || filteredVariations.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold mb-2">{lineName || groupedProduct.sku}</h3>
+          <p className="text-sm text-muted-foreground">Nenhuma variação disponível</p>
+        </div>
+        
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <p className="text-muted-foreground mb-2">
+            Este produto não possui variações configuradas no WooCommerce.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            ID do produto: {groupedProduct.products[0]?.id}
+          </p>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => window.location.reload()}
+          >
+            Recarregar página
+          </Button>
+        </div>
       </div>
     );
   }

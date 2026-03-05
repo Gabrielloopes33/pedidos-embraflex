@@ -611,7 +611,8 @@ initializeDb().then(async () => {
       
       const params = {
         ...req.query,
-        category: categoryId.toString()
+        category: categoryId.toString(),
+        status: 'any', // Incluir produtos em draft também
       };
       
       const { data } = await wooCommerceApi.get('products', params);
@@ -700,7 +701,8 @@ initializeDb().then(async () => {
     try {
       const { id } = req.params;
       const { data } = await wooCommerceApi.get(`products/${id}/variations`, {
-        per_page: 100
+        per_page: 100,
+        status: 'any', // Incluir variações em draft também
       });
       res.json(data);
     } catch (error: any) {
