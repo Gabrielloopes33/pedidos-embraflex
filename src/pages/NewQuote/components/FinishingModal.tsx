@@ -19,6 +19,9 @@ export interface FinishingOptions {
 
   // Cor do Cordão (radio - escolha única)
   corCordao: 'nenhum' | 'preto' | 'branco' | 'colorido';
+  
+  // Cor manual do cordão (quando corCordao é 'colorido')
+  corCordaoManual?: string;
 }
 
 interface FinishingModalProps {
@@ -82,15 +85,31 @@ export function FinishingModal({
       furoPresente: false,
       cordao: 'nenhum',
       corCordao: 'nenhum',
+      corCordaoManual: '',
     }
   );
 
-  // Atualizar estado quando initialFinishing mudar
+  // Atualizar estado quando initialFinishing mudar ou quando o modal abrir
   useEffect(() => {
-    if (initialFinishing) {
-      setFinishing(initialFinishing);
+    if (open) {
+      if (initialFinishing) {
+        setFinishing({
+          ...initialFinishing,
+          corCordaoManual: initialFinishing.corCordaoManual || '',
+        });
+      } else {
+        setFinishing({
+          hotStamp: false,
+          hotStampCor: 'nenhum',
+          ilhos: false,
+          furoPresente: false,
+          cordao: 'nenhum',
+          corCordao: 'nenhum',
+          corCordaoManual: '',
+        });
+      }
     }
-  }, [initialFinishing]);
+  }, [initialFinishing, open]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -350,6 +369,24 @@ export function FinishingModal({
                     </div>
                   </div>
                 </RadioGroup>
+                
+                {/* Campo de texto quando Cor do Cordão é COLORIDO */}
+                {finishing.corCordao === 'colorido' && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <Label className="text-sm font-medium text-blue-900 mb-2 block">
+                      Especifique a cor do cordão:
+                    </Label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Vermelho, Azul Royal, Rosa Pink..."
+                      value={finishing.corCordaoManual || ''}
+                      onChange={(e) =>
+                        setFinishing(prev => ({ ...prev, corCordaoManual: e.target.value }))
+                      }
+                      className="w-full max-w-sm px-3 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
               </div>
             </>
           )}
