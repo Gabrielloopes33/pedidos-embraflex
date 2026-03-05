@@ -11,10 +11,6 @@ interface ProductFinishingProps {
 }
 
 export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
-  // Debug: verificar valores do finishing
-  console.log('🔍 ProductFinishing - finishing:', item.finishing);
-  console.log('🔍 corCordao:', item.finishing?.corCordao, '| cordao:', item.finishing?.cordao);
-  
   const acessorios = [
     { key: 'hotStamp' as const, label: 'Hot Stamp', showPrice: false }, // Preço depende da cor
     { key: 'ilhos' as const, label: 'Ilhós', price: FINISHING_PRICES.ilhos },
@@ -234,8 +230,6 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
               onUpdate('finishing', {
                 ...item.finishing,
                 corCordao: value as any,
-                // Limpar cor manual se não for colorido
-                cordaoCorManual: value === 'colorido' ? item.finishing?.cordaoCorManual : '',
               });
             }}
           >
@@ -256,34 +250,17 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
               ))}
             </div>
           </RadioGroup>
-          {/* Campo de cor manual para Cordão colorido */}
-          {item.finishing?.corCordao && String(item.finishing.corCordao).toLowerCase() === 'colorido' && (
-            <div className="mt-3">
-              <Label className="text-xs text-muted-foreground mb-1 block">Especifique a cor:</Label>
-              <Input
-                placeholder="Ex: Vermelho, Azul, Rosa..."
-                value={item.finishing?.cordaoCorManual || ''}
-                onChange={(e) => {
-                  onUpdate('finishing', {
-                    ...item.finishing,
-                    cordaoCorManual: e.target.value,
-                  });
-                }}
-                className="max-w-xs"
-              />
-            </div>
-          )}
         </div>
       )}
 
-      {/* Campo de cor manual para cordão tipo "colorido" */}
-      {item.finishing?.cordao && String(item.finishing.cordao).toLowerCase() === 'colorido' && (
-        <div className="space-y-3">
-          <Label className="text-sm font-medium text-muted-foreground">
+      {/* CAMPO DE TEXTO: aparece quando Cor do Cordão é COLORIDO */}
+      {item.finishing?.corCordao === 'colorido' && (
+        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <Label className="text-sm font-medium text-blue-900 mb-2 block">
             Especifique a cor do cordão:
           </Label>
           <Input
-            placeholder="Ex: Vermelho, Azul, Rosa..."
+            placeholder="Ex: Vermelho, Azul Royal, Rosa Pink..."
             value={item.finishing?.cordaoCorManual || ''}
             onChange={(e) => {
               onUpdate('finishing', {
@@ -291,7 +268,27 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                 cordaoCorManual: e.target.value,
               });
             }}
-            className="max-w-xs"
+            className="max-w-sm bg-white"
+          />
+        </div>
+      )}
+
+      {/* Campo de cor manual para cordão tipo "colorido" (quando o próprio cordão é colorido) */}
+      {item.finishing?.cordao === 'colorido' && (
+        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <Label className="text-sm font-medium text-blue-900 mb-2 block">
+            Especifique a cor do cordão:
+          </Label>
+          <Input
+            placeholder="Ex: Vermelho, Azul Royal, Rosa Pink..."
+            value={item.finishing?.cordaoCorManual || ''}
+            onChange={(e) => {
+              onUpdate('finishing', {
+                ...item.finishing,
+                cordaoCorManual: e.target.value,
+              });
+            }}
+            className="max-w-sm bg-white"
           />
         </div>
       )}
