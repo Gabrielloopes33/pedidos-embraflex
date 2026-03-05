@@ -1,0 +1,294 @@
+{
+  "name": "EMBRAFLEX - NOTIFICAÇÃO WHATSAPP COMPLETO",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "4d62d41b-5bd9-4014-9a4a-5f713be6bb31-PEDIDOS",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -300,
+        300
+      ],
+      "id": "webhook-receiver",
+      "name": "Webhook Embraflex",
+      "webhookId": "4d62d41b-5bd9-4014-9a4a-5f713be6bb31"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "value": "quote.signed",
+              "output": 0
+            },
+            {
+              "value": "quote.rejected",
+              "output": 1
+            },
+            {
+              "value": "order.created",
+              "output": 2
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 3
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2.2,
+      "position": [
+        -40,
+        300
+      ],
+      "id": "switch-event",
+      "name": "Qual Evento?"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ==========================================\n// FORMATADOR: PEDIDO ASSINADO\n// ==========================================\n\nconst formatCurrency = (value) => {\n  if (!value) return 'R$ 0,00';\n  const numericValue = typeof value === 'string' ? parseFloat(value) : value;\n  return new Intl.NumberFormat('pt-BR', { \n    style: 'currency', \n    currency: 'BRL' \n  }).format(numericValue);\n};\n\nconst formatDate = (dateString) => {\n  if (!dateString) return 'Data não disponível';\n  return new Date(dateString).toLocaleString('pt-BR', {\n    day: '2-digit',\n    month: '2-digit',\n    year: 'numeric',\n    hour: '2-digit',\n    minute: '2-digit'\n  });\n};\n\nconst data = $json.body.data;\n\n// Formatar produtos\nlet produtosTexto = '';\ndata.products.forEach((product, index) => {\n  const num = index + 1;\n  const nome = product.name || 'Produto sem nome';\n  const sku = product.sku ? ` (${product.sku})` : '';\n  const quantidade = product.quantity || 0;\n  const preco = formatCurrency(product.price);\n  const subtotal = formatCurrency(product.subtotal);\n  \n  // Atributos especiais (NOVOS CAMPOS)\n  let atributosExtras = [];\n  if (product.modelo) atributosExtras.push(`📐 Modelo: ${product.modelo}`);\n  if (product.paperType) atributosExtras.push(`📄 Papel: ${product.paperType}`);\n  if (product.lamination) atributosExtras.push(`✨ Laminação: ${product.lamination}`);\n  \n  // Atributos genéricos\n  const atributosGenericos = Object.entries(product.attributes || {})\n    .filter(([key]) => !['Papel', 'PAPEL', 'papel'].includes(key))\n    .map(([key, value]) => `${key}: ${value}`)\n    .join(' | ');\n  \n  // Acabamentos\n  const finishing = product.finishing || {};\n  const acabamentos = [];\n  if (finishing.hotStamp) acabamentos.push('🔥 Hot Stamp' + (finishing.hotStampCor && finishing.hotStampCor !== 'nenhum' ? ` (${finishing.hotStampCor})` : ''));\n  if (finishing.eyelets) acabamentos.push('👁️ Ilhós');\n  if (finishing.furoPresente) acabamentos.push('🎁 Furo Presente');\n  if (finishing.cord || (finishing.cordao && finishing.cordao !== 'nenhum')) {\n    const cordaoTipo = finishing.cordao || 'padrão';\n    const cordaoCor = finishing.corCordao && finishing.corCordao !== 'nenhum' ? ` - ${finishing.corCordao}` : '';\n    acabamentos.push(`🎀 Cordão: ${cordaoTipo}${cordaoCor}`);\n  }\n  \n  produtosTexto += `\\n*${num}.* ${nome}${sku}\\n`;\n  produtosTexto += `   📊 Quantidade: ${quantidade} un\\n`;\n  produtosTexto += `   💰 Preço unit: ${preco}\\n`;\n  \n  if (atributosExtras.length > 0) {\n    produtosTexto += `   ${atributosExtras.join('\\n   ')}\\n`;\n  }\n  \n  if (atributosGenericos) {\n    produtosTexto += `   📝 ${atributosGenericos}\\n`;\n  }\n  \n  if (acabamentos.length > 0) {\n    produtosTexto += `   🔧 Acabamentos: ${acabamentos.join(', ')}\\n`;\n  }\n  \n  produtosTexto += `   💵 *Subtotal: ${subtotal}*\\n`;\n  produtosTexto += `-------------------------------------------\\n`;\n});\n\n// Dados do cliente\nconst clienteNome = data.customerName || 'Cliente não informado';\nconst clienteEmail = data.customerEmail || 'Não informado';\nconst clienteTelefone = data.customerPhone || 'Não informado';\nconst clienteEmpresa = data.customerCompany || '';\nconst clienteCpf = data.customerCpf || '';\nconst clienteCnpj = data.customerCnpj || '';\n\n// Endereço\nconst endereco = [];\nif (data.customerAddress) endereco.push(data.customerAddress);\nif (data.customerNumber) endereco.push(`, ${data.customerNumber}`);\nif (data.customerComplement) endereco.push(` - ${data.customerComplement}`);\nif (data.customerNeighborhood) endereco.push(`\\n   Bairro: ${data.customerNeighborhood}`);\nif (data.customerCity && data.customerState) endereco.push(`\\n   ${data.customerCity}/${data.customerState}`);\nif (data.customerCep) endereco.push(`\\n   CEP: ${data.customerCep}`);\n\n// Montar mensagem\nlet mensagem = `✅ *NOVO PEDIDO ASSINADO* ✅\\n`;\nmensagem += `═══════════════════════════════════════\\n\\n`;\n\nmensagem += `📋 *COTAÇÃO:* ${data.quoteNumber || 'N/A'}\\n`;\nmensagem += `📅 *Data:* ${formatDate(data.signedAt || new Date())}\\n`;\nmensagem += `✅ Status: Assinado pelo cliente\\n\\n`;\n\nmensagem += `👤 *DADOS DO CLIENTE*\\n`;\nmensagem += `───────────────────────────────────────\\n`;\nmensagem += `Nome: ${clienteNome}\\n`;\nif (clienteEmpresa) mensagem += `Empresa: ${clienteEmpresa}\\n`;\nif (clienteCpf) mensagem += `CPF: ${clienteCpf}\\n`;\nif (clienteCnpj) mensagem += `CNPJ: ${clienteCnpj}\\n`;\nmensagem += `Email: ${clienteEmail}\\n`;\nmensagem += `Telefone: ${clienteTelefone}\\n`;\nif (endereco.length > 0) mensagem += `📍 Endereço: ${endereco.join('')}\\n`;\nmensagem += `\\n`;\n\nmensagem += `📦 *PRODUTOS DO PEDIDO*\\n`;\nmensagem += `═══════════════════════════════════════\\n`;\nmensagem += produtosTexto;\nmensagem += `\\n`;\n\nmensagem += `💰 *TOTAL DO PEDIDO*\\n`;\nmensagem += `═══════════════════════════════════════\\n`;\nmensagem += `*${formatCurrency(data.totalPrice)}*\\n\\n`;\n\nif (data.condicoesPagamento) {\n  mensagem += `💳 *FORMA DE PAGAMENTO*\\n`;\n  mensagem += `───────────────────────────────────────\\n`;\n  const pagamento = typeof data.condicoesPagamento === 'object' \n    ? JSON.stringify(data.condicoesPagamento, null, 2) \n    : data.condicoesPagamento;\n  mensagem += `${pagamento}\\n\\n`;\n}\n\nif (data.createdByName) {\n  mensagem += `👨‍💼 *VENDEDOR:* ${data.createdByName}\\n\\n`;\n}\n\nmensagem += `═══════════════════════════════════════\\n`;\nmensagem += `_Sistema Embraflex - ${formatDate(new Date())}_`;\n\nreturn {\n  json: {\n    mensagem: mensagem,\n    tipo: 'assinado',\n    quoteNumber: data.quoteNumber,\n    customerName: clienteNome,\n    totalPrice: data.totalPrice\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        80
+      ],
+      "id": "format-assinado",
+      "name": "Formatar: Assinado"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ==========================================\n// FORMATADOR: COTAÇÃO REJEITADA\n// ==========================================\n\nconst formatDate = (dateString) => {\n  if (!dateString) return 'Data não disponível';\n  return new Date(dateString).toLocaleString('pt-BR', {\n    day: '2-digit',\n    month: '2-digit',\n    year: 'numeric',\n    hour: '2-digit',\n    minute: '2-digit'\n  });\n};\n\nconst data = $json.body.data;\n\n// Resumo dos produtos\nconst produtosResumo = data.products.map((p, i) => `${i + 1}. ${p.name} (${p.quantity}un)`).join('\\n');\n\nlet mensagem = `❌ *COTAÇÃO RECUSADA* ❌\\n`;\nmensagem += `═══════════════════════════════════════\\n\\n`;\n\nmensagem += `📋 *COTAÇÃO:* ${data.quoteNumber || 'N/A'}\\n`;\nmensagem += `📅 *Data:* ${formatDate(data.rejectedAt || new Date())}\\n`;\nmensagem += `❌ Status: Recusada pelo cliente\\n\\n`;\n\nmensagem += `👤 *CLIENTE:* ${data.customerName || 'Não informado'}\\n`;\nmensagem += `📞 *TELEFONE:* ${data.customerPhone || 'Não informado'}\\n\\n`;\n\nmensagem += `📦 *PRODUTOS:*\\n`;\nmensagem += produtosResumo;\nmensagem += `\\n\\n`;\n\nmensagem += `💰 *TOTAL:* R$ ${data.totalPrice}\\n\\n`;\n\nif (data.rejectionReason) {\n  mensagem += `📝 *MOTIVO DA RECUSA:*\\n`;\n  mensagem += `${data.rejectionReason}\\n\\n`;\n} else {\n  mensagem += `📝 *Motivo não informado*\\n\\n`;\n}\n\nif (data.createdByName) {\n  mensagem += `👨‍💼 *VENDEDOR:* ${data.createdByName}\\n\\n`;\n}\n\nmensagem += `⚠️ Entrar em contato com o cliente para entender o motivo.\\n`;\nmensagem += `═══════════════════════════════════════\\n`;\nmensagem += `_Sistema Embraflex - ${formatDate(new Date())}_`;\n\nreturn {\n  json: {\n    mensagem: mensagem,\n    tipo: 'rejeitado',\n    quoteNumber: data.quoteNumber,\n    customerName: data.customerName\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "id": "format-rejeitado",
+      "name": "Formatar: Rejeitado"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ==========================================\n// FORMATADOR: PEDIDO CRIADO\n// ==========================================\n\nconst formatCurrency = (value) => {\n  if (!value) return 'R$ 0,00';\n  const numericValue = typeof value === 'string' ? parseFloat(value) : value;\n  return new Intl.NumberFormat('pt-BR', { \n    style: 'currency', \n    currency: 'BRL' \n  }).format(numericValue);\n};\n\nconst formatDate = (dateString) => {\n  if (!dateString) return 'Data não disponível';\n  return new Date(dateString).toLocaleString('pt-BR', {\n    day: '2-digit',\n    month: '2-digit',\n    year: 'numeric',\n    hour: '2-digit',\n    minute: '2-digit'\n  });\n};\n\nconst data = $json.body.data;\n\nlet mensagem = `📦 *PEDIDO CRIADO NO WOOCOMMERCE* 📦\\n`;\nmensagem += `═══════════════════════════════════════\\n\\n`;\n\nmensagem += `📋 *PEDIDO:* ${data.orderNumber || 'N/A'}\\n`;\nmensagem += `📅 *Data:* ${formatDate(new Date())}\\n\\n`;\n\nmensagem += `👤 *CLIENTE:* ${data.customerName || 'Não informado'}\\n`;\nmensagem += `📧 *EMAIL:* ${data.customerEmail || 'Não informado'}\\n\\n`;\n\nmensagem += `📦 *PRODUTOS:* ${data.products.length} itens\\n`;\nmensagem += `💰 *TOTAL:* ${formatCurrency(data.totalPrice)}\\n\\n`;\n\nif (data.paymentUrl) {\n  mensagem += `🔗 *LINK DE PAGAMENTO:*\\n`;\n  mensagem += `${data.paymentUrl}\\n\\n`;\n}\n\nmensagem += `═══════════════════════════════════════\\n`;\nmensagem += `_Sistema Embraflex - ${formatDate(new Date())}_`;\n\nreturn {\n  json: {\n    mensagem: mensagem,\n    tipo: 'pedido_criado',\n    orderNumber: data.orderNumber,\n    customerName: data.customerName\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        520
+      ],
+      "id": "format-pedido",
+      "name": "Formatar: Pedido Criado"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Evento não reconhecido\nreturn {\n  json: {\n    mensagem: `⚠️ Evento recebido: ${$json.body.event}\\nNenhuma ação configurada para este evento.`,\n    tipo: 'desconhecido'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        740
+      ],
+      "id": "format-default",
+      "name": "Formatar: Default"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "operation": "sendText",
+        "instanceName": "EMBRAFLEX1",
+        "remoteJid": "={{ $env.GRUPO_PEDIDOS_WHATSAPP || '5531971875159' }}",
+        "messageText": "={{ $json.mensagem }}",
+        "options_message": {
+          "linkPreview": false,
+          "delay": 1200
+        }
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        560,
+        300
+      ],
+      "id": "send-whatsapp",
+      "name": "Enviar WhatsApp",
+      "credentials": {
+        "evolutionApi": {
+          "id": "ijwRfkzPelSRntF9",
+          "name": "EMBRAFLEX1 - IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "jsonProperty": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        840,
+        300
+      ],
+      "id": "response-200",
+      "name": "Responder 200 OK"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar resposta de sucesso\nreturn {\n  json: {\n    status: 'success',\n    message: 'Notificação processada',\n    event: $json.body.event,\n    quoteNumber: $json.body.data?.quoteNumber,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        80
+      ],
+      "id": "prepare-response",
+      "name": "Preparar Resposta"
+    }
+  ],
+  "connections": {
+    "Webhook Embraflex": {
+      "main": [
+        [
+          {
+            "node": "Qual Evento?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qual Evento?": {
+      "main": [
+        [
+          {
+            "node": "Formatar: Assinado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formatar: Rejeitado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formatar: Pedido Criado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formatar: Default",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar: Assinado": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar: Rejeitado": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar: Pedido Criado": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar: Default": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Preparar Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Resposta": {
+      "main": [
+        [
+          {
+            "node": "Responder 200 OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "active": false,
+  "tags": [
+    {
+      "name": "EMBRAFLEX"
+    },
+    {
+      "name": "WHATSAPP"
+    },
+    {
+      "name": "NOTIFICAÇÃO"
+    }
+  ]
+}

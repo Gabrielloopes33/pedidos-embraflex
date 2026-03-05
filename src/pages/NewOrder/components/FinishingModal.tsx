@@ -11,13 +11,33 @@ interface FinishingModalProps {
   onSave: (finishing: ProductItem['finishing']) => void;
 }
 
-export function FinishingModal({ open, onOpenChange, product, onSave }: FinishingModalProps) {
-  const [currentFinishing, setCurrentFinishing] = useState<ProductItem['finishing']>(product.finishing);
+const defaultFinishing: ProductItem['finishing'] = {
+  hotStamp: false,
+  hotStampCor: '',
+  hotStampCorManual: '',
+  ilhos: false,
+  ilhosCorManual: '',
+  furoPresente: false,
+  cordao: '',
+  corCordao: '',
+  cordaoCorManual: '',
+};
 
-  // Sincronizar quando o produto muda
+export function FinishingModal({ open, onOpenChange, product, onSave }: FinishingModalProps) {
+  const [currentFinishing, setCurrentFinishing] = useState<ProductItem['finishing']>({
+    ...defaultFinishing,
+    ...product.finishing,
+  });
+
+  // Sincronizar quando o produto muda ou quando o modal abre
   useEffect(() => {
-    setCurrentFinishing(product.finishing);
-  }, [product.finishing]);
+    if (open) {
+      setCurrentFinishing({
+        ...defaultFinishing,
+        ...product.finishing,
+      });
+    }
+  }, [product.finishing, open]);
 
   const handleUpdate = <K extends keyof ProductItem>(field: K, value: ProductItem[K]) => {
     if (field === 'finishing') {

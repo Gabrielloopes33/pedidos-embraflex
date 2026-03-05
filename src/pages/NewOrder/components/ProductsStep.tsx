@@ -37,10 +37,13 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
     finishing: {
       hotStamp: false,
       hotStampCor: '',
+      hotStampCorManual: '',
       ilhos: false,
+      ilhosCorManual: '',
       furoPresente: false,
       cordao: '',
       corCordao: '',
+      cordaoCorManual: '',
     },
   };
 

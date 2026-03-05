@@ -253,8 +253,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
             </div>
           </RadioGroup>
           {/* Campo de cor manual para Cordão colorido */}
-          {item.finishing?.corCordao === 'colorido' && (
-            <div className="mt-3">
+          {(item.finishing?.corCordao === 'colorido' || item.finishing?.corCordao?.toLowerCase() === 'colorido') && (
+            <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <Label className="text-xs text-muted-foreground mb-1 block">Especifique a cor:</Label>
               <Input
                 placeholder="Ex: Vermelho, Azul, Rosa..."
@@ -266,6 +266,7 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                   });
                 }}
                 className="max-w-xs"
+                autoFocus
               />
             </div>
           )}
@@ -273,8 +274,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
       )}
 
       {/* Campo de cor manual para cordão tipo "colorido" */}
-      {item.finishing?.cordao === 'colorido' && (
-        <div className="space-y-3">
+      {(item.finishing?.cordao === 'colorido' || item.finishing?.cordao?.toLowerCase() === 'colorido') && (
+        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
           <Label className="text-sm font-medium text-muted-foreground">
             Especifique a cor do cordão:
           </Label>
@@ -288,6 +289,7 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
               });
             }}
             className="max-w-xs"
+            autoFocus
           />
         </div>
       )}
