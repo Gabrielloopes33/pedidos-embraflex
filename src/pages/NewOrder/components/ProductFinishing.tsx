@@ -11,6 +11,10 @@ interface ProductFinishingProps {
 }
 
 export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
+  // Debug: verificar valores do finishing
+  console.log('🔍 ProductFinishing - finishing:', item.finishing);
+  console.log('🔍 corCordao:', item.finishing?.corCordao, '| cordao:', item.finishing?.cordao);
+  
   const acessorios = [
     { key: 'hotStamp' as const, label: 'Hot Stamp', showPrice: false }, // Preço depende da cor
     { key: 'ilhos' as const, label: 'Ilhós', price: FINISHING_PRICES.ilhos },
@@ -253,8 +257,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
             </div>
           </RadioGroup>
           {/* Campo de cor manual para Cordão colorido */}
-          {(item.finishing?.corCordao === 'colorido' || item.finishing?.corCordao?.toLowerCase() === 'colorido') && (
-            <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          {item.finishing?.corCordao && String(item.finishing.corCordao).toLowerCase() === 'colorido' && (
+            <div className="mt-3">
               <Label className="text-xs text-muted-foreground mb-1 block">Especifique a cor:</Label>
               <Input
                 placeholder="Ex: Vermelho, Azul, Rosa..."
@@ -266,7 +270,6 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
                   });
                 }}
                 className="max-w-xs"
-                autoFocus
               />
             </div>
           )}
@@ -274,8 +277,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
       )}
 
       {/* Campo de cor manual para cordão tipo "colorido" */}
-      {(item.finishing?.cordao === 'colorido' || item.finishing?.cordao?.toLowerCase() === 'colorido') && (
-        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+      {item.finishing?.cordao && String(item.finishing.cordao).toLowerCase() === 'colorido' && (
+        <div className="space-y-3">
           <Label className="text-sm font-medium text-muted-foreground">
             Especifique a cor do cordão:
           </Label>
@@ -289,7 +292,6 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
               });
             }}
             className="max-w-xs"
-            autoFocus
           />
         </div>
       )}
