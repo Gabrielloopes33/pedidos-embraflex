@@ -13,28 +13,33 @@ import { useQuery } from '@tanstack/react-query';
 import { FinishingModal, FinishingOptions } from './FinishingModal';
 
 // Converter CachedProduct para WooCommerceProduct
-const convertCachedProduct = (cached: CachedProduct): WooCommerceProduct => ({
-  id: cached.id,
-  name: cached.name,
-  slug: cached.name.toLowerCase().replace(/\s+/g, '-'),
-  permalink: '',
-  type: cached.type || 'simple', // Usar o type do cache (simple, variable, grouped, external)
-  status: 'publish',
-  description: cached.description || '',
-  short_description: cached.short_description || '',
-  sku: cached.sku || '',
-  price: cached.price?.toString() || '0',
-  regular_price: cached.regular_price?.toString() || '0',
-  sale_price: '',
-  on_sale: false,
-  stock_status: cached.stock_status || 'instock',
-  stock_quantity: cached.stock_quantity,
-  categories: cached.categories || [],
-  images: cached.images || [],
-  attributes: cached.attributes || [],
-  dimensions: { length: '', width: '', height: '' },
-  meta_data: cached.meta_data || [],
-});
+const convertCachedProduct = (cached: CachedProduct): WooCommerceProduct => {
+  // Garantir que o SKU nunca seja vazio - usar ID como fallback
+  const sku = cached.sku && cached.sku.trim() ? cached.sku.trim() : `ID-${cached.id}`;
+  
+  return {
+    id: cached.id,
+    name: cached.name,
+    slug: cached.name.toLowerCase().replace(/\s+/g, '-'),
+    permalink: '',
+    type: cached.type || 'simple',
+    status: 'publish',
+    description: cached.description || '',
+    short_description: cached.short_description || '',
+    sku: sku,
+    price: cached.price?.toString() || '0',
+    regular_price: cached.regular_price?.toString() || '0',
+    sale_price: '',
+    on_sale: false,
+    stock_status: cached.stock_status || 'instock',
+    stock_quantity: cached.stock_quantity,
+    categories: cached.categories || [],
+    images: cached.images || [],
+    attributes: cached.attributes || [],
+    dimensions: { length: '', width: '', height: '' },
+    meta_data: cached.meta_data || [],
+  };
+};
 
 interface ProductNavigatorProps {
   onAddProduct: (config: ProductConfig) => void;
@@ -191,11 +196,18 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       // Fallback para WooCommerce
       const result = await getProductsFromWC({ per_page: 100, orderby: 'menu_order', order: 'asc' });
       console.log('✅ Produtos recebidos do WooCommerce:', result?.length || 0);
+      
+      // Normalizar produtos para garantir SKU
+      const normalized = result?.map((p: WooCommerceProduct) => ({
+        ...p,
+        sku: p.sku && p.sku.trim() ? p.sku.trim() : `ID-${p.id}`,
+      })) || [];
+      
       // Log detalhado das categorias de cada produto
-      result?.forEach((p: WooCommerceProduct) => {
-        console.log(`📦 ${p.name} -> Categorias:`, p.categories?.map(c => c.name));
+      normalized.forEach((p: WooCommerceProduct) => {
+        console.log(`📦 ${p.name} -> SKU: ${p.sku} -> Categorias:`, p.categories?.map(c => c.name));
       });
-      return result;
+      return normalized;
     },
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
