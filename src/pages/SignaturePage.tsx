@@ -81,6 +81,36 @@ interface PublicQuoteData {
   createdByName?: string;
 }
 
+/**
+ * Extrai código do produto do nome quando SKU está vazio ou genérico
+ * Procura por padrões como k-034, k-038, K-146, etc.
+ */
+const extractSkuFromName = (name: string, originalSku: string): string => {
+  // Se já tem SKU válido (não é ID-XXX), retorna ele
+  if (originalSku && originalSku.trim() !== '' && !originalSku.startsWith('ID-')) {
+    return originalSku.trim();
+  }
+
+  // Procura por padrões de código no nome: k-034, K-034, k_034, etc.
+  const patterns = [
+    /\b(k[-_]?\d{2,4})\b/i,  // k-034, k_034, K-034
+    /\b(c[-_]?\d{2,4})\b/i,  // c-034, c_034
+    /\b(s[-_]?\d{2,4})\b/i,  // s-034, s_034
+  ];
+
+  for (const pattern of patterns) {
+    const match = name.match(pattern);
+    if (match) {
+      // Normaliza: converte para minúsculo e garante formato k-XXX
+      const code = match[1].toLowerCase().replace('_', '-');
+      return code;
+    }
+  }
+
+  // Se não encontrou padrão, retorna SKU original
+  return originalSku || '';
+};
+
 export default function SignaturePage() {
   const { token } = useParams<{ token: string }>();
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -104,6 +134,14 @@ export default function SignaturePage() {
           console.error('Failed to parse products:', e);
           data.products = [];
         }
+      }
+      
+      // Normalizar SKUs dos produtos (extrair do nome se necessário)
+      if (Array.isArray(data.products)) {
+        data.products = data.products.map(product => ({
+          ...product,
+          sku: extractSkuFromName(product.name, product.sku),
+        }));
       }
       
       console.log('📋 Quote data:', data);
