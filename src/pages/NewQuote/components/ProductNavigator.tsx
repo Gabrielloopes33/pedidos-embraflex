@@ -14,8 +14,9 @@ import { FinishingModal, FinishingOptions } from './FinishingModal';
 
 // Converter CachedProduct para WooCommerceProduct
 const convertCachedProduct = (cached: CachedProduct): WooCommerceProduct => {
-  // Garantir que o SKU nunca seja vazio - usar ID como fallback
-  const sku = cached.sku && cached.sku.trim() ? cached.sku.trim() : `ID-${cached.id}`;
+  // Extrair código do nome se SKU estiver vazio, senão usa ID como fallback
+  const extractedSku = extractSkuFromName(cached.name, cached.sku || '');
+  const sku = extractedSku || `ID-${cached.id}`;
   
   return {
     id: cached.id,
@@ -123,6 +124,36 @@ const inferPaperTypeFromName = (name?: string) => {
   return paperType;
 };
 
+/**
+ * Extrai código do produto do nome quando SKU está vazio
+ * Procura por padrões como k-034, k-038, K-146, etc.
+ */
+const extractSkuFromName = (name: string, originalSku: string): string => {
+  // Se já tem SKU válido, retorna ele
+  if (originalSku && originalSku.trim() !== '') {
+    return originalSku.trim();
+  }
+
+  // Procura por padrões de código no nome: k-034, K-034, k_034, etc.
+  const patterns = [
+    /\b(k[-_]?\d{2,4})\b/i,  // k-034, k_034, K-034
+    /\b(c[-_]?\d{2,4})\b/i,  // c-034, c_034
+    /\b(s[-_]?\d{2,4})\b/i,  // s-034, s_034
+  ];
+
+  for (const pattern of patterns) {
+    const match = name.match(pattern);
+    if (match) {
+      // Normaliza: converte para minúsculo e garante formato k-XXX
+      const code = match[1].toLowerCase().replace('_', '-');
+      return code;
+    }
+  }
+
+  // Se não encontrou padrão, usa ID como fallback
+  return '';
+};
+
 const extractPaperAttributeValue = (
   product: WooCommerceProduct,
   variation?: WooCommerceProductVariation
@@ -197,11 +228,14 @@ export function ProductNavigator({ onAddProduct, onClose }: ProductNavigatorProp
       const result = await getProductsFromWC({ per_page: 100, orderby: 'menu_order', order: 'asc' });
       console.log('✅ Produtos recebidos do WooCommerce:', result?.length || 0);
       
-      // Normalizar produtos para garantir SKU
-      const normalized = result?.map((p: WooCommerceProduct) => ({
-        ...p,
-        sku: p.sku && p.sku.trim() ? p.sku.trim() : `ID-${p.id}`,
-      })) || [];
+      // Normalizar produtos para garantir SKU (extrair do nome se necessário)
+      const normalized = result?.map((p: WooCommerceProduct) => {
+        const extractedSku = extractSkuFromName(p.name, p.sku || '');
+        return {
+          ...p,
+          sku: extractedSku || `ID-${p.id}`,
+        };
+      }) || [];
       
       // Log detalhado das categorias de cada produto
       normalized.forEach((p: WooCommerceProduct) => {

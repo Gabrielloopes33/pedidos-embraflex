@@ -354,6 +354,37 @@ export class WooCommerceSyncService {
   }
 
   /**
+   * Extrai código do produto do nome quando SKU está vazio
+   * Procura por padrões como k-034, k-038, K-146, etc.
+   */
+  private extractSkuFromName(name: string, originalSku: string | null): string | null {
+    // Se já tem SKU válido, retorna ele
+    if (originalSku && originalSku.trim() !== '') {
+      return originalSku.trim();
+    }
+
+    // Procura por padrões de código no nome: k-034, K-034, k_034, etc.
+    // Padrões comuns: k-XXX, k-XXXX, K-XXX, etc.
+    const patterns = [
+      /\b(k[-_]?\d{2,4})\b/i,  // k-034, k_034, K-034
+      /\b(c[-_]?\d{2,4})\b/i,  // c-034, c_034
+      /\b(s[-_]?\d{2,4})\b/i,  // s-034, s_034
+    ];
+
+    for (const pattern of patterns) {
+      const match = name.match(pattern);
+      if (match) {
+        // Normaliza: converte para minúsculo e garante formato k-XXX
+        const code = match[1].toLowerCase().replace('_', '-');
+        return code;
+      }
+    }
+
+    // Se não encontrou padrão, retorna o SKU original (mesmo que null)
+    return originalSku || null;
+  }
+
+  /**
    * Insere ou atualiza um produto no cache
    */
   private async upsertProduct(product: any): Promise<'created' | 'updated'> {
@@ -363,11 +394,14 @@ export class WooCommerceSyncService {
       .eq('id', product.id)
       .single();
 
+    // Extrair SKU do nome se estiver vazio
+    const extractedSku = this.extractSkuFromName(product.name || '', product.sku);
+
     const productData = {
       id: product.id,
       name: product.name,
       type: product.type || 'simple', // simple, variable, grouped, external
-      sku: product.sku || null,
+      sku: extractedSku,
       price: product.price ? parseFloat(product.price) : null,
       regular_price: product.regular_price ? parseFloat(product.regular_price) : null,
       description: product.description || null,
