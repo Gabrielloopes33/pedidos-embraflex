@@ -71,6 +71,9 @@ export function QuickProductsStep({
     if (editingProductIndex === null) return;
 
     const product = products[editingProductIndex];
+    const finishingCostPerUnit = cost / product.quantity; // Custo de acabamento por unidade
+    const unitPriceWithFinishing = product.price + finishingCostPerUnit;
+
     const updatedProduct: QuoteProduct = {
       ...product,
       finishing: {
@@ -82,8 +85,10 @@ export function QuickProductsStep({
         cordao: finishing.cordao || 'nenhum',
         corCordao: finishing.corCordao || 'nenhum',
       },
-      // Atualizar preço e subtotal com o custo dos acabamentos
-      subtotal: product.quantity * (product.price + cost / product.quantity),
+      // Guardar preço unitário com acabamentos
+      unitPriceWithFinishing: unitPriceWithFinishing,
+      // Subtotal: (preço base + acabamentos) × quantidade
+      subtotal: product.quantity * unitPriceWithFinishing,
     };
 
     onUpdateProduct(editingProductIndex, updatedProduct);
@@ -353,10 +358,10 @@ export function QuickProductsStep({
                           )}
                         </div>
 
-                        {/* Price */}
+                        {/* Price - Mostrar preço COM acabamentos se disponível */}
                         <div className="flex items-baseline gap-2 mt-3">
                           <span className="text-sm text-muted-foreground">
-                            {formatCurrency(product.price)} x {product.quantity} =
+                            {formatCurrency(product.unitPriceWithFinishing || product.price)} x {product.quantity} =
                           </span>
                           <span
                             className="text-lg font-semibold cursor-pointer hover:bg-primary/10 rounded px-2 py-1 transition-colors group relative"

@@ -56,7 +56,8 @@ export interface QuoteProduct {
   id?: string;
   name: string;
   sku: string;
-  price: number;
+  price: number; // Preço base (sem acabamentos)
+  unitPriceWithFinishing?: number; // Preço unitário com acabamentos incluídos
   quantity: number;
   discountPercent?: number;
   variationId?: number;

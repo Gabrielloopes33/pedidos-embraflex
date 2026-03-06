@@ -321,39 +321,36 @@ export function QuoteSummaryStep({
                    <TableRow key={index}>
                      <TableCell>
                        <div className="space-y-3">
-                         {/* Nome e SKU */}
+                         {/* Título consolidado: SKU - Nome do Produto */}
                          <div>
-                           <p className="font-medium text-base">{product.name}</p>
-                           <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                           <p className="font-medium text-base">
+                             {product.sku} - {product.name}
+                           </p>
                          </div>
                          
-                         {/* Atributos do Produto (Modelo, Tamanho, etc.) */}
+                         {/* Atributos do Produto (filtrados para remover duplicações) */}
                          {product.attributes && Object.keys(product.attributes).length > 0 && (
                            <div className="flex flex-wrap gap-1">
-                             {Object.entries(product.attributes).map(([key, value]) => (
-                               <Badge key={key} variant="outline" className="text-xs bg-gray-50">
-                                 {key}: {value}
-                               </Badge>
-                             ))}
+                             {Object.entries(product.attributes)
+                               .filter(([key]) => {
+                                 // Filtrar chaves que já estão no título ou são redundantes
+                                 const lowerKey = key.toLowerCase();
+                                 return !['papel', 'tipo de papel', 'paper'].includes(lowerKey);
+                               })
+                               .map(([key, value]) => (
+                                 <Badge key={key} variant="outline" className="text-xs bg-gray-50">
+                                   {key}: {value}
+                                 </Badge>
+                               ))}
                            </div>
                          )}
                          
-                         {/* Cor do Produto */}
-                         {product.color && (
+                         {/* Cor do Produto (somente se não estiver no nome) */}
+                         {product.color && !product.name.toLowerCase().includes(product.color.toLowerCase()) && (
                            <div className="flex items-center gap-2">
                              <span className="text-xs text-muted-foreground">Cor:</span>
                              <Badge variant="outline" className="text-xs bg-pink-50 border-pink-200 text-pink-800">
                                {product.color}
-                             </Badge>
-                           </div>
-                         )}
-                         
-                         {/* Tipo de Papel */}
-                         {product.paperType && (
-                           <div className="flex items-center gap-2">
-                             <span className="text-xs text-muted-foreground">Tipo de Papel:</span>
-                             <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-800">
-                               {product.paperType}
                              </Badge>
                            </div>
                          )}
@@ -418,7 +415,7 @@ export function QuoteSummaryStep({
                      </TableCell>
                      <TableCell className="text-center">{product.quantity}</TableCell>
                      <TableCell className="text-right">
-                       {formatCurrency(product.price)}
+                       {formatCurrency(product.unitPriceWithFinishing || product.price)}
                      </TableCell>
                      <TableCell className="text-right font-medium">
                        {formatCurrency(product.subtotal)}
