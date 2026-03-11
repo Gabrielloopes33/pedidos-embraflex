@@ -415,7 +415,7 @@ export function QuoteSummaryStep({
                      </TableCell>
                      <TableCell className="text-center">{product.quantity}</TableCell>
                      <TableCell className="text-right">
-                       {formatCurrency(product.unitPriceWithFinishing || product.price)}
+                       {formatCurrency(product.subtotal / product.quantity)}
                      </TableCell>
                      <TableCell className="text-right font-medium">
                        {formatCurrency(product.subtotal)}

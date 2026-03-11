@@ -111,6 +111,55 @@ const extractSkuFromName = (name: string, originalSku: string): string => {
   return originalSku || '';
 };
 
+/**
+ * Extrai o tipo de papel dos atributos do produto
+ */
+const getPaperTypeFromAttributes = (attributes?: Record<string, string>): string | null => {
+  if (!attributes) return null;
+  
+  for (const [key, value] of Object.entries(attributes)) {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === 'tipo de papel' || lowerKey === 'papel') {
+      return value;
+    }
+  }
+  
+  return null;
+};
+
+/**
+ * Formata o nome do produto no padrão: {SKU} - {Linha} - {Tipo de Papel}
+ * Extrai a Linha e Tipo de Papel do product.name (formato: "Linha - Tipo de Papel")
+ */
+const formatProductDisplayName = (product: {
+  name: string;
+  sku: string;
+  paperType?: string;
+  attributes?: Record<string, string>;
+}): string => {
+  const sku = product.sku?.trim() || '';
+  const name = product.name?.trim() || '';
+  
+  // O nome do produto está no formato "Linha Premium - Duplex 210gr"
+  // Precisamos separar em Linha e Tipo de Papel
+  const nameParts = name.split(' - ').map(part => part.trim());
+  const linha = nameParts[0] || '';
+  const tipoPapelFromName = nameParts[1] || '';
+  
+  // Prioridade: product.paperType > atributos > nome
+  const tipoPapel = product.paperType?.trim() 
+    || getPaperTypeFromAttributes(product.attributes) 
+    || tipoPapelFromName;
+  
+  // Formato final: SKU - Linha - Tipo de Papel
+  if (linha && tipoPapel) {
+    return `${sku} - ${linha} - ${tipoPapel}`;
+  }
+  
+  // Fallback: se não conseguiu separar, retorna SKU + nome original
+  return sku ? `${sku} - ${name}` : name;
+};
+
 export default function SignaturePage() {
   const { token } = useParams<{ token: string }>();
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -480,11 +529,12 @@ export default function SignaturePage() {
 
                return (
                  <div key={index} className="border rounded-lg p-4 space-y-3 bg-card">
-                   {/* Product Name & SKU */}
+                   {/* Product Name */}
                    <div className="flex items-start justify-between gap-4">
                      <div className="flex-1">
-                       <h3 className="font-semibold text-base">{product.name}</h3>
-                       <p className="text-sm text-muted-foreground font-medium">SKU: {product.sku}</p>
+                       <h3 className="font-semibold text-base">
+                         {formatProductDisplayName(product)}
+                       </h3>
                      </div>
                      <Badge variant="secondary" className="text-sm px-3 py-1 flex-shrink-0 bg-primary text-primary-foreground">
                        {product.quantity} un
@@ -506,58 +556,22 @@ export default function SignaturePage() {
                     </div>
                   )}
 
-                  {/* Attributes */}
-                  {product.attributes && Object.keys(product.attributes).length > 0 && (
-                    <div className="text-sm">
-                      {Object.entries(product.attributes).map(([key, value]) => (
-                        <span key={key} className="mr-3">
-                          <span className="text-muted-foreground">{key}: </span>
-                          <span className="font-medium">{value}</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Atributos do Produto */}
+                  {/* Attributes - filtra modelo, linha, papel para evitar duplicação com o nome */}
                   {product.attributes && Object.keys(product.attributes).length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(product.attributes).map(([key, value]) => (
+                      {Object.entries(product.attributes)
+                        .filter(([key]) => {
+                          const lowerKey = key.toLowerCase();
+                          return lowerKey !== 'tipo de papel' 
+                            && lowerKey !== 'papel' 
+                            && lowerKey !== 'modelo'
+                            && lowerKey !== 'linha';
+                        })
+                        .map(([key, value]) => (
                         <span key={key} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                           {key}: {value}
                         </span>
                       ))}
-                    </div>
-                  )}
-
-                  {/* Cor do Produto */}
-                  {product.color && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Cor: </span>
-                      <span className="font-medium">{product.color}</span>
-                    </div>
-                  )}
-
-                  {/* Modelo, Papel, Laminação */}
-                  {(product.modelo || product.paperType || product.lamination) && (
-                    <div className="bg-muted/50 rounded-md p-2 space-y-1">
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">Especificações do Produto:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {product.modelo && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Modelo: {product.modelo}
-                          </span>
-                        )}
-                        {product.paperType && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                            Papel: {product.paperType}
-                          </span>
-                        )}
-                        {product.lamination && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            Laminação: {product.lamination}
-                          </span>
-                        )}
-                      </div>
                     </div>
                   )}
 
@@ -633,7 +647,7 @@ export default function SignaturePage() {
                    {/* Price Row */}
                    <div className="flex items-baseline justify-between pt-2 border-t bg-muted/30 px-3 py-2 -mx-3 rounded">
                      <span className="text-sm text-muted-foreground">
-                       {formatCurrency(product.price)} x {product.quantity} un
+                       {formatCurrency(product.subtotal / product.quantity)} x {product.quantity} un
                      </span>
                      <span className="text-lg font-semibold text-primary">
                        {formatCurrency(product.subtotal)}

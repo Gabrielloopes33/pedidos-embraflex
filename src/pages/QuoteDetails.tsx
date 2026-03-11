@@ -20,6 +20,14 @@ const quoteStatusConfig = {
   "converted": { label: "Convertido", color: "bg-blue-500" },
 };
 
+const formatProductDisplayName = (name: string, sku: string) => {
+  if (!sku) return name;
+  if (name.toLowerCase().startsWith(sku.toLowerCase())) {
+    return name;
+  }
+  return `${sku} - ${name}`;
+};
+
 const QuoteDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -382,12 +390,11 @@ const QuoteDetails = () => {
                 <TableRow key={index}>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                      <p className="font-medium">{formatProductDisplayName(product.name, product.sku)}</p>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">{product.quantity}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(product.subtotal / product.quantity)}</TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(product.subtotal)}
                   </TableCell>

@@ -69,6 +69,7 @@ export interface QuoteProduct {
   finishing: {
     hotStamp: boolean;
     hotStampCor?: 'nenhum' | 'dourado' | 'prata' | 'colorido';
+    hotStampCorManual?: string;
     eyelets: boolean;
     ilhosCorManual?: string;
     furoPresente?: boolean;

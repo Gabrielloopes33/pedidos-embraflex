@@ -51,11 +51,14 @@ export function QuickProductsStep({
       finishing: config.finishing ? {
         hotStamp: config.finishing.hotStamp || false,
         hotStampCor: config.finishing.hotStampCor || 'nenhum',
+        hotStampCorManual: config.finishing.hotStampCor === 'colorido' ? config.finishing.hotStampCorManual : undefined,
         eyelets: config.finishing.ilhos || false,
+        ilhosCorManual: config.finishing.ilhos ? config.finishing.ilhosCorManual : undefined,
         furoPresente: config.finishing.furoPresente || false,
         cord: config.finishing.cordao !== 'nenhum',
         cordao: config.finishing.cordao || 'nenhum',
         corCordao: config.finishing.corCordao || 'nenhum',
+        cordaoCorManual: config.finishing.corCordao === 'colorido' ? config.finishing.cordaoCorManual : undefined,
       } : {
         hotStamp: false,
         eyelets: false,
@@ -79,11 +82,14 @@ export function QuickProductsStep({
       finishing: {
         hotStamp: finishing.hotStamp,
         hotStampCor: finishing.hotStampCor || 'nenhum',
+        hotStampCorManual: finishing.hotStampCor === 'colorido' ? finishing.hotStampCorManual : undefined,
         eyelets: finishing.ilhos,
+        ilhosCorManual: finishing.ilhos ? finishing.ilhosCorManual : undefined,
         furoPresente: finishing.furoPresente || false,
         cord: finishing.cordao !== 'nenhum',
         cordao: finishing.cordao || 'nenhum',
         corCordao: finishing.corCordao || 'nenhum',
+        cordaoCorManual: finishing.corCordao === 'colorido' ? finishing.cordaoCorManual : undefined,
       },
       // Guardar preço unitário com acabamentos
       unitPriceWithFinishing: unitPriceWithFinishing,
@@ -129,7 +135,9 @@ export function QuickProductsStep({
 
     // Atualizar produto com lógica corrigida
     const product = products[editingDiscountIndex];
-    const basePrice = product.price * product.quantity;
+    // Usar preço unitário com acabamentos se disponível para calcular o base
+    const unitPrice = product.unitPriceWithFinishing || product.price;
+    const basePrice = unitPrice * product.quantity;
 
     let newSubtotal: number;
 
@@ -177,10 +185,12 @@ export function QuickProductsStep({
 
     // Atualizar produto
     const product = products[editingQuantityIndex];
+    // Usar preço com acabamentos se disponível, senão preço base
+    const basePrice = product.unitPriceWithFinishing || product.price;
     const discountAmount = product.discountPercent
-      ? product.price * value * ((product.discountPercent || 0) / 100)
+      ? basePrice * value * ((product.discountPercent || 0) / 100)
       : 0;
-    const newSubtotal = product.price * value - discountAmount;
+    const newSubtotal = basePrice * value - discountAmount;
 
     onUpdateProduct(editingQuantityIndex, {
       ...product,
@@ -198,6 +208,15 @@ export function QuickProductsStep({
       style: 'currency',
       currency: 'BRL',
     }).format(value);
+  };
+
+  const formatProductDisplayName = (name: string, sku: string) => {
+    if (!sku) return name;
+    // Se o nome já começa com o SKU (case insensitive), retorna o nome
+    if (name.toLowerCase().startsWith(sku.toLowerCase())) {
+      return name;
+    }
+    return `${sku} - ${name}`;
   };
 
   const calculateTotal = () => {
@@ -266,11 +285,8 @@ export function QuickProductsStep({
                         <div className="flex items-start justify-between gap-2 mb-2">
                            <div>
                              <h4 className="font-medium text-base leading-tight">
-                               {product.name}
+                               {formatProductDisplayName(product.name, product.sku)}
                              </h4>
-                             <p className="text-sm text-muted-foreground">
-                               SKU: {product.sku}
-                             </p>
                            </div>
 
                           {/* Actions - apenas botão remover */}
@@ -316,19 +332,44 @@ export function QuickProductsStep({
                            <div className="flex flex-wrap gap-2">
                              {product.finishing?.hotStamp && (
                                <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-700 font-medium">
-                                 Hot Stamp{product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' ? ` (${product.finishing.hotStampCor})` : ''}
+                                 Hot Stamp
+                                 {product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' && (
+                                   <span>
+                                     {' '}({product.finishing.hotStampCor}
+                                     {product.finishing.hotStampCor === 'colorido' && product.finishing.hotStampCorManual && (
+                                       <span>: {product.finishing.hotStampCorManual}</span>
+                                     )}
+                                     )
+                                   </span>
+                                 )}
                                </Badge>
                              )}
                              {product.finishing?.eyelets && (
-                               <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-700 font-medium">Ilhós</Badge>
+                               <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-700 font-medium">
+                                 Ilhós
+                                 {product.finishing.ilhosCorManual && (
+                                   <span className="ml-1">({product.finishing.ilhosCorManual})</span>
+                                 )}
+                               </Badge>
                              )}
                              {product.finishing?.furoPresente && (
                                <Badge variant="outline" className="bg-pink-50 border-pink-200 text-pink-700 font-medium">Furo de Presente</Badge>
                              )}
                              {product.finishing?.cord && (
                                <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700 font-medium">
-                                 Cordão{product.finishing.cordao && product.finishing.cordao !== 'nenhum' ? ` ${product.finishing.cordao}` : ''}
-                                 {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum' ? ` (${product.finishing.corCordao})` : ''}
+                                 Cordão
+                                 {product.finishing.cordao && product.finishing.cordao !== 'nenhum' && (
+                                   <span className="ml-1">{product.finishing.cordao}</span>
+                                 )}
+                                 {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum' && (
+                                   <span>
+                                     {' '}({product.finishing.corCordao}
+                                     {product.finishing.corCordao === 'colorido' && product.finishing.cordaoCorManual && (
+                                       <span>: {product.finishing.cordaoCorManual}</span>
+                                     )}
+                                     )
+                                   </span>
+                                 )}
                                </Badge>
                              )}
                            </div>
@@ -358,10 +399,10 @@ export function QuickProductsStep({
                           )}
                         </div>
 
-                        {/* Price - Mostrar preço COM acabamentos se disponível */}
+                        {/* Price - Mostrar preço unitário real (subtotal / quantidade) */}
                         <div className="flex items-baseline gap-2 mt-3">
                           <span className="text-sm text-muted-foreground">
-                            {formatCurrency(product.unitPriceWithFinishing || product.price)} x {product.quantity} =
+                            {formatCurrency(product.subtotal / product.quantity)} x {product.quantity} =
                           </span>
                           <span
                             className="text-lg font-semibold cursor-pointer hover:bg-primary/10 rounded px-2 py-1 transition-colors group relative"

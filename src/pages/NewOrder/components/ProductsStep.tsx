@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, Settings } from "lucide-react";
 import type { ProductItem } from "../types";
 import { ProductFormModal } from "./ProductFormModal";
 import { FinishingModal } from "./FinishingModal";
-import { calculateOrderTotal, calculateFinishingCosts, calculateItemTotal, getFinishingDetailsWithTotal } from "../utils/pricing";
+import { calculateOrderTotal, calculateItemTotal, getFinishingDetailsWithTotal } from "../utils/pricing";
 import { useState } from "react";
 
 interface ProductsStepProps {
@@ -159,9 +159,8 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
           {/* Lista de Produtos */}
           <div className="space-y-3">
             {products.map((product, index) => {
-              // Calcular custo dos acabamentos para exibição correta
-              const finishingCost = calculateFinishingCosts(product.finishing);
-              const unitPriceWithFinishing = product.unitPrice + finishingCost;
+              // Preço unitário real = total / quantidade (inclui acabamentos e desconto)
+              const unitPrice = product.total / product.quantity;
               
               return (
               <Card key={index} className="hover:shadow-md transition-shadow">
@@ -192,7 +191,7 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                         <div>
                           <span className="text-muted-foreground">Valor Unit.:</span>
                           <p className="font-medium">
-                            R$ {unitPriceWithFinishing.toFixed(2).replace('.', ',')}
+                            R$ {unitPrice.toFixed(2).replace('.', ',')}
                           </p>
                         </div>
                         <div>

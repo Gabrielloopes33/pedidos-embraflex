@@ -8,7 +8,7 @@ import { Save, X, Plus, Pencil, Trash2, FileDown } from "lucide-react";
 import type { ProductionOrder, ProductionProduct } from "@/lib/types";
 import type { ProductItem } from "@/pages/NewOrder/types";
 import { ProductFormModal } from "@/pages/NewOrder/components/ProductFormModal";
-import { calculateFinishingCosts } from "@/pages/NewOrder/utils/pricing";
+
 import { downloadOrderPDF } from "@/lib/pdf-generator";
 import { toast } from "sonner";
 import { generateUUID } from "@/lib/utils";
@@ -310,9 +310,8 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
               ) : (
                 <div className="space-y-3">
                   {editedProducts.map((product, index) => {
-                    // Calcular custo dos acabamentos para exibição correta
-                    const finishingCost = calculateFinishingCosts(product.finishing);
-                    const unitPriceWithFinishing = product.unitPrice + finishingCost;
+                    // Preço unitário real = total / quantidade (inclui acabamentos e desconto)
+                    const unitPrice = product.total / product.quantity;
                     
                     return (
                     <Card key={index} className="hover:shadow-md transition-shadow">
@@ -343,7 +342,7 @@ export function OrderEditModal({ open, onOpenChange, order, onSave }: OrderEditM
                               <div>
                                 <span className="text-muted-foreground">Valor Unit.:</span>
                                 <p className="font-medium">
-                                R$ {unitPriceWithFinishing.toFixed(2).replace('.', ',')}
+                                R$ {unitPrice.toFixed(2).replace('.', ',')}
                                 </p>
                               </div>
                               <div>

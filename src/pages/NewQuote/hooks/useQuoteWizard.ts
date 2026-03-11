@@ -186,11 +186,13 @@ export function useQuoteWizard() {
   // Calculate total
   const calculateTotal = useCallback(() => {
     return formData.products.reduce((sum, product) => {
+      // Usar preço com acabamentos se disponível, senão preço base
+      const unitPrice = product.unitPriceWithFinishing || (product.subtotal / product.quantity);
       // Considerar desconto se existir
       const discountAmount = product.discountPercent
-        ? product.price * product.quantity * (product.discountPercent / 100)
+        ? unitPrice * product.quantity * (product.discountPercent / 100)
         : 0;
-      return sum + (product.price * product.quantity) - discountAmount;
+      return sum + (unitPrice * product.quantity) - discountAmount;
     }, 0);
   }, [formData.products]);
 

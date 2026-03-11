@@ -1149,25 +1149,38 @@ function VariationSelector({ groupedProduct, variations, loading, onSelect, line
     corCordao: 'nenhum',
   });
 
-  // Construir nome completo para exibição
-  const buildDisplayName = (variation: VariationWithProduct, modelName?: string) => {
-    // Se tem lineName e modelo, combinar os dois
-    if (lineName && modelName) {
-      return `${lineName} - ${modelName}`;
+  // Construir nome completo para exibição: SKU - Linha - Tipo de Papel
+  const buildDisplayName = () => {
+    const parts: string[] = [];
+    
+    // Sempre adicionar SKU no início
+    if (groupedProduct.sku) {
+      parts.push(groupedProduct.sku);
     }
-    // Se só tem lineName, usar com o nome do produto
+    
+    // Adicionar linha se disponível
     if (lineName) {
-      return `${lineName} - ${variation.parentProduct.name}`;
+      parts.push(lineName);
     }
-    // Fallback: usar nome do produto pai
-    return variation.parentProduct.name;
+    
+    // Adicionar tipo de papel se disponível
+    if (paperType) {
+      parts.push(paperType);
+    }
+    
+    // Se não tiver nenhuma parte, usar o nome do produto como fallback
+    if (parts.length === 0) {
+      return 'Produto';
+    }
+    
+    return parts.join(' - ');
   };
 
   // Ao clicar em uma quantidade, adiciona direto ao pedido
   const handleQuantityClick = (variation: VariationWithProduct, modelName?: string) => {
     // Se já tiver acabamentos selecionados, usa eles
     const hasFinishing = finishing.hotStamp || finishing.ilhos || finishing.furoPresente || finishing.cordao !== 'nenhum';
-    const displayName = buildDisplayName(variation, modelName);
+    const displayName = buildDisplayName();
     onSelect(variation, variation.quantity || 1000, hasFinishing ? finishing : undefined, displayName);
   };
 

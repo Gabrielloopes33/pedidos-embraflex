@@ -11,3 +11,7 @@ services:
         value: production
       - key: PORT
         value: 3000
+      - key: WEBHOOK_QUOTE_SIGNED
+        sync: false  # Configure no painel do Render com sua URL do n8n
+      - key: WEBHOOK_QUOTE_REJECTED
+        sync: false  # Opcional: webhook para orçamentos rejeitados

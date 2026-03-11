@@ -11,7 +11,9 @@ export interface FinishingOptions {
   // Acessórios (checkboxes - múltipla escolha)
   hotStamp: boolean;
   hotStampCor: 'nenhum' | 'dourado' | 'prata' | 'colorido';
+  hotStampCorManual?: string;
   ilhos: boolean;
+  ilhosCorManual?: string;
   furoPresente: boolean;
 
   // Cordão (radio - escolha única)
@@ -81,7 +83,9 @@ export function FinishingModal({
     initialFinishing || {
       hotStamp: false,
       hotStampCor: 'nenhum',
+      hotStampCorManual: '',
       ilhos: false,
+      ilhosCorManual: '',
       furoPresente: false,
       cordao: 'nenhum',
       corCordao: 'nenhum',
@@ -95,13 +99,17 @@ export function FinishingModal({
       if (initialFinishing) {
         setFinishing({
           ...initialFinishing,
+          hotStampCorManual: initialFinishing.hotStampCorManual || '',
+          ilhosCorManual: initialFinishing.ilhosCorManual || '',
           corCordaoManual: initialFinishing.corCordaoManual || '',
         });
       } else {
         setFinishing({
           hotStamp: false,
           hotStampCor: 'nenhum',
+          hotStampCorManual: '',
           ilhos: false,
+          ilhosCorManual: '',
           furoPresente: false,
           cordao: 'nenhum',
           corCordao: 'nenhum',
@@ -177,22 +185,46 @@ export function FinishingModal({
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="ilhos"
-                  checked={finishing.ilhos}
-                  onCheckedChange={(checked) =>
-                    setFinishing(prev => ({ ...prev, ilhos: checked as boolean }))
-                  }
-                />
-                <Label htmlFor="ilhos" className="cursor-pointer font-normal">
-                  Ilhós
-                  {FINISHING_PRICES.acessorios.ilhos > 0 && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({formatCurrency(FINISHING_PRICES.acessorios.ilhos)})
-                    </span>
-                  )}
-                </Label>
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="ilhos"
+                    checked={finishing.ilhos}
+                    onCheckedChange={(checked) =>
+                      setFinishing(prev => ({ 
+                        ...prev, 
+                        ilhos: checked as boolean,
+                        ilhosCorManual: checked ? prev.ilhosCorManual : ''
+                      }))
+                    }
+                  />
+                  <Label htmlFor="ilhos" className="cursor-pointer font-normal">
+                    Ilhós
+                    {FINISHING_PRICES.acessorios.ilhos > 0 && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({formatCurrency(FINISHING_PRICES.acessorios.ilhos)})
+                      </span>
+                    )}
+                  </Label>
+                </div>
+                
+                {/* Campo de texto para cor do Ilhós */}
+                {finishing.ilhos && (
+                  <div className="ml-6 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                    <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                      Cor do Ilhós:
+                    </Label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Prata, Dourado, Preto..."
+                      value={finishing.ilhosCorManual || ''}
+                      onChange={(e) =>
+                        setFinishing(prev => ({ ...prev, ilhosCorManual: e.target.value }))
+                      }
+                      className="w-full max-w-sm px-3 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
@@ -259,6 +291,24 @@ export function FinishingModal({
                   </div>
                 </div>
               </RadioGroup>
+              
+              {/* Campo de texto quando Hot Stamp é COLORIDO */}
+              {finishing.hotStampCor === 'colorido' && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                  <Label className="text-sm font-medium text-amber-900 mb-2 block">
+                    Especifique a cor do Hot Stamp:
+                  </Label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Vermelho, Azul Royal, Rosa Pink..."
+                    value={finishing.hotStampCorManual || ''}
+                    onChange={(e) =>
+                      setFinishing(prev => ({ ...prev, hotStampCorManual: e.target.value }))
+                    }
+                    className="w-full max-w-sm px-3 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              )}
             </div>
           )}
 
