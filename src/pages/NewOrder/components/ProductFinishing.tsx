@@ -5,11 +5,21 @@ import { Input } from "@/componentes/ui/input";
 import type { ProductItem } from "../types";
 import { FINISHING_PRICES } from "../types";
 
-// Verifica se o produto tem laminação (baseado no campo lamination)
-function hasLamination(item: ProductItem): boolean {
-  if (!item.lamination) return false;
-  const lam = item.lamination.toLowerCase();
-  return lam.includes('laminado') || lam.includes('lamina');
+// Verifica se o produto é do tipo que tem acabamentos (mesmo critério do botão de engrenagem)
+function isProductWithFinishing(item: ProductItem): boolean {
+  const name = item.productName?.toLowerCase() || '';
+  const code = item.codigo?.toLowerCase() || '';
+  
+  return (
+    code.startsWith('k-') ||
+    (name.includes('sacola') && name.includes('papel')) ||
+    name.includes('sacola de papel') ||
+    name.includes('kraft') ||
+    name.includes('linha premium') ||
+    name.includes('linha comercial') ||
+    name.includes('linha econômica') ||
+    name.includes('linha economica')
+  );
 }
 
 interface ProductFinishingProps {
@@ -51,8 +61,8 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
     <div className="space-y-6">
       <Label className="text-base font-semibold">Acabamentos</Label>
       
-      {/* Tipo de Laminação - aparece quando o produto tem laminação */}
-      {hasLamination(item) && (
+      {/* Tipo de Laminação - aparece para todos os produtos com acabamentos */}
+      {isProductWithFinishing(item) && (
         <div className="space-y-3 p-4 bg-purple-50 border border-purple-200 rounded-md">
           <Label className="text-sm font-medium text-purple-900">
             Tipo de Laminação <span className="text-xs">(selecione apenas 1)</span>
