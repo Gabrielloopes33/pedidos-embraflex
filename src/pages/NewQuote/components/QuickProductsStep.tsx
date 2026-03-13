@@ -80,6 +80,7 @@ export function QuickProductsStep({
     const updatedProduct: QuoteProduct = {
       ...product,
       finishing: {
+        laminationType: finishing.laminationType || 'nenhum',
         hotStamp: finishing.hotStamp,
         hotStampCor: finishing.hotStampCor || 'nenhum',
         hotStampCorManual: finishing.hotStampCor === 'colorido' ? finishing.hotStampCorManual : undefined,
@@ -330,6 +331,11 @@ export function QuickProductsStep({
                            </div>
 
                            <div className="flex flex-wrap gap-2">
+                             {product.finishing?.laminationType && product.finishing.laminationType !== 'nenhum' && (
+                               <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-700 font-medium">
+                                 Laminação: {product.finishing.laminationType === 'fosco' ? 'Fosco' : 'Brilho'}
+                               </Badge>
+                             )}
                              {product.finishing?.hotStamp && (
                                <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-700 font-medium">
                                  Hot Stamp
@@ -442,6 +448,7 @@ export function QuickProductsStep({
           onOpenChange={setShowFinishingModal}
           onConfirm={handleFinishingConfirm}
           initialFinishing={{
+            laminationType: products[editingProductIndex]?.finishing?.laminationType || 'nenhum',
             hotStamp: products[editingProductIndex]?.finishing?.hotStamp || false,
             hotStampCor: products[editingProductIndex]?.finishing?.hotStampCor || 'nenhum',
             ilhos: products[editingProductIndex]?.finishing?.eyelets || false,
