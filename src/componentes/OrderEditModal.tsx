@@ -47,6 +47,11 @@ const convertToProductItem = (product: ProductionProduct): ProductItem => {
       corCordao: product.finishing?.corCordao || '',
     },
     discountPercent: product.discountPercent || 0,
+    // Campos de exibição detalhada
+    modelo: product.modelo,
+    paperType: product.paperType,
+    lamination: product.lamination,
+    laminationType: product.laminationType,
   };
 };
 
@@ -88,6 +93,11 @@ const convertToProductionProduct = (item: ProductItem, existingProduct?: Product
     },
     unitPrice: item.unitPrice,
     discountPercent: item.discountPercent || 0,
+    // Campos de exibição detalhada
+    modelo: item.modelo,
+    paperType: item.paperType,
+    lamination: item.lamination,
+    laminationType: item.laminationType,
   };
 };
 

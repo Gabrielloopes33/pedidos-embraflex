@@ -41,6 +41,11 @@ interface ProductItem {
   };
   observacoes: string;
   unitPrice: number;
+  // Campos de exibição detalhada
+  modelo?: string;
+  paperType?: string;
+  lamination?: string;
+  laminationType?: 'fosco' | 'brilho' | '';
 }
 
 interface OrderApprovalModalProps {

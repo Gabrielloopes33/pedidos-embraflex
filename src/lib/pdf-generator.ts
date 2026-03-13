@@ -40,6 +40,7 @@ interface ProductItem {
   modelo?: string; // Modelo do produto (ex: "25x35cm", "Boca Vazada")
   paperType?: string; // Tipo de papel (ex: "Kraft", "Duplex")
   lamination?: string; // Laminação (ex: "Laminado Brilho", "Laminado Fosco", "Verniz")
+  laminationType?: 'fosco' | 'brilho' | ''; // Tipo de laminação quando o produto é laminado
 }
 
 export interface OrderData {
@@ -210,7 +211,13 @@ export const generateOrderPDF = (orderData: OrderData): jsPDF => {
     const especificacoes = [];
     if (produto.modelo) especificacoes.push(`Modelo: ${produto.modelo}`);
     if (produto.paperType) especificacoes.push(`Papel: ${produto.paperType}`);
-    if (produto.lamination) especificacoes.push(`Laminação: ${produto.lamination}`);
+    if (produto.lamination) {
+      let laminationText = `Laminação: ${produto.lamination}`;
+      if (produto.laminationType) {
+        laminationText += ` (${produto.laminationType === 'fosco' ? 'Fosco' : 'Brilho'})`;
+      }
+      especificacoes.push(laminationText);
+    }
     
     if (especificacoes.length > 0) {
       doc.setFont('helvetica', 'bold');

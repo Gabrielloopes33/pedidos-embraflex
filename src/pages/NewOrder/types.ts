@@ -35,6 +35,7 @@ export interface ProductItem {
   modelo?: string; // Modelo do produto (ex: "25x35cm", "Boca Vazada")
   paperType?: string; // Tipo de papel (ex: "Kraft", "Duplex")
   lamination?: string; // Laminação (ex: "Laminado Brilho", "Laminado Fosco", "Verniz")
+  laminationType?: 'fosco' | 'brilho' | ''; // Tipo de laminação quando o produto é laminado
 }
 
 export interface CustomerData {

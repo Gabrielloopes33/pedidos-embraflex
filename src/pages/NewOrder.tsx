@@ -148,6 +148,11 @@ export default function NewOrder() {
           outros: '',
           observacoes: '',
           unitPrice: item.unitPrice,
+          // Campos de exibição detalhada
+          modelo: item.modelo,
+          paperType: item.paperType,
+          lamination: item.lamination,
+          laminationType: item.laminationType,
         })),
         priority: formData.orderDetails.priority,
         notes: formData.orderDetails.notes,

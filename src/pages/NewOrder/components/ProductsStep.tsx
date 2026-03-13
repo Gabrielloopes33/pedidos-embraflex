@@ -68,12 +68,13 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
     setFinishingModalOpen(true);
   };
 
-  const handleSaveFinishing = (finishing: ProductItem['finishing']) => {
+  const handleSaveFinishing = (finishing: ProductItem['finishing'], laminationType?: ProductItem['laminationType']) => {
     if (finishingProductIndex !== null) {
       const newProducts = [...products];
       newProducts[finishingProductIndex] = {
         ...newProducts[finishingProductIndex],
         finishing,
+        laminationType,
         total: calculateItemTotal({ ...newProducts[finishingProductIndex], finishing })
       };
       onUpdateProducts(newProducts);
@@ -227,6 +228,7 @@ export function ProductsStep({ products, onUpdateProducts }: ProductsStepProps) 
                             {product.lamination && (
                               <Badge variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-800">
                                 Laminação: {product.lamination}
+                                {product.laminationType && ` (${product.laminationType === 'fosco' ? 'Fosco' : 'Brilho'})`}
                               </Badge>
                             )}
                           </div>

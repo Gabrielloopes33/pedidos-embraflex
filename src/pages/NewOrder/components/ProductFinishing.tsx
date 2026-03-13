@@ -5,6 +5,13 @@ import { Input } from "@/componentes/ui/input";
 import type { ProductItem } from "../types";
 import { FINISHING_PRICES } from "../types";
 
+// Verifica se o produto tem laminação (baseado no campo lamination)
+function hasLamination(item: ProductItem): boolean {
+  if (!item.lamination) return false;
+  const lam = item.lamination.toLowerCase();
+  return lam.includes('laminado') || lam.includes('lamina');
+}
+
 interface ProductFinishingProps {
   item: ProductItem;
   onUpdate: <K extends keyof ProductItem>(field: K, value: ProductItem[K]) => void;
@@ -44,6 +51,48 @@ export function ProductFinishing({ item, onUpdate }: ProductFinishingProps) {
     <div className="space-y-6">
       <Label className="text-base font-semibold">Acabamentos</Label>
       
+      {/* Tipo de Laminação - aparece quando o produto tem laminação */}
+      {hasLamination(item) && (
+        <div className="space-y-3 p-4 bg-purple-50 border border-purple-200 rounded-md">
+          <Label className="text-sm font-medium text-purple-900">
+            Tipo de Laminação <span className="text-xs">(selecione apenas 1)</span>
+          </Label>
+          <RadioGroup
+            value={item.laminationType || ''}
+            onValueChange={(value) => {
+              onUpdate('laminationType', value as 'fosco' | 'brilho');
+            }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem
+                  value="fosco"
+                  id={`${item.productId}-lamination-fosco`}
+                />
+                <label
+                  htmlFor={`${item.productId}-lamination-fosco`}
+                  className="text-sm font-medium leading-none cursor-pointer flex-1"
+                >
+                  Fosco
+                </label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem
+                  value="brilho"
+                  id={`${item.productId}-lamination-brilho`}
+                />
+                <label
+                  htmlFor={`${item.productId}-lamination-brilho`}
+                  className="text-sm font-medium leading-none cursor-pointer flex-1"
+                >
+                  Brilho
+                </label>
+              </div>
+            </div>
+          </RadioGroup>
+        </div>
+      )}
+
       {/* Acessórios */}
       <div className="space-y-3">
         <Label className="text-sm font-medium text-muted-foreground">Acessórios</Label>

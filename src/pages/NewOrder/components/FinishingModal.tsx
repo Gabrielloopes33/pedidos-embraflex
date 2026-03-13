@@ -8,7 +8,7 @@ interface FinishingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product: ProductItem;
-  onSave: (finishing: ProductItem['finishing']) => void;
+  onSave: (finishing: ProductItem['finishing'], laminationType?: ProductItem['laminationType']) => void;
 }
 
 const defaultFinishing: ProductItem['finishing'] = {
@@ -28,6 +28,7 @@ export function FinishingModal({ open, onOpenChange, product, onSave }: Finishin
     ...defaultFinishing,
     ...product.finishing,
   });
+  const [currentLaminationType, setCurrentLaminationType] = useState<ProductItem['laminationType']>(product.laminationType);
 
   // Sincronizar quando o produto muda ou quando o modal abre
   useEffect(() => {
@@ -36,17 +37,20 @@ export function FinishingModal({ open, onOpenChange, product, onSave }: Finishin
         ...defaultFinishing,
         ...product.finishing,
       });
+      setCurrentLaminationType(product.laminationType);
     }
-  }, [product.finishing, open]);
+  }, [product.finishing, product.laminationType, open]);
 
   const handleUpdate = <K extends keyof ProductItem>(field: K, value: ProductItem[K]) => {
     if (field === 'finishing') {
       setCurrentFinishing(value as ProductItem['finishing']);
+    } else if (field === 'laminationType') {
+      setCurrentLaminationType(value as ProductItem['laminationType']);
     }
   };
 
   const handleConfirm = () => {
-    onSave(currentFinishing);
+    onSave(currentFinishing, currentLaminationType);
     onOpenChange(false);
   };
 
