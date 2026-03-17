@@ -80,7 +80,7 @@ export function QuickProductsStep({
     const updatedProduct: QuoteProduct = {
       ...product,
       finishing: {
-        laminationType: finishing.laminationType || 'nenhum',
+        laminationType: finishing.laminationType,
         hotStamp: finishing.hotStamp,
         hotStampCor: finishing.hotStampCor || 'nenhum',
         hotStampCorManual: finishing.hotStampCor === 'colorido' ? finishing.hotStampCorManual : undefined,
@@ -331,7 +331,7 @@ export function QuickProductsStep({
                            </div>
 
                            <div className="flex flex-wrap gap-2">
-                             {product.finishing?.laminationType && product.finishing.laminationType !== 'nenhum' && (
+                             {product.finishing?.laminationType && product.finishing.laminationType !== 'nenhum' && product.finishing.laminationType !== '' && (
                                <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-700 font-medium">
                                  Laminação: {product.finishing.laminationType === 'fosco' ? 'Fosco' : 'Brilho'}
                                </Badge>
@@ -448,7 +448,7 @@ export function QuickProductsStep({
           onOpenChange={setShowFinishingModal}
           onConfirm={handleFinishingConfirm}
           initialFinishing={{
-            laminationType: products[editingProductIndex]?.finishing?.laminationType || 'nenhum',
+            laminationType: products[editingProductIndex]?.finishing?.laminationType || '',
             hotStamp: products[editingProductIndex]?.finishing?.hotStamp || false,
             hotStampCor: products[editingProductIndex]?.finishing?.hotStampCor || 'nenhum',
             ilhos: products[editingProductIndex]?.finishing?.eyelets || false,
@@ -457,6 +457,12 @@ export function QuickProductsStep({
             corCordao: products[editingProductIndex]?.finishing?.corCordao || 'nenhum',
           }}
           quantity={products[editingProductIndex]?.quantity || 1000}
+          hasLamination={
+            // Verifica se o produto tem laminação baseado no atributo 'acabamento'
+            products[editingProductIndex]?.attributes?.['acabamento']?.toLowerCase().includes('laminado') ||
+            products[editingProductIndex]?.attributes?.['Acabamento']?.toLowerCase().includes('laminado') ||
+            false
+          }
         />
       )}
 

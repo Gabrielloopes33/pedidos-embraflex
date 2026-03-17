@@ -389,8 +389,77 @@ const QuoteDetails = () => {
               {quote.products.map((product, index) => (
                 <TableRow key={index}>
                   <TableCell>
-                    <div>
+                    <div className="space-y-3">
+                      {/* Nome do produto */}
                       <p className="font-medium">{formatProductDisplayName(product.name, product.sku)}</p>
+                      
+                      {/* Atributos do produto */}
+                      {product.attributes && Object.keys(product.attributes).length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {Object.entries(product.attributes)
+                            .filter(([key]) => {
+                              const lowerKey = key.toLowerCase();
+                              return !['papel', 'tipo de papel', 'paper'].includes(lowerKey);
+                            })
+                            .map(([key, value]) => (
+                              <Badge key={key} variant="outline" className="text-xs bg-gray-50">
+                                {key}: {value}
+                              </Badge>
+                            ))}
+                        </div>
+                      )}
+                      
+                      {/* Acabamentos */}
+                      {product.finishing && (
+                        <div className="bg-primary/5 border border-primary/20 rounded-md p-2 space-y-2">
+                          <p className="text-xs font-semibold text-primary">Acabamentos:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {product.finishing.laminationType && product.finishing.laminationType !== 'nenhum' && product.finishing.laminationType !== '' && (
+                              <Badge variant="outline" className="text-xs bg-purple-50 border-purple-300 text-purple-700 py-1">
+                                ✨ Laminação: {product.finishing.laminationType === 'fosco' ? 'Fosco' : 'Brilho'}
+                              </Badge>
+                            )}
+                            {product.finishing.hotStamp && (
+                              <Badge variant="outline" className="text-xs bg-purple-50 border-purple-300 text-purple-700 py-1">
+                                🔥 Hot Stamp
+                                {product.finishing.hotStampCor && product.finishing.hotStampCor !== 'nenhum' 
+                                  ? `: ${product.finishing.hotStampCor}` 
+                                  : ''}
+                                {product.finishing.hotStampCor === 'colorido' && product.finishing.hotStampCorManual
+                                  ? ` (${product.finishing.hotStampCorManual})`
+                                  : ''}
+                              </Badge>
+                            )}
+                            {product.finishing.eyelets && (
+                              <Badge variant="outline" className="text-xs bg-blue-50 border-blue-300 text-blue-700 py-1">
+                                ⭕ Ilhós
+                                {product.finishing.ilhosCorManual
+                                  ? ` (${product.finishing.ilhosCorManual})`
+                                  : ''}
+                              </Badge>
+                            )}
+                            {product.finishing.furoPresente && (
+                              <Badge variant="outline" className="text-xs bg-pink-50 border-pink-300 text-pink-700 py-1">
+                                🎁 Furo de Presente
+                              </Badge>
+                            )}
+                            {(product.finishing.cord || (product.finishing.cordao && product.finishing.cordao !== 'nenhum')) && (
+                              <Badge variant="outline" className="text-xs bg-amber-50 border-amber-300 text-amber-700 py-1">
+                                🧵 Cordão
+                                {product.finishing.cordao && product.finishing.cordao !== 'nenhum'
+                                  ? `: ${product.finishing.cordao}`
+                                  : ''}
+                                {product.finishing.corCordao && product.finishing.corCordao !== 'nenhum'
+                                  ? ` - ${product.finishing.corCordao}`
+                                  : ''}
+                                {product.finishing.corCordao === 'colorido' && product.finishing.cordaoCorManual
+                                  ? ` (${product.finishing.cordaoCorManual})`
+                                  : ''}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-center">{product.quantity}</TableCell>

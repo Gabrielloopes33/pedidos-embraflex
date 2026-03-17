@@ -67,7 +67,7 @@ export interface QuoteProduct {
   width?: number;
   height?: number;
   finishing: {
-    laminationType?: 'nenhum' | 'fosco' | 'brilho';
+    laminationType?: 'fosco' | 'brilho' | 'nenhum' | '';
     hotStamp: boolean;
     hotStampCor?: 'nenhum' | 'dourado' | 'prata' | 'colorido';
     hotStampCorManual?: string;

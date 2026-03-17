@@ -370,6 +370,11 @@ export function QuoteSummaryStep({
                            <div className="bg-primary/5 border border-primary/20 rounded-md p-3 space-y-2">
                              <p className="text-xs font-semibold text-primary">Acabamentos:</p>
                              <div className="flex flex-wrap gap-2">
+                               {product.finishing.laminationType && product.finishing.laminationType !== 'nenhum' && product.finishing.laminationType !== '' && (
+                                 <Badge variant="outline" className="text-xs bg-purple-50 border-purple-300 text-purple-700 py-1">
+                                   ✨ Laminação: {product.finishing.laminationType === 'fosco' ? 'Fosco' : 'Brilho'}
+                                 </Badge>
+                               )}
                                {product.finishing.hotStamp && (
                                  <Badge variant="outline" className="text-xs bg-purple-50 border-purple-300 text-purple-700 py-1">
                                    🔥 Hot Stamp

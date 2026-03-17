@@ -8,8 +8,8 @@ import { Label } from '@/componentes/ui/label';
 import { Separator } from '@/componentes/ui/separator';
 
 export interface FinishingOptions {
-  // Tipo de Laminação (radio - escolha única)
-  laminationType: 'nenhum' | 'fosco' | 'brilho';
+  // Tipo de Laminação (radio - escolha única, opcional)
+  laminationType?: 'fosco' | 'brilho' | '';
   
   // Acessórios (checkboxes - múltipla escolha)
   hotStamp: boolean;
@@ -35,6 +35,7 @@ interface FinishingModalProps {
   onConfirm: (finishing: FinishingOptions, totalFinishingCost: number) => void;
   initialFinishing?: FinishingOptions;
   quantity: number; // Para calcular o custo total
+  hasLamination?: boolean; // Se o produto tem laminação baseado no atributo 'acabamento'
 }
 
 // Preços dos acabamentos (por unidade)
@@ -80,11 +81,12 @@ export function FinishingModal({
   onOpenChange, 
   onConfirm, 
   initialFinishing,
-  quantity 
+  quantity,
+  hasLamination = false
 }: FinishingModalProps) {
   const [finishing, setFinishing] = useState<FinishingOptions>(
     initialFinishing || {
-      laminationType: 'nenhum',
+      laminationType: '',
       hotStamp: false,
       hotStampCor: 'nenhum',
       hotStampCorManual: '',
@@ -103,14 +105,14 @@ export function FinishingModal({
       if (initialFinishing) {
         setFinishing({
           ...initialFinishing,
-          laminationType: initialFinishing.laminationType || 'nenhum',
+          laminationType: initialFinishing.laminationType || '',
           hotStampCorManual: initialFinishing.hotStampCorManual || '',
           ilhosCorManual: initialFinishing.ilhosCorManual || '',
           corCordaoManual: initialFinishing.corCordaoManual || '',
         });
       } else {
         setFinishing({
-          laminationType: 'nenhum',
+          laminationType: '',
           hotStamp: false,
           hotStampCor: 'nenhum',
           hotStampCorManual: '',
@@ -170,43 +172,40 @@ export function FinishingModal({
         </DialogHeader>
         
         <div className="space-y-6 py-4">
-          {/* Tipo de Laminação */}
-          <div className="space-y-3 p-4 bg-purple-50 border border-purple-200 rounded-md">
-            <Label className="text-base font-semibold text-purple-900">
-              Tipo de Laminação <span className="text-sm font-normal">(selecione apenas 1)</span>
-            </Label>
-            <RadioGroup
-              value={finishing.laminationType}
-              onValueChange={(value) =>
-                setFinishing(prev => ({ ...prev, laminationType: value as FinishingOptions['laminationType'] }))
-              }
-            >
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="fosco" id="lamination-fosco" />
-                  <Label htmlFor="lamination-fosco" className="cursor-pointer font-normal">
-                    Fosco
-                  </Label>
-                </div>
+          {/* Tipo de Laminação - só aparece se o produto tiver laminação */}
+          {hasLamination && (
+            <>
+              <div className="space-y-3 p-4 bg-purple-50 border border-purple-200 rounded-md">
+                <Label className="text-base font-semibold text-purple-900">
+                  Tipo de Laminação <span className="text-sm font-normal">(selecione apenas 1)</span>
+                </Label>
+                <RadioGroup
+                  value={finishing.laminationType || ''}
+                  onValueChange={(value) =>
+                    setFinishing(prev => ({ ...prev, laminationType: value as 'fosco' | 'brilho' }))
+                  }
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="fosco" id="lamination-fosco" />
+                      <Label htmlFor="lamination-fosco" className="cursor-pointer font-normal">
+                        Fosco
+                      </Label>
+                    </div>
 
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="brilho" id="lamination-brilho" />
-                  <Label htmlFor="lamination-brilho" className="cursor-pointer font-normal">
-                    Brilho
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="nenhum" id="lamination-nenhum" />
-                  <Label htmlFor="lamination-nenhum" className="cursor-pointer font-normal text-muted-foreground">
-                    Sem Laminação
-                  </Label>
-                </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="brilho" id="lamination-brilho" />
+                      <Label htmlFor="lamination-brilho" className="cursor-pointer font-normal">
+                        Brilho
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
               </div>
-            </RadioGroup>
-          </div>
 
-          <Separator />
+              <Separator />
+            </>
+          )}
 
           {/* Acessórios */}
           <div className="space-y-3">
